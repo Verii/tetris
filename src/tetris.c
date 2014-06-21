@@ -19,6 +19,18 @@ static struct blocks_game game;
 static FILE *stderr_out;
 
 static void
+usage (void)
+{
+	extern const char *__progname;
+
+	fprintf (stderr, "%s: usage\n\t"
+			"-l [file] specify a log file (/dev/null)\n\t"
+			"-c [file] specify a config file NOT DONE\n",
+			__progname);
+	exit (1);
+}
+
+static void
 game_cleanup (void)
 {
 	endwin ();
@@ -115,7 +127,7 @@ main (int argc, char **argv)
 	printf ("ASCII Tetris " VERSION "\n");
 
 	ch = l_flag = c_flag = 0;
-	while ((ch = getopt(argc, argv, "c:l:")) != -1)
+	while ((ch = getopt(argc, argv, "c:l:h")) != -1)
 		switch (ch) {
 		case 'c':
 			/* TODO */
@@ -131,8 +143,10 @@ main (int argc, char **argv)
 				log_file[sizeof(log_file)-1] = '\0';
 			}
 			break;
+		case 'h':
 		case '?':
 		default:
+			usage ();
 			break;
 		}
 
