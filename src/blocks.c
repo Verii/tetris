@@ -31,20 +31,21 @@ _destroy_lines (struct blocks_game *pgame, int *destroyed)
 				break;
 		}
 
-		if (j != BLOCKS_COLUMNS)
+		if (j < BLOCKS_COLUMNS)
 			continue;
+
+		*destroyed = *destroyed +1;
 
 		/* Remove full line */
 		free (pgame->spaces[i]);
-		*destroyed = *destroyed +1;
+		log_info ("Removed line %d", i);
 
 		/* Move everything down */
 		for (int k = i; k > 0; k--)
 			pgame->spaces[k] = pgame->spaces[k-1];
 
 		/* Add new empty row to top of game */
-		pgame->spaces[BLOCKS_ROWS] =
-			calloc (BLOCKS_COLUMNS, sizeof (bool));
+		pgame->spaces[0] = calloc (BLOCKS_COLUMNS, sizeof (bool));
 
 		/* Re-check this row, because we moved everything */
 		i++;
