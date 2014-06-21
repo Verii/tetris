@@ -41,7 +41,7 @@ _destroy_lines (struct blocks_game *pgame, int *destroyed)
 
 		/* Remove full line */
 		free (pgame->spaces[i]);
-		log_info ("Line full! Removed line %d", i);
+		log_info ("Line full! Removed line %2d", i);
 
 		/* Move everything down */
 		for (int k = i; k > 0; k--)
@@ -55,22 +55,28 @@ _destroy_lines (struct blocks_game *pgame, int *destroyed)
 	}
 }
 
-static void
+static int
 _block_fall (struct blocks_game *pgame)
 {
-	/* XXX */
-	debug ("%s", "Block hit block bottom");
+	if (pgame->cur == NULL)
+		return 0;
 
+	/* XXX */
+
+	debug ("%s", "Block hit block bottom");
 	free (pgame->cur);
 	pgame->cur = NULL;
+
+	return 1;
 }
 
 /* Game is over when this thread returns.
- * The user may kill the game, however.
+ * The user may kill the thread, however.
  */
 static void *
 _game_tick (void *vp)
 {
+	int hit = 0;
 	int lines_destroyed = 0;
 	struct timespec ts;
 	struct blocks_game *pgame = vp;
@@ -87,15 +93,21 @@ _game_tick (void *vp)
 
 		nanosleep (&ts, NULL);
 
+		if (hit > 1) {
+			hit = 0;
+			continue;
+		}
+
 		pthread_mutex_lock (&pgame->lock);
 
-		/* Update falling block */
-		_block_fall (pgame);
+		/* Update falling block. If it hits something, wait one more
+		 * tick and then start on the new one.
+		 */
+		hit = _block_fall (pgame);
 
-		/* Block is removed when it hits something */
 		if (pgame->cur == NULL) {
-			/* Notify next of kin */
-			pgame->cur = pgame->next;
+
+			pgame->cur = pgame->next; /* Notify next of kin */
 			_destroy_lines (pgame, &lines_destroyed);
 			_create_block (&pgame->next);
 
