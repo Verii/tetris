@@ -10,7 +10,7 @@
 #include "debug.h"
 
 #ifndef LOGDIR
-#define LOGDIR "../logs"
+#define LOGDIR "../logs/"
 #endif
 
 static struct blocks_game game;
@@ -83,18 +83,6 @@ game_draw (void)
 static void
 game_init (void)
 {
-	setlocale (LC_ALL, "");
-	printf ("ASCII Tetris " VERSION "\n");
-	/* ISO 8859 Tetris, technically .. */
-
-	char *log_file = LOGDIR "/tetris.log";
-	printf ("Redirecting stderr to %s\n", log_file);
-
-	/* Redirect stderr to file */
-	stderr_out = freopen (log_file, "w", stderr);
-	if (stderr_out == NULL)
-		exit (2);
-
 	atexit(&game_cleanup);
 	init_blocks (&game);
 
@@ -111,6 +99,11 @@ game_init (void)
 int
 main (int argc, char **argv)
 {
+	setlocale (LC_ALL, "");
+
+	/* ISO 8859 Tetris, technically .. */
+	printf ("ASCII Tetris " VERSION "\n");
+
 	/* TODO */
 	int ch;
 	while ((ch = getopt(argc, argv, "c:l:")) != -1)
@@ -123,6 +116,10 @@ main (int argc, char **argv)
 		default:
 			break;
 		}
+
+	stderr_out = freopen (LOGDIR "tetris.log", "w", stderr);
+	if (stderr_out == NULL)
+		exit (2);
 
 	game_init ();
 	game_draw ();

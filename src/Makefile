@@ -11,7 +11,7 @@ DEBUG = -g -Og -DDEBUG
 CFLAGS = -std=c99 -Wpedantic -Wall -Wextra -Werror -Os ${DEBUG}
 
 LIBS = -lm -lncurses -lpthread
-LDFLAGS = -s ${LIBS}
+LDFLAGS = ${LIBS}
 
 CC = cc
 
