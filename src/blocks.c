@@ -13,6 +13,7 @@
 static void
 _create_block (struct block **new_block)
 {
+	log_info ("%s", "Creating a new random block");
 	/* XXX */
 	*new_block = calloc (1, sizeof (struct block));
 }
@@ -155,7 +156,7 @@ destroy_blocks (struct blocks_game *pgame)
 
 	pthread_cancel (pgame->tick);
 
-	for (int i = 0; i < BLOCKS_COLUMNS; i++)
+	for (int i = 0; i < BLOCKS_ROWS; i++)
 		free (pgame->spaces[i]);
 
 	free (pgame->cur);
