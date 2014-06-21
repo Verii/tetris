@@ -13,9 +13,10 @@
 static void
 _create_block (struct block **new_block)
 {
-	log_info ("%s", "Creating a new random block");
+	debug ("%s", "Creating a new random block");
+
 	/* XXX */
-	*new_block = calloc (1, sizeof (struct block));
+	*new_block = malloc (sizeof **new_block);
 }
 
 /* TODO testing */
@@ -23,6 +24,8 @@ static void
 _destroy_lines (struct blocks_game *pgame, int *destroyed)
 {
 	int i, j;
+
+	debug ("%s", "Checking for full lines");
 
 	/* Check each row for a full line of blocks */
 	for (i = BLOCKS_ROWS-1; i >= 0; i--) {
@@ -38,7 +41,7 @@ _destroy_lines (struct blocks_game *pgame, int *destroyed)
 
 		/* Remove full line */
 		free (pgame->spaces[i]);
-		log_info ("Removed line %d", i);
+		log_info ("Line full! Removed line %d", i);
 
 		/* Move everything down */
 		for (int k = i; k > 0; k--)
@@ -56,7 +59,7 @@ static void
 _block_fall (struct blocks_game *pgame)
 {
 	/* XXX */
-	log_info ("%s", "Updating blocks");
+	debug ("%s", "Block hit block bottom");
 
 	free (pgame->cur);
 	pgame->cur = NULL;
@@ -141,7 +144,7 @@ init_blocks (struct blocks_game *pgame)
 int
 move_blocks (struct blocks_game *pgame, enum block_dir dir, enum block_rot rot)
 {
-	log_info ("%s", "Moving blocks");
+	debug ("%s", "Moving blocks");
 	/* XXX */
 
 	(void) pgame;

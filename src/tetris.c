@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include <pthread.h>
 #include <unistd.h>
@@ -78,6 +79,11 @@ game_draw (void)
 	attrset (attr_text);
 	printw ("Play TETRIS!\n");
 
+	printw ("Difficulty: %d\n", game.mod);
+	printw ("Level: %d\n", game.level);
+	printw ("Score: %d\n", game.score);
+	printw ("Time: %d\n", game.time);
+
 	refresh ();
 }
 
@@ -100,25 +106,40 @@ game_init (void)
 int
 main (int argc, char **argv)
 {
+	int ch, l_flag, c_flag;
+	char log_file[80] = LOGDIR "tetris.log";
+
 	setlocale (LC_ALL, "");
 
 	/* ISO 8859 Tetris, technically .. */
 	printf ("ASCII Tetris " VERSION "\n");
 
-	/* TODO */
-	int ch;
+	ch = l_flag = c_flag = 0;
 	while ((ch = getopt(argc, argv, "c:l:")) != -1)
 		switch (ch) {
 		case 'c':
+			/* TODO */
+			c_flag = 1;
+			if (optarg) {
+				;
+			}
 			break;
 		case 'l':
+			l_flag = 1;
+			if (optarg) {
+				strncpy (log_file, optarg, sizeof(log_file)-1);
+				log_file[sizeof(log_file)-1] = '\0';
+			}
 			break;
 		case '?':
 		default:
 			break;
 		}
 
-	stderr_out = freopen (LOGDIR "tetris.log", "w", stderr);
+	argc -= optind;
+	argv += optind;
+
+	stderr_out = freopen (log_file, "w", stderr);
 	if (stderr_out == NULL)
 		exit (2);
 
