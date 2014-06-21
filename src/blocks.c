@@ -1,9 +1,9 @@
 #include <math.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
-#include <pthread.h>
 
 #include "blocks.h"
 #include "debug.h"
@@ -107,7 +107,7 @@ _game_tick (void *vp)
 				lines_destroyed = 0;
 
 				/* See tests/level-curve.c */
-				speed = (atan(pgame->level/(double)10) *pgame->mod *2/PI) +1;
+				speed = atan (pgame->level/(double)10) *pgame->mod *2/PI +1;
 				ts.tv_nsec = (int) ((double)1000000000 / speed);
 
 			}
@@ -136,7 +136,7 @@ init_blocks (struct blocks_game *pgame)
 	}
 
 	for (int i = 0; i < BLOCKS_ROWS; i++) {
-		pgame->spaces[i] = calloc(BLOCKS_COLUMNS, sizeof (bool));
+		pgame->spaces[i] = calloc (BLOCKS_COLUMNS, sizeof (bool));
 		if (!pgame->spaces[i]) {
 			log_err ("%s", "Out of memory");
 			exit (2);

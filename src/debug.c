@@ -1,4 +1,3 @@
-#include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,7 +15,7 @@ _debug_log (const char *fmt, ...)
 
 	date = malloc (26);
 	ctime_r (&t, date);
-	date[strlen(date)-1] = '\0';
+	date[strlen (date)-1] = '\0';
 
 	va_list ap;
 	va_start (ap, fmt);

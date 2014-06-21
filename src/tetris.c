@@ -1,12 +1,12 @@
+#include <locale.h>
+#include <ncurses.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <pthread.h>
 #include <unistd.h>
-#include <locale.h>
-#include <ncurses.h>
 
 #include "blocks.h"
 #include "debug.h"
@@ -109,7 +109,7 @@ game_draw (void)
 static void
 game_init (void)
 {
-	atexit(&game_cleanup);
+	atexit (&game_cleanup);
 	init_blocks (&game);
 
 	/* ncurses init */
@@ -134,7 +134,7 @@ main (int argc, char **argv)
 	printf ("ASCII Tetris " VERSION "\n");
 
 	ch = l_flag = c_flag = 0;
-	while ((ch = getopt(argc, argv, "c:l:h")) != -1)
+	while ((ch = getopt (argc, argv, "c:l:h")) != -1)
 		switch (ch) {
 		case 'c':
 			/* TODO */
@@ -168,9 +168,9 @@ main (int argc, char **argv)
 	game_draw ();
 
 	/* XXX Dummy wait */
-	while (getch()) {
-		int x = rand() % BLOCKS_COLUMNS;
-		int y = rand() % BLOCKS_ROWS;
+	while (getch ()) {
+		int x = rand () % BLOCKS_COLUMNS;
+		int y = rand () % BLOCKS_ROWS;
 		game.spaces[y][x] = true;
 		game_draw ();
 	}
