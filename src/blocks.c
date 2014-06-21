@@ -105,7 +105,7 @@ _game_tick (void *vp)
 int
 init_blocks (struct blocks_game *pgame)
 {
-	log_info ("Initializing game data");
+	log_info ("%s", "Initializing game data");
 
 	pgame->mod = pgame->level = pgame->score = pgame->time = 0;
 
@@ -113,14 +113,14 @@ init_blocks (struct blocks_game *pgame)
 	pgame->cur = malloc (sizeof *pgame->cur);
 
 	if (!(pgame->next && pgame->cur)) {
-		log_err ("Out of memory");
+		log_err ("%s", "Out of memory");
 		exit (2);
 	}
 
 	for (int i = 0; i < BLOCKS_ROWS; i++) {
 		pgame->spaces[i] = calloc(BLOCKS_COLUMNS, sizeof (bool));
 		if (!pgame->spaces[i]) {
-			log_err ("Out of memory");
+			log_err ("%s", "Out of memory");
 			exit (2);
 		}
 	}
@@ -134,7 +134,7 @@ init_blocks (struct blocks_game *pgame)
 int
 move_blocks (struct blocks_game *pgame, enum block_dir dir, enum block_rot rot)
 {
-	log_info ("Moving blocks");
+	log_info ("%s", "Moving blocks");
 	/* XXX */
 
 	(void) pgame;
@@ -147,7 +147,7 @@ move_blocks (struct blocks_game *pgame, enum block_dir dir, enum block_rot rot)
 int
 destroy_blocks (struct blocks_game *pgame)
 {
-	log_info ("Destroying game data");
+	log_info ("%s", "Destroying game data");
 
 	/* XXX Make sure this is unlocked */
 	pthread_mutex_destroy (&pgame->lock);
