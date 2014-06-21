@@ -1,5 +1,5 @@
 BIN = tetris
-VERSION = 0.2
+VERSION = v0.2
 SRC = ${BIN}.c blocks.c debug.c
 
 OBJS = ${SRC:.c=.o}

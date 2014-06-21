@@ -24,8 +24,8 @@ usage (void)
 	extern const char *__progname;
 
 	fprintf (stderr, "%s: usage\n\t"
-			"-l [file] specify a log file (/dev/null)\n\t"
-			"-c [file] specify a config file NOT DONE\n",
+			"-l [file] - specify a log file (/dev/null)\n\t"
+			"-c [file] - specify a config file NOT DONE\n",
 			__progname);
 	exit (1);
 }
@@ -55,6 +55,9 @@ game_draw (void)
 {
 	clear ();
 
+	/* Don't ever modify game, just read it */
+	const struct blocks_game *s_game = &game;
+
 	attr_t attr_text, attr_blocks, attr_border;
 
 	init_pair (1, COLOR_BLUE, COLOR_BLACK);
@@ -65,6 +68,8 @@ game_draw (void)
 	attr_blocks = COLOR_PAIR(2);
 	attr_text = A_BOLD | COLOR_PAIR(3);
 
+	pthread_mutex_lock (&game.lock);
+
 	for (int i = 0; i < BLOCKS_ROWS; i++) {
 		attron (attr_border);
 		printw ("*");
@@ -72,7 +77,7 @@ game_draw (void)
 		attron (attr_blocks);
 		for (int j = 0; j < BLOCKS_COLUMNS; j++) {
 
-			if (game.spaces[i][j] == true)
+			if (s_game->spaces[i][j] == true)
 				printw ("\u00A4");
 			else if (j % 2)
 				printw (".");
@@ -84,6 +89,8 @@ game_draw (void)
 		printw ("*\n");
 	}
 
+	pthread_mutex_unlock (&game.lock);
+
 	for (int i = 0; i < BLOCKS_COLUMNS+2; i++)
 		printw ("*");
 	printw ("\n");
@@ -91,10 +98,10 @@ game_draw (void)
 	attrset (attr_text);
 	printw ("Play TETRIS!\n");
 
-	printw ("Difficulty: %d\n", game.mod);
-	printw ("Level: %d\n", game.level);
-	printw ("Score: %d\n", game.score);
-	printw ("Time: %d\n", game.time);
+	printw ("Difficulty: %d\n", s_game->mod);
+	printw ("Level: %d\n", s_game->level);
+	printw ("Score: %d\n", s_game->score);
+	printw ("Time: %d\n", s_game->time);
 
 	refresh ();
 }
