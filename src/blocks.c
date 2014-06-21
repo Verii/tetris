@@ -56,7 +56,10 @@ static void
 _block_fall (struct blocks_game *pgame)
 {
 	/* XXX */
-	(void) pgame;
+	log_info ("%s", "Updating blocks");
+
+	free (pgame->cur);
+	pgame->cur = NULL;
 }
 
 /* Game is over when this thread returns.
@@ -110,7 +113,8 @@ init_blocks (struct blocks_game *pgame)
 {
 	log_info ("%s", "Initializing game data");
 
-	pgame->mod = pgame->level = pgame->score = pgame->time = 0;
+	pgame->mod = 2;
+	pgame->level = pgame->score = pgame->time = 0;
 
 	pgame->next = malloc (sizeof *pgame->next);
 	pgame->cur = malloc (sizeof *pgame->cur);
