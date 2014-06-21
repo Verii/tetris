@@ -78,33 +78,24 @@ _game_tick (void *vp)
 {
 	int hit = 0;
 	int lines_destroyed = 0;
+	double speed;
+
 	struct timespec ts;
 	struct blocks_game *pgame = vp;
 
 	ts.tv_sec = 0;
+	ts.tv_nsec = 1000000000 -1;
 
 	for (;;) {
-		double speed;
-
-		/* See tests/level-curve.c */
-		speed = (atan(pgame->level/(double)10) *pgame->mod *2/PI) +1;
-		ts.tv_nsec = (int) ((double)1000000000 / speed);
-		ts.tv_nsec--;
-
 		nanosleep (&ts, NULL);
 
-		if (hit > 1) {
-			hit = 0;
+		/* tick away $hit times */
+		if (hit-- > 0)
 			continue;
-		}
 
 		pthread_mutex_lock (&pgame->lock);
 
-		/* Update falling block. If it hits something, wait one more
-		 * tick and then start on the new one.
-		 */
 		hit = _block_fall (pgame);
-
 		if (pgame->cur == NULL) {
 
 			pgame->cur = pgame->next; /* Notify next of kin */
@@ -114,6 +105,11 @@ _game_tick (void *vp)
 			if (lines_destroyed > pgame->level) {
 				pgame->level++;
 				lines_destroyed = 0;
+
+				/* See tests/level-curve.c */
+				speed = (atan(pgame->level/(double)10) *pgame->mod *2/PI) +1;
+				ts.tv_nsec = (int) ((double)1000000000 / speed);
+
 			}
 		}
 
