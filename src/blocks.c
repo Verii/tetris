@@ -75,6 +75,7 @@ _game_tick (void *vp)
 		/* See tests/level-curve.c */
 		speed = (atan(pgame->level/(double)10) *pgame->mod *2/PI) +1;
 		ts.tv_nsec = (int) ((double)1000000000 / speed);
+		ts.tv_nsec--;
 
 		nanosleep (&ts, NULL);
 
