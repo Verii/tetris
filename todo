@@ -1,5 +1,3 @@
-a) update draw_game algorithm to access current game
-b) update tetris.c to use mutexes when accessing blocks
 create indep. windows in curses to display
 	level, score, next block, stats
 finish taking command line options for logging directory and config file
