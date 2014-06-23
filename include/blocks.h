@@ -8,45 +8,41 @@
 #define BLOCKS_COLUMNS 10
 #define LEN(x) ((sizeof(x)) / (sizeof(*x)))
 
-/* TODO hide this in blocks.c */
+enum block_type {
+	SQUARE_BLOCK,
+	LINE_BLOCK,
+	T_BLOCK,
+	L_BLOCK,
+	L_REV_BLOCK,
+	Z_BLOCK,
+	Z_REV_BLOCK,
+};
+
 struct block {
-	/* (x, y): {1, 2, 3, 4} */
-	struct loc {
-		int x, y;
-	} pieces[4];
+	enum block_type type;
 
 	/* offsets */
-	int col_off, row_off;
-
-	enum block_type {
-		SQUARE,
-		L,
-		J,
-		T,
-		Z,
-		Z_REV,
-		LINE,
-	} type;
+	unsigned char col_off, row_off;
+	unsigned char loc[16];
 };
 
 /* Meta information about the game */
-struct blocks_game {
+struct block_game {
 	pthread_t	tick;
-	pthread_mutex_t lock;
-	int mod;		/* difficulty */
-	int level;
+	pthread_mutex_t	lock;
+	unsigned char mod;		/* difficulty */
+	unsigned char level;
 	int score;
-	int time;
+	bool game_over;
 	bool *spaces[BLOCKS_ROWS];
 	struct block *cur, *next;
 };
 
-enum block_dir { MOVE_LEFT, MOVE_RIGHT, MOVE_DROP };
-enum block_rot { ROT_LEFT, ROT_RIGHT };
+enum block_cmd { MOVE_LEFT, MOVE_RIGHT, MOVE_DROP, ROT_LEFT, ROT_RIGHT };
 
 /* Game timeline */
-int init_blocks (struct blocks_game *);
-int move_blocks (struct blocks_game *, enum block_dir, enum block_rot);
-int destroy_blocks (struct blocks_game *);
+int init_blocks (struct block_game *);
+int move_blocks (struct block_game *, enum block_cmd);
+int destroy_blocks (struct block_game *);
 
 #endif /* BLOCKS_H_ */

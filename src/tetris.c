@@ -15,7 +15,7 @@
 #define LOGDIR "../logs/"
 #endif
 
-static struct blocks_game game;
+static struct block_game game;
 static FILE *stderr_out;
 
 static void
@@ -56,22 +56,21 @@ game_draw (void)
 	clear ();
 
 	/* Don't ever modify game, just read it */
-	const struct blocks_game *s_game = &game;
-
-	attr_t attr_text, attr_blocks, attr_border;
+	const struct block_game *s_game = &game;
 
 	init_pair (1, COLOR_BLUE, COLOR_BLACK);
 	init_pair (2, COLOR_GREEN, COLOR_BLACK);
 	init_pair (3, COLOR_WHITE, COLOR_BLACK);
+
+	attr_t attr_text, attr_blocks, attr_border;
 
 	attr_border = A_BOLD | COLOR_PAIR(1);
 	attr_blocks = COLOR_PAIR(2);
 	attr_text = A_BOLD | COLOR_PAIR(3);
 
 	pthread_mutex_lock (&game.lock);
-
 	for (int i = 0; i < BLOCKS_ROWS; i++) {
-		attron (attr_border);
+		attrset (attr_border);
 		printw ("*");
 
 		attron (attr_blocks);
@@ -85,10 +84,9 @@ game_draw (void)
 				printw (" ");
 		}
 
-		attron (attr_border);
+		attrset (attr_border);
 		printw ("*\n");
 	}
-
 	pthread_mutex_unlock (&game.lock);
 
 	for (int i = 0; i < BLOCKS_COLUMNS+2; i++)
@@ -101,7 +99,6 @@ game_draw (void)
 	printw ("Difficulty: %d\n", s_game->mod);
 	printw ("Level: %d\n", s_game->level);
 	printw ("Score: %d\n", s_game->score);
-	printw ("Time: %d\n", s_game->time);
 
 	refresh ();
 }
@@ -151,7 +148,6 @@ main (int argc, char **argv)
 			}
 			break;
 		case 'h':
-		case '?':
 		default:
 			usage ();
 			break;
@@ -168,10 +164,8 @@ main (int argc, char **argv)
 	game_draw ();
 
 	/* XXX Dummy wait */
-	while (getch ()) {
-		int x = rand () % BLOCKS_COLUMNS;
-		int y = rand () % BLOCKS_ROWS;
-		game.spaces[y][x] = true;
+	while (1) {
+		sleep (1);
 		game_draw ();
 	}
 

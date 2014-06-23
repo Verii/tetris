@@ -8,22 +8,24 @@
  * "[time] [ERROR|WARN|INFO] message"
  */
 void
-_debug_log (const char *fmt, ...)
+debug_log (const char *fmt, ...)
 {
+	va_list ap;
 	time_t t = time (NULL);
 	char *msg, *date;
 
 	date = malloc (26);
-	ctime_r (&t, date);
-	date[strlen (date)-1] = '\0';
+	if (date) {
+		ctime_r (&t, date);
+		date[strlen (date)-1] = '\0';
+		fprintf (stderr, "[%s] ", date);
+		free (date);
+	}
 
-	va_list ap;
 	va_start (ap, fmt);
 	vasprintf (&msg, fmt, ap);
 	va_end (ap);
 
-	fprintf (stderr, "[%s] %s\n", date, msg);
-
+	fprintf (stderr, "%s\n", msg);
 	free (msg);
-	free (date);
 }
