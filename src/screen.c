@@ -33,7 +33,7 @@ game_over (void)
 	return;
 }
 
-/* Ask user for difficulty, and their name */
+/* Ask user for difficulty and their name */
 static void
 user_menu (void)
 {
@@ -78,12 +78,13 @@ screen_draw (struct block_game *pgame)
 	printw ("\n");
 
 	attrset (attr_text);
-	printw ("Current Block: %s\n", names[pgame->cur->type].name);
-	printw ("Next Block: %s\n", names[pgame->next->type].name);
+	printw ("Current Block: %s\n",
+		pgame->cur ? names[pgame->cur->type].name : "...");
+	printw ("Next Block: %s\n",
+		pgame->next ? names[pgame->next->type].name : "...");
 	printw ("Difficulty: %s\n", levels[pgame->mod].name);
 	printw ("Level: %d\n", pgame->level);
 	printw ("Score: %d\n", pgame->score);
-
 	refresh ();
 }
 

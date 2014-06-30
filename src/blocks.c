@@ -11,6 +11,12 @@
 #include "debug.h"
 #include "screen.h"
 
+static void create_block (struct block **);
+static void destroy_block (struct block **);
+static int destroy_lines (struct block_game *);
+static int drop_block (struct block_game *);
+static int rotate_block (struct block_game *, enum block_cmd);
+static int translate_block (struct block_game *, enum block_cmd);
 static void unwrite_cur_piece (struct block_game *);
 static void write_cur_piece (struct block_game *);
 
@@ -21,6 +27,11 @@ destroy_block (struct block **dest)
 	*dest = NULL;
 }
 
+/*
+ * create_block
+ * creates a new random (evenly distributed) block
+ * and sets the initial positions of the pieces
+ */
 static void
 create_block (struct block **new_block)
 {
@@ -148,10 +159,10 @@ translate_block (struct block_game *pgame, enum block_cmd cmd)
 	for (size_t i = 0; i < LEN(pgame->cur->p); i++) {
 		int bounds_x, bounds_y;
 
-		/* Check out of bounds before we write it */
 		bounds_x = pgame->cur->p[i].x + pgame->cur->col_off + dir;
 		bounds_y = pgame->cur->p[i].y + pgame->cur->row_off;
 
+		/* Check out of bounds before we write it */
 		if (bounds_x < 0 || bounds_x >= BLOCKS_COLUMNS ||
 		    bounds_y < 0 || bounds_y >= BLOCKS_ROWS ||
 		    pgame->spaces[bounds_y][bounds_x])
@@ -161,15 +172,6 @@ translate_block (struct block_game *pgame, enum block_cmd cmd)
 	pgame->cur->col_off += dir;
 
 	return 1;
-}
-
-/* XXX TODO */
-static int
-drop_block (struct block_game *pgame, enum block_cmd cmd)
-{
-	(void) pgame;
-	(void) cmd;
-	return -1;
 }
 
 static int
@@ -260,7 +262,7 @@ write_cur_piece (struct block_game *pgame)
 }
 
 static int
-block_fall (struct block_game *pgame)
+drop_block (struct block_game *pgame)
 {
 	if (pgame->cur == NULL)
 		return 0;
@@ -321,7 +323,7 @@ loop_blocks (struct block_game *pgame)
 		nanosleep (&ts, NULL);
 		pthread_mutex_lock (&pgame->lock);
 
-		if (block_fall (pgame) < 0) {
+		if (drop_block (pgame) < 0) {
 			log_info ("Game over, score: %d", pgame->score);
 			break;
 		}
@@ -377,6 +379,9 @@ move_blocks (struct block_game *pgame, enum block_cmd cmd)
 	if (pgame == NULL)
 		return -1;
 
+	if (pgame->cur == NULL)
+		return 0;
+
 	debug ("%s", "Moving blocks");
 
 	pthread_mutex_lock (&pgame->lock);
@@ -388,7 +393,7 @@ move_blocks (struct block_game *pgame, enum block_cmd cmd)
 		translate_block (pgame, cmd);
 		break;
 	case MOVE_DROP:
-		drop_block (pgame, cmd);
+		drop_block (pgame);
 		break;
 	case ROT_LEFT:
 	case ROT_RIGHT:
