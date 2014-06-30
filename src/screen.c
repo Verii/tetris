@@ -54,11 +54,11 @@ screen_draw (struct block_game *pgame)
 	attr_text = A_BOLD | COLOR_PAIR(3);
 
 	pthread_mutex_lock (&pgame->lock);
-	for (int i = 0; i < BLOCKS_ROWS; i++) {
+	for (int i = 2; i < BLOCKS_ROWS; i++) {
 		attrset (attr_border);
 		printw ("*");
 
-		attron (attr_blocks);
+		attrset (attr_blocks);
 		for (int j = 0; j < BLOCKS_COLUMNS; j++) {
 
 			if (pgame->spaces[i][j] == true)

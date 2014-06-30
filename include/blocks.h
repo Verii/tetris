@@ -7,7 +7,7 @@
 
 #define PI 3.141592653589L
 
-#define BLOCKS_ROWS 20 
+#define BLOCKS_ROWS 22
 #define BLOCKS_COLUMNS 10
 #define LEN(x) ((sizeof(x)) / (sizeof(*x)))
 
@@ -27,13 +27,23 @@ enum block_diff {
 	DIFF_HARD,
 };
 
+enum block_cmd {
+	MOVE_LEFT,
+	MOVE_RIGHT,
+	MOVE_DROP,
+	ROT_LEFT,
+	ROT_RIGHT
+};
+
 struct block {
 	enum block_type type;
 	bool fallen; /* has the block fallen atleast 1 block */
 
 	/* offsets */
 	uint8_t col_off, row_off;
-	bool loc[16];
+	struct {
+		int x, y; /* { -2, -1, 1, 2 } */
+	} p[4];
 };
 
 struct block_game {
@@ -48,9 +58,6 @@ struct block_game {
 	struct block *cur, *next;
 };
 
-enum block_cmd { MOVE_LEFT, MOVE_RIGHT, MOVE_DROP, ROT_LEFT, ROT_RIGHT };
-
-/* Game timeline */
 int init_blocks (struct block_game *);
 int move_blocks (struct block_game *, enum block_cmd);
 int loop_blocks (struct block_game *);

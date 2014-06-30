@@ -11,6 +11,9 @@
 #include "debug.h"
 #include "screen.h"
 
+static void unwrite_cur_piece (struct block_game *);
+static void write_cur_piece (struct block_game *);
+
 static void
 destroy_block (struct block **dest)
 {
@@ -39,22 +42,48 @@ create_block (struct block **new_block)
 
 	pnb->type = rand () % LEN(blocks);
 	pnb->col_off = BLOCKS_COLUMNS/2;
+	pnb->row_off = 1;
 
-	if (pnb->type == SQUARE_BLOCK)
-		pnb->loc[0] = pnb->loc[1] = pnb->loc[4] = pnb->loc[5] = 1;
-	else if (pnb->type == LINE_BLOCK)
-		pnb->loc[0] = pnb->loc[4] = pnb->loc[8] = pnb->loc[12] = 1;
-	else if (pnb->type == T_BLOCK)
-		pnb->loc[0] = pnb->loc[4] = pnb->loc[5] = pnb->loc[8] = 1;
-	else if (pnb->type == L_BLOCK)
-		pnb->loc[0] = pnb->loc[4] = pnb->loc[8] = pnb->loc[9] = 1;
-	else if (pnb->type == L_REV_BLOCK)
-		pnb->loc[1] = pnb->loc[5] = pnb->loc[8] = pnb->loc[9] = 1;
-	else if (pnb->type == Z_BLOCK)
-		pnb->loc[0] = pnb->loc[1] = pnb->loc[5] = pnb->loc[6] = 1;
-	else if (pnb->type == Z_REV_BLOCK)
-		pnb->loc[1] = pnb->loc[2] = pnb->loc[4] = pnb->loc[5] = 1;
-	else
+	/* The position at (0, 0) is the pivot when we rotate */
+	if (pnb->type == SQUARE_BLOCK) {
+		/* Except square */
+		pnb->col_off -= 1; // Help center the piece
+		pnb->p[0].x = 0; pnb->p[0].y = -1;
+		pnb->p[1].x = 1; pnb->p[1].y = -1;
+		pnb->p[2].x = 0; pnb->p[2].y = 0;
+		pnb->p[3].x = 1; pnb->p[3].y = 0;
+	} else if (pnb->type == LINE_BLOCK) {
+		pnb->col_off -= 2;
+		pnb->p[0].x = -1; pnb->p[0].y = 0;
+		pnb->p[1].x = 0; pnb->p[1].y = 0;
+		pnb->p[2].x = 1; pnb->p[2].y = 0;
+		pnb->p[3].x = 2; pnb->p[3].y = 0;
+	} else if (pnb->type == T_BLOCK) {
+		pnb->p[0].x = 0; pnb->p[0].y = -1;
+		pnb->p[1].x = -1; pnb->p[1].y = 0;
+		pnb->p[2].x = 0; pnb->p[2].y = 0;
+		pnb->p[3].x = 1; pnb->p[3].y = 0;
+	} else if (pnb->type == L_BLOCK) {
+		pnb->p[0].x = 1; pnb->p[0].y = -1;
+		pnb->p[1].x = -1; pnb->p[1].y = 0;
+		pnb->p[2].x = 0; pnb->p[2].y = 0;
+		pnb->p[3].x = 1; pnb->p[3].y = 0;
+	} else if (pnb->type == L_REV_BLOCK) {
+		pnb->p[0].x = -1; pnb->p[0].y = -1;
+		pnb->p[1].x = -1; pnb->p[1].y = 0;
+		pnb->p[2].x = 0; pnb->p[2].y = 0;
+		pnb->p[3].x = 1; pnb->p[3].y = 0;
+	} else if (pnb->type == Z_BLOCK) {
+		pnb->p[0].x = -1; pnb->p[0].y = -1;
+		pnb->p[1].x = 0; pnb->p[1].y = -1;
+		pnb->p[2].x = 0; pnb->p[2].y = 0;
+		pnb->p[3].x = 1; pnb->p[3].y = 0;
+	} else if (pnb->type == Z_REV_BLOCK) {
+		pnb->p[0].x = 0; pnb->p[0].y = -1;
+		pnb->p[1].x = 1; pnb->p[1].y = -1;
+		pnb->p[2].x = -1; pnb->p[2].y = 0;
+		pnb->p[3].x = 0; pnb->p[3].y = 0;
+	} else
 		goto error;
 
 	/* User never gets an invalid block. If we get here, everything was
@@ -70,17 +99,56 @@ error:
 static int
 rotate_block (struct block_game *pgame, enum block_cmd cmd)
 {
-	(void) pgame;
-	(void) cmd;
-	return -1;
+	int py, px, mod = 1;
+
+	if (pgame->cur->type == SQUARE_BLOCK)
+		return 1;
+
+	if (cmd == ROT_LEFT)
+		mod = -1;
+
+	for (int i = 0; i < 4; i++) {
+		px = pgame->cur->p[i].y * -1 * mod;
+		py = pgame->cur->p[i].x * mod;
+
+		pgame->cur->p[i].x = px;
+		pgame->cur->p[i].y = py;
+	}
+
+	return 1;
 }
 
 static int
 translate_block (struct block_game *pgame, enum block_cmd cmd)
 {
-	(void) pgame;
-	(void) cmd;
-	return -1;
+	int dir = 1;
+
+	if (cmd == MOVE_LEFT)
+		dir = -1;
+
+	struct point {
+		int x, y;
+	} check[4];
+
+	for (size_t i = 0; i < LEN(pgame->cur->p); i++) {
+		check[i].x = pgame->cur->p[i].x + pgame->cur->col_off + dir;
+		check[i].y = pgame->cur->p[i].y + pgame->cur->row_off;
+	}
+
+	int hit = 0;
+	for (size_t i = 0; i < LEN(check); i++) {
+		int y, x;
+		y = check[i].y;
+		x = check[i].x;
+
+		if (x >= BLOCKS_COLUMNS || x < 0 || pgame->spaces[y][x])
+			hit = 1;
+	}
+
+	if (hit == 0)
+		pgame->cur->col_off += dir;
+
+	return !hit;
 }
 
 static int
@@ -94,10 +162,11 @@ drop_block (struct block_game *pgame, enum block_cmd cmd)
 static int
 destroy_lines (struct block_game *pgame)
 {
-	int destroyed = 0;
+	uint8_t destroyed = 0;
 
+	/* YYY: First two rows are invisible */
 	/* Check each row for a full line of blocks */
-	for (int j, i = BLOCKS_ROWS-1; i >= 0; i--) {
+	for (int j, i = BLOCKS_ROWS-1; i >= 2; i--) {
 		for (j = 0; j < BLOCKS_COLUMNS; j++) {
 			if (pgame->spaces[i][j] == false)
 				break;
@@ -128,16 +197,15 @@ destroy_lines (struct block_game *pgame)
 	if (pgame->lines_destroyed > pgame->level) {
 		pgame->lines_destroyed = 0;
 		pgame->level++;
+
+		/* See tests/level-curve.c */
+		double speed;
+		speed = atan (pgame->level/(double)10) * pgame->mod * 2/PI +1;
+		pgame->nsec = (int) ((double)1E9/speed);
 	}
 
-	for (int i = destroyed; i >= 0; i--) {
-		pgame->score += pgame->level;
-	}
-
-	/* See tests/level-curve.c */
-	double speed;
-	speed = atan (pgame->level/(double)10) * pgame->mod * 2/PI +1;
-	pgame->nsec = (int) ((double)1E9/speed);
+	for (int i = destroyed; i > 0; i--)
+		pgame->score += (pgame->level +1) * pgame->mod;
 
 	return destroyed;
 }
@@ -148,13 +216,10 @@ unwrite_cur_piece (struct block_game *pgame)
 	if (pgame->cur == NULL)
 		return;
 
-	for (size_t i = 0; i < LEN(pgame->cur->loc); i++) {
-		if (pgame->cur->loc[i] == false)
-			continue;
+	for (size_t i = 0; i < LEN(pgame->cur->p); i++) {
 		int y, x;
-		y = pgame->cur->row_off + (i/4);
-		x = pgame->cur->col_off + (i%4);
-
+		y = pgame->cur->row_off + pgame->cur->p[i].y;
+		x = pgame->cur->col_off + pgame->cur->p[i].x; 
 		pgame->spaces[y][x] = 0;
 	}
 }
@@ -169,31 +234,20 @@ write_cur_piece (struct block_game *pgame)
 		int x, y;
 	} locs[4];
 
-	int count = 0;
-	for (size_t i = 0; i < LEN(pgame->cur->loc); i++) {
-		if (pgame->cur->loc[i] == false)
-			continue;
-
+	for (int i = 0; i < 4; i++) {
 		int y, x;
-		y = pgame->cur->row_off + (i/4);
-		x = pgame->cur->col_off + (i%4);
+		y = pgame->cur->row_off + pgame->cur->p[i].y;
+		x = pgame->cur->col_off + pgame->cur->p[i].x; 
 
 		if (y >= BLOCKS_ROWS || x < 0 || x >= BLOCKS_COLUMNS)
 			return;
 
-		locs[count].y = y;
-		locs[count].x = x;
-		count++;
+		locs[i].y = y;
+		locs[i].x = x;
 	}
 
-	/* every piece needs to be writable before we continue */
-	if (count != 4)
-		return;
-
-	/* commit */
-	for (size_t i = 0; i < LEN(locs); i++) {
+	for (size_t i = 0; i < LEN(locs); i++)
 		pgame->spaces[locs[i].y][locs[i].x] = 1;
-	}
 }
 
 static int
@@ -202,39 +256,40 @@ block_fall (struct block_game *pgame)
 	if (pgame->cur == NULL)
 		return 0;
 
-	int low_y[4] = { 0 };
-	for (size_t i = 0; i < LEN(pgame->cur->loc); i++)
-		if (pgame->cur->loc[i])
-			low_y[i%4] = (i/4) +1;
+	struct point {
+		int x, y;
+	} check[4];
 
-	/* Check if there's a block beneath any piece */
+	for (size_t i = 0; i < LEN(pgame->cur->p); i++) {
+		check[i].x = pgame->cur->p[i].x + pgame->cur->col_off;
+		check[i].y = pgame->cur->p[i].y + pgame->cur->row_off +1;
+	}
+
+	/* Much easier to just erase the piece */
+	unwrite_cur_piece (pgame);
+
+	/* check */
 	int hit = 0;
-	for (size_t i = 0; i < LEN(low_y); i++) {
-		if (low_y[i] == 0)
-			continue;
-
+	for (size_t i = 0; i < LEN(check); i++) {
 		int y, x;
-		y = pgame->cur->row_off + low_y[i];
-		x = pgame->cur->col_off + i;
+		y = check[i].y;
+		x = check[i].x;
 
-		if (pgame->spaces[y][x] || y >= BLOCKS_ROWS) {
+		if (y >= BLOCKS_ROWS || pgame->spaces[y][x])
 			hit = 1;
-			break;
-		}
 	}
 
 	if (hit) {
-		/* we hit the bottom */
+		write_cur_piece (pgame);
+
 		bool has_fallen = pgame->cur->fallen;
 		destroy_block (&pgame->cur);
-
-		/* Game over condition */
 		if (has_fallen == false)
 			return -1;
 	} else {
 		pgame->cur->fallen = true;
-		unwrite_cur_piece (pgame);
 		pgame->cur->row_off++;
+
 		write_cur_piece (pgame);
 	}
 
@@ -259,16 +314,18 @@ loop_blocks (struct block_game *pgame)
 		nanosleep (&ts, NULL);
 		pthread_mutex_lock (&pgame->lock);
 
-		if (block_fall (pgame) < 0)
+		if (block_fall (pgame) < 0) {
+			log_info ("%s", "Game over");
 			break;
+		}
 
 		if (pgame->cur == NULL) {
 			/* block hit the bottom */
-			destroy_lines (pgame);
-			ts.tv_nsec = pgame->nsec;
-
 			pgame->cur = pgame->next;
 			create_block (&pgame->next);
+
+			destroy_lines (pgame);
+			ts.tv_nsec = pgame->nsec;
 		}
 
 		pthread_mutex_unlock (&pgame->lock);
@@ -292,6 +349,7 @@ init_blocks (struct block_game *pgame)
 	pgame->game_over = false;
 	pgame->level = pgame->score = 0;
 	pgame->nsec = 1E9 -1;
+	pgame->lines_destroyed = 0;
 
 	create_block (&pgame->cur);
 	create_block (&pgame->next);
@@ -317,6 +375,9 @@ move_blocks (struct block_game *pgame, enum block_cmd cmd)
 	if (pgame == NULL)
 		return -1;
 
+	pthread_mutex_lock (&pgame->lock);
+	unwrite_cur_piece (pgame);
+
 	switch (cmd) {
 	case MOVE_LEFT:
 	case MOVE_RIGHT:
@@ -333,6 +394,8 @@ move_blocks (struct block_game *pgame, enum block_cmd cmd)
 		return 0;
 	}
 
+	write_cur_piece (pgame);
+	pthread_mutex_unlock (&pgame->lock);
 	screen_draw (pgame);
 
 	return 1;
