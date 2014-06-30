@@ -1,145 +1,43 @@
 #include <locale.h>
-#include <ncurses.h>
 #include <pthread.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <unistd.h>
 
 #include "blocks.h"
 #include "debug.h"
+#include "screen.h"
 
 #ifndef LOGDIR
 #define LOGDIR "../logs/"
 #endif
 
-static struct block_game game;
-static FILE *stderr_out;
-
 static void
 usage (void)
 {
 	extern const char *__progname;
-
 	fprintf (stderr, "%s: usage\n\t"
 			"-l [file] - specify a log file (/dev/null)\n\t"
 			"-c [file] - specify a config file NOT DONE\n",
 			__progname);
-	exit (1);
-}
-
-static void
-game_cleanup (void)
-{
-	endwin ();
-	destroy_blocks (&game);
-	fclose (stderr_out);
-
-	/* TODO: compress file */
-
-	const char *tank =
-		"_________\n"
-		"|\"\"\"\"\"\"\"\"|==========[]\n"
-		"|________\\_________\n"
-		"|==+===============\\\n"
-		"|__________________|\n"
-		"\\(@)(@)(@)(@)(@)(@)/\n";
-
-	printf ("%s\nThanks for playing\n", tank);
-}
-
-static void
-game_draw (void)
-{
-	clear ();
-
-	/* Don't ever modify game, just read it */
-	const struct block_game *s_game = &game;
-
-	init_pair (1, COLOR_BLUE, COLOR_BLACK);
-	init_pair (2, COLOR_GREEN, COLOR_BLACK);
-	init_pair (3, COLOR_WHITE, COLOR_BLACK);
-
-	attr_t attr_text, attr_blocks, attr_border;
-
-	attr_border = A_BOLD | COLOR_PAIR(1);
-	attr_blocks = COLOR_PAIR(2);
-	attr_text = A_BOLD | COLOR_PAIR(3);
-
-	pthread_mutex_lock (&game.lock);
-	for (int i = 0; i < BLOCKS_ROWS; i++) {
-		attrset (attr_border);
-		printw ("*");
-
-		attron (attr_blocks);
-		for (int j = 0; j < BLOCKS_COLUMNS; j++) {
-
-			if (s_game->spaces[i][j] == true)
-				printw ("\u00A4");
-			else if (j % 2)
-				printw (".");
-			else
-				printw (" ");
-		}
-
-		attrset (attr_border);
-		printw ("*\n");
-	}
-	pthread_mutex_unlock (&game.lock);
-
-	for (int i = 0; i < BLOCKS_COLUMNS+2; i++)
-		printw ("*");
-	printw ("\n");
-
-	attrset (attr_text);
-	printw ("Play TETRIS!\n");
-
-	printw ("Difficulty: %d\n", s_game->mod);
-	printw ("Level: %d\n", s_game->level);
-	printw ("Score: %d\n", s_game->score);
-
-	refresh ();
-}
-
-static void
-game_init (void)
-{
-	atexit (&game_cleanup);
-	init_blocks (&game);
-
-	/* ncurses init */
-	initscr ();
-	cbreak ();
-	noecho ();
-	nonl ();
-	intrflush (stdscr, FALSE);
-	keypad (stdscr, TRUE);
-	start_color ();
+	exit (EXIT_FAILURE);
 }
 
 int
 main (int argc, char **argv)
 {
-	int ch, l_flag, c_flag;
-	char log_file[80] = LOGDIR "tetris.log";
+	int ch, l_flag;
+	FILE *stderr_out;
+	pthread_t screen_loop;
+	struct block_game game;
+	char log_file[80] = LOGDIR "game.log";
 
 	setlocale (LC_ALL, "");
 
-	/* ISO 8859 Tetris, technically .. */
-	printf ("ASCII Tetris " VERSION "\n");
-
-	ch = l_flag = c_flag = 0;
-	while ((ch = getopt (argc, argv, "c:l:h")) != -1)
+	ch = l_flag = 0;
+	while ((ch = getopt (argc, argv, "l:h")) != -1) {
 		switch (ch) {
-		case 'c':
-			/* TODO */
-			c_flag = 1;
-			if (optarg) {
-				;
-			}
-			break;
 		case 'l':
 			l_flag = 1;
 			if (optarg) {
@@ -152,22 +50,23 @@ main (int argc, char **argv)
 			usage ();
 			break;
 		}
+	}
 
 	argc -= optind;
 	argv += optind;
 
 	stderr_out = freopen (log_file, "w", stderr);
-	if (stderr_out == NULL)
-		exit (2);
 
-	game_init ();
-	game_draw ();
+	init_blocks (&game);
+	pthread_create (&screen_loop, NULL, screen_main, &game);
+	loop_blocks (&game);
 
-	/* XXX Dummy wait */
-	while (1) {
-		sleep (1);
-		game_draw ();
-	}
+	pthread_cancel (screen_loop);
+	screen_cleanup ();
+	cleanup_blocks (&game);
 
-	return 0;
+	fclose (stderr_out);
+
+	printf ("Thanks for playing!\n");
+	return EXIT_SUCCESS;
 }

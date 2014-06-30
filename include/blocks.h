@@ -3,6 +3,9 @@
 
 #include <pthread.h>
 #include <stdbool.h>
+#include <stdint.h>
+
+#define PI 3.141592653589L
 
 #define BLOCKS_ROWS 20 
 #define BLOCKS_COLUMNS 10
@@ -18,23 +21,30 @@ enum block_type {
 	Z_REV_BLOCK,
 };
 
-struct block {
-	enum block_type type;
-
-	/* offsets */
-	unsigned char col_off, row_off;
-	unsigned char loc[16];
+enum block_diff {
+	DIFF_EASY = 1,
+	DIFF_NORMAL,
+	DIFF_HARD,
 };
 
-/* Meta information about the game */
+struct block {
+	enum block_type type;
+	bool fallen; /* has the block fallen atleast 1 block */
+
+	/* offsets */
+	uint8_t col_off, row_off;
+	bool loc[16];
+};
+
 struct block_game {
-	pthread_t	tick;
 	pthread_mutex_t	lock;
-	unsigned char mod;		/* difficulty */
-	unsigned char level;
-	int score;
+	uint32_t score;
+	uint32_t nsec;
+	uint16_t lines_destroyed;
+	uint8_t level;
 	bool game_over;
 	bool *spaces[BLOCKS_ROWS];
+	enum block_diff mod;
 	struct block *cur, *next;
 };
 
@@ -43,6 +53,7 @@ enum block_cmd { MOVE_LEFT, MOVE_RIGHT, MOVE_DROP, ROT_LEFT, ROT_RIGHT };
 /* Game timeline */
 int init_blocks (struct block_game *);
 int move_blocks (struct block_game *, enum block_cmd);
-int destroy_blocks (struct block_game *);
+int loop_blocks (struct block_game *);
+int cleanup_blocks (struct block_game *);
 
 #endif /* BLOCKS_H_ */

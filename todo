@@ -1,9 +1,7 @@
 create indep. windows in curses to display
 	level, score, next block, stats
-finish taking command line options for logging directory and config file
+finish taking command line options for config file
 write config file parser
-write block falling algorithm
-write block creation algorithm
 finish error codes and function return codes.
 
 stop wasting my time with these games and do real stuff!
