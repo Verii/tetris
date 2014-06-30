@@ -71,20 +71,29 @@ screen_draw (struct block_game *pgame)
 		attrset (attr_border);
 		printw ("*\n");
 	}
-	pthread_mutex_unlock (&pgame->lock);
-
 	for (int i = 0; i < BLOCKS_COLUMNS+2; i++)
 		printw ("*");
 	printw ("\n");
 
 	attrset (attr_text);
-	printw ("Current Block: %s\n",
-		pgame->cur ? names[pgame->cur->type].name : "...");
-	printw ("Next Block: %s\n",
-		pgame->next ? names[pgame->next->type].name : "...");
+
+	/* Just after moving a piece, before the tick thread can take over, a
+	 * block might be removed from hitting something.
+	 * Print the next piece as the current piece.
+	 */
+	if (pgame->cur == NULL) {
+		printw ("Current Block: %s\n", names[pgame->next->type].name);
+		printw ("Next Block: ...\n");
+	} else {
+		printw ("Current Block: %s\n", names[pgame->cur->type].name);
+		printw ("Next Block: %s\n",
+			pgame->next ? names[pgame->next->type].name : "...");
+	}
 	printw ("Difficulty: %s\n", levels[pgame->mod].name);
 	printw ("Level: %d\n", pgame->level);
 	printw ("Score: %d\n", pgame->score);
+	pthread_mutex_unlock (&pgame->lock);
+
 	refresh ();
 }
 
@@ -92,7 +101,6 @@ void
 screen_cleanup (void)
 {
 	game_over ();
-
 	log_info ("%s", "Destroying ncurses context");
 	endwin ();
 }
@@ -115,7 +123,6 @@ screen_main (void *vp)
 	start_color ();
 
 	user_menu ();
-
 	screen_draw (pgame);
 
 	int ch;
@@ -133,6 +140,8 @@ screen_main (void *vp)
 		case KEY_RIGHT:
 			cmd = MOVE_RIGHT;
 			break;
+		case 's':
+		case 'S':
 		case ' ':
 		case KEY_DOWN:
 			cmd = MOVE_DROP;
