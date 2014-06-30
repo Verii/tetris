@@ -17,7 +17,7 @@ static void
 usage (void)
 {
 	extern const char *__progname;
-	fprintf (stderr, "%s: usage\n\t"
+	fprintf (stderr, "%s-" VERSION " : usage\n\t"
 			"-l [file] - specify a log file (/dev/null)\n\t"
 			"-c [file] - specify a config file NOT DONE\n",
 			__progname);
