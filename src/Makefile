@@ -7,11 +7,11 @@ OBJS = ${SRC:.c=.o}
 INCS = -I../include
 CPPFLAGS = -D_GNU_SOURCE -DVERSION=\"${VERSION}\" ${INCS}
 
-DEBUG = -g -Og -DDEBUG
+#DEBUG = -g -Og -DDEBUG
 CFLAGS = -std=c99 -Wpedantic -Wall -Wextra -Werror -Os ${DEBUG}
 
 LIBS = -lm -lncurses -lpthread
-LDFLAGS = ${LIBS}
+LDFLAGS = -s ${LIBS}
 
 CC = cc
 

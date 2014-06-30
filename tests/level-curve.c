@@ -10,7 +10,6 @@
  * At level 10, playing on Normal, the game will update every 1/2 second.
  *
  * The difficulty can be adjusted by changing the constant in the function.
- *
  * ---
  * The range of f(x) = arctan(x) is [0, PI/2).
  * Bring that down to [0, 1) with constants, then bring it back up to a
@@ -20,7 +19,6 @@
  * Finally, add one to increase the modifier >= 1 so that we don't
  * decrease the speed on the lower levels.
  */
-
 int main (void)
 {
 	int i, j;
@@ -34,7 +32,6 @@ int main (void)
 		{ "Normal", 2 },
 		{ "Hard", 3 },
 	};
-
 	for (i = 0; i < 3; i++) {
 		printf ("\n%s: Difficulty = %d\n",
 				levels[i].name, levels[i].mod);
@@ -44,6 +41,5 @@ int main (void)
 			printf ("level: %d => %g%% speed\n", j, diff*100);
 		}
 	}
-
 	return 0;
 }

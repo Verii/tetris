@@ -13,8 +13,13 @@ struct level_names {
 	char *name;
 };
 
+/* Starter thread, main.c */
 void *screen_main (void *);
+
+/* Print game to screen, used in screen.c and blocks.c */
 void  screen_draw (struct block_game *);
+
+/* Cleanup, shutdown ncurses, etc. used in main.c */
 void  screen_cleanup (void);
 
 #endif /* SCREEN_H_ */

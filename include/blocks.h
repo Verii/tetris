@@ -7,7 +7,7 @@
 
 #define PI 3.141592653589L
 
-#define BLOCKS_ROWS 22
+#define BLOCKS_ROWS 22	/* 2 hidden rows above game, where blocks spawn*/
 #define BLOCKS_COLUMNS 10
 #define LEN(x) ((sizeof(x)) / (sizeof(*x)))
 
@@ -21,6 +21,7 @@ enum block_type {
 	Z_REV_BLOCK,
 };
 
+/* Game difficulty */
 enum block_diff {
 	DIFF_EASY = 1,
 	DIFF_NORMAL,
@@ -30,19 +31,19 @@ enum block_diff {
 enum block_cmd {
 	MOVE_LEFT,
 	MOVE_RIGHT,
-	MOVE_DROP,
+	MOVE_DROP, /* XXX */
 	ROT_LEFT,
 	ROT_RIGHT
 };
 
 struct block {
 	enum block_type type;
-	bool fallen; /* has the block fallen atleast 1 block */
+	bool fallen; /* has the block fallen atleast 1 block? */
 
 	/* offsets */
 	uint8_t col_off, row_off;
 	struct {
-		int x, y; /* { -2, -1, 1, 2 } */
+		int x, y;
 	} p[4];
 };
 
