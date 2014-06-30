@@ -31,7 +31,7 @@ enum block_diff {
 enum block_cmd {
 	MOVE_LEFT,
 	MOVE_RIGHT,
-	MOVE_DROP, /* XXX */
+	MOVE_DROP,
 	ROT_LEFT,
 	ROT_RIGHT
 };
@@ -50,18 +50,24 @@ struct block {
 struct block_game {
 	pthread_mutex_t	lock;
 	uint32_t score;
-	uint32_t nsec;
-	uint16_t lines_destroyed;
+	uint32_t nsec; /* game tick delay in milliseconds */
+	uint16_t lines_destroyed; /* temp. don't print to screen */
 	uint8_t level;
-	bool game_over;
 	bool *spaces[BLOCKS_ROWS];
 	enum block_diff mod;
 	struct block *cur, *next;
 };
 
+/* Create game state */
 int init_blocks (struct block_game *);
+
+/* Send commands to game */
 int move_blocks (struct block_game *, enum block_cmd);
+
+/* Main loop, doesn't return until game is over */
 int loop_blocks (struct block_game *);
+
+/* Free memory */
 int cleanup_blocks (struct block_game *);
 
 #endif /* BLOCKS_H_ */

@@ -7,7 +7,7 @@ void debug_log (const char *fmt, ...);
 #define debug(M, ...)	 debug_log("DEBUG :: " M, __VA_ARGS__)
 #else
 #define debug(M, ...)
-#endif
+#endif /* DEBUG */
 
 #define log_err(M, ...)  do { \
 	debug_log("[ERROR] " M " (%s:%d %s)", \
