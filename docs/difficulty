@@ -1,0 +1,5 @@
+The difficulty manifests itself in the speed of the falling blocks.
+More specifically, an increase in difficulty causes a greater increase in the
+speed when the player levels up.
+
+At the moment this is the only effect of the difficulty setting.
