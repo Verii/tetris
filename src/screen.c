@@ -115,6 +115,8 @@ screen_main (void *vp)
 
 	user_menu ();
 
+	screen_draw (pgame);
+
 	int ch;
 	while ((ch = getch()) != EOF) {
 		enum block_cmd cmd;
