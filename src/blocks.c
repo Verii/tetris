@@ -112,19 +112,14 @@ rotate_block (struct block_game *pgame, enum block_cmd cmd)
 		py[i] = pgame->cur->p[i].x * mod;
 
 		int bounds_x, bounds_y;
-
 		bounds_y = py[i] + pgame->cur->row_off;
 		bounds_x = px[i] + pgame->cur->col_off;
 
-		if (bounds_x < 0 || bounds_x >= BLOCKS_COLUMNS)
+		if (bounds_x < 0 || bounds_x >= BLOCKS_COLUMNS ||
+		    bounds_y < 0 || bounds_y >= BLOCKS_ROWS ||
+		    pgame->spaces[bounds_y][bounds_x]) {
 			return -1;
-
-		if (bounds_y < 0 || bounds_y >= BLOCKS_ROWS)
-			return -1;
-
-		/* can't turn into an occupied space */
-		if (pgame->spaces[bounds_y][bounds_x] == true)
-			return -1;
+		}
 	}
 
 	for (int i = 0; i < 4; i++) {
@@ -181,7 +176,6 @@ destroy_lines (struct block_game *pgame)
 {
 	uint8_t destroyed = 0;
 
-	/* YYY: First two rows are invisible */
 	/* Check each row for a full line of blocks */
 	for (int j, i = BLOCKS_ROWS-1; i >= 2; i--) {
 		for (j = 0; j < BLOCKS_COLUMNS; j++) {
@@ -194,7 +188,7 @@ destroy_lines (struct block_game *pgame)
 		destroyed++;
 
 		free (pgame->spaces[i]);
-		log_info ("Line full! Removed line %2d", i);
+		log_info ("Removed line %2d", i);
 
 		/* Move everything down */
 		for (int k = i; k > 0; k--)
@@ -222,7 +216,7 @@ destroy_lines (struct block_game *pgame)
 	}
 
 	for (int i = destroyed; i > 0; i--)
-		pgame->score += (pgame->level +1) * pgame->mod;
+		pgame->score += pgame->level * pgame->mod;
 
 	return destroyed;
 }
@@ -408,7 +402,7 @@ move_blocks (struct block_game *pgame, enum block_cmd cmd)
 		rotate_block (pgame, cmd);
 		break;
 	default:
-		return 0;
+		break;
 	}
 
 	write_cur_piece (pgame);

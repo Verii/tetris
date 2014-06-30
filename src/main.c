@@ -55,12 +55,16 @@ main (int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
+	/* redirect stderr to log file */
 	stderr_out = freopen (log_file, "w", stderr);
 
+	/* Create game data and start input thread */
 	init_blocks (&game);
 	pthread_create (&screen_loop, NULL, screen_main, &game);
+	/* begin game */
 	loop_blocks (&game);
 
+	/* Kill ncurses, cleanup */
 	pthread_cancel (screen_loop);
 	screen_cleanup ();
 	cleanup_blocks (&game);
