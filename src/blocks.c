@@ -99,7 +99,7 @@ error:
 static int
 rotate_block (struct block_game *pgame, enum block_cmd cmd)
 {
-	int py, px, mod = 1;
+	int py[4], px[4], mod = 1;
 
 	if (pgame->cur->type == SQUARE_BLOCK)
 		return 1;
@@ -108,11 +108,28 @@ rotate_block (struct block_game *pgame, enum block_cmd cmd)
 		mod = -1;
 
 	for (int i = 0; i < 4; i++) {
-		px = pgame->cur->p[i].y * -1 * mod;
-		py = pgame->cur->p[i].x * mod;
+		px[i] = pgame->cur->p[i].y * -1 * mod;
+		py[i] = pgame->cur->p[i].x * mod;
 
-		pgame->cur->p[i].x = px;
-		pgame->cur->p[i].y = py;
+		int bounds_x, bounds_y;
+
+		bounds_y = py[i] + pgame->cur->row_off;
+		bounds_x = px[i] + pgame->cur->col_off;
+
+		if (bounds_x < 0 || bounds_x >= BLOCKS_COLUMNS)
+			return -1;
+
+		if (bounds_y < 0 || bounds_y >= BLOCKS_ROWS)
+			return -1;
+
+		/* can't turn into an occupied space */
+		if (pgame->spaces[bounds_y][bounds_x] == true)
+			return -1;
+	}
+
+	for (int i = 0; i < 4; i++) {
+		pgame->cur->p[i].x = px[i];
+		pgame->cur->p[i].y = py[i];
 	}
 
 	return 1;
@@ -396,8 +413,8 @@ move_blocks (struct block_game *pgame, enum block_cmd cmd)
 
 	write_cur_piece (pgame);
 	pthread_mutex_unlock (&pgame->lock);
-	screen_draw (pgame);
 
+	screen_draw (pgame);
 	return 1;
 }
 
