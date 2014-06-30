@@ -359,6 +359,7 @@ init_blocks (struct block_game *pgame)
 	/* Create initial game blocks */
 	create_block (&pgame->cur);
 	create_block (&pgame->next);
+	pgame->save = NULL;
 
 	for (int i = 0; i < BLOCKS_ROWS; i++) {
 		pgame->spaces[i] = calloc (BLOCKS_COLUMNS, sizeof (bool));
@@ -398,6 +399,16 @@ move_blocks (struct block_game *pgame, enum block_cmd cmd)
 	case ROT_LEFT:
 	case ROT_RIGHT:
 		rotate_block (pgame, cmd);
+		break;
+	case SAVE_PIECE:
+		if (pgame->save == NULL) {
+			pgame->save = pgame->next;
+			create_block (&pgame->next);
+		} else {
+			destroy_block (&pgame->next);
+			pgame->next = pgame->save;
+			pgame->save = NULL;
+		}
 		break;
 	default:
 		break;

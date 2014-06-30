@@ -89,6 +89,10 @@ screen_draw (struct block_game *pgame)
 		printw ("Next Block: %s\n",
 			pgame->next ? names[pgame->next->type].name : "...");
 	}
+
+	if (pgame->save)
+		printw ("Save Block: %s\n", names[pgame->save->type].name);
+
 	printw ("Difficulty: %s\n", levels[pgame->mod].name);
 	printw ("Level: %d\n", pgame->level);
 	printw ("Score: %d\n", pgame->score);
@@ -142,9 +146,11 @@ screen_main (void *vp)
 			break;
 		case 's':
 		case 'S':
-		case ' ':
 		case KEY_DOWN:
 			cmd = MOVE_DROP;
+			break;
+		case ' ':
+			cmd = SAVE_PIECE;
 			break;
 		case 'q':
 		case 'Q':

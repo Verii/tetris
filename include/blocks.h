@@ -33,7 +33,8 @@ enum block_cmd {
 	MOVE_RIGHT,
 	MOVE_DROP,
 	ROT_LEFT,
-	ROT_RIGHT
+	ROT_RIGHT,
+	SAVE_PIECE,
 };
 
 struct block {
@@ -55,7 +56,7 @@ struct block_game {
 	uint8_t level;
 	bool *spaces[BLOCKS_ROWS];
 	enum block_diff mod;
-	struct block *cur, *next;
+	struct block *cur, *next, *save;
 };
 
 /* Create game state */
