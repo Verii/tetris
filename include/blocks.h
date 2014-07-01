@@ -54,6 +54,7 @@ struct block_game {
 	uint32_t nsec; /* game tick delay in milliseconds */
 	uint16_t lines_destroyed; /* temp. don't print to screen */
 	uint8_t level;
+	bool game_over;
 	bool *spaces[BLOCKS_ROWS];
 	enum block_diff mod;
 	struct block *cur, *next, *save;

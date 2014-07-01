@@ -321,6 +321,10 @@ loop_blocks (struct block_game *pgame)
 
 	for (;;) {
 		nanosleep (&ts, NULL);
+
+		if (pgame->game_over)
+			break;
+
 		pthread_mutex_lock (&pgame->lock);
 
 		if (drop_block (pgame) < 0) {
@@ -355,6 +359,7 @@ init_blocks (struct block_game *pgame)
 	pgame->mod = DIFF_NORMAL;
 	pgame->lines_destroyed = pgame->level = pgame->score = 0;
 	pgame->nsec = 1E9 -1;
+	pgame->game_over = false;
 
 	/* Create initial game blocks */
 	create_block (&pgame->cur);

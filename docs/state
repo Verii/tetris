@@ -1,8 +1,2 @@
-The game state -- when you pause and leave a game -- will be stored in
-plaintext to disk in JSON format. This is the 'lightweight' solutions. I think
-it's the best approach, as storing the game state is temporary, will be removed
-after restoring, and only requires one 'save'. Using an SQL DB would be
-over-complicating the situation.
-
-Game state will be stored locally in "~/.local/share/lw-games/tetris/state", or
+Game state will be stored locally in "~/.local/share/lw-games/tetris.db", or
 optionally specified in the configuration file.

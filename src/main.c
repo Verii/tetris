@@ -8,6 +8,7 @@
 #include "blocks.h"
 #include "debug.h"
 #include "screen.h"
+#include "db.h"
 
 #ifndef LOGDIR
 #define LOGDIR "../logs/"
@@ -61,12 +62,11 @@ main (int argc, char **argv)
 	/* Create game data and start input thread */
 	init_blocks (&game);
 	pthread_create (&screen_loop, NULL, screen_main, &game);
-	/* begin game */
 	loop_blocks (&game);
 
 	/* Kill ncurses, cleanup */
 	pthread_cancel (screen_loop);
-	screen_cleanup ();
+	screen_cleanup (&game);
 	cleanup_blocks (&game);
 
 	fclose (stderr_out);

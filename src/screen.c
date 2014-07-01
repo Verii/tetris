@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #include "blocks.h"
+#include "db.h"
 #include "debug.h"
 #include "screen.h"
 
@@ -107,11 +108,17 @@ screen_draw (struct block_game *pgame)
 }
 
 void
-screen_cleanup (void)
+screen_cleanup (struct block_game *pgame)
 {
 	game_over ();
 	log_info ("%s", "Destroying ncurses context");
 	endwin ();
+
+	/* TODO */
+	struct db_info scores;
+	scores.file_loc = "../saves/tetris.db";
+
+	db_add_game_score (&scores, pgame);
 }
 
 /* Get user input, redraw game */
@@ -137,6 +144,9 @@ screen_main (void *vp)
 	int ch;
 	while ((ch = getch()) != EOF) {
 		enum block_cmd cmd;
+
+		if (ch == 'P')
+			pgame->game_over = true;
 
 		switch (ch) {
 		case 'a':

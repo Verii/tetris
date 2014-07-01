@@ -20,6 +20,6 @@ void *screen_main (void *);
 void  screen_draw (struct block_game *);
 
 /* Cleanup, shutdown ncurses, etc. used in main.c */
-void  screen_cleanup (void);
+void  screen_cleanup (struct block_game *);
 
 #endif /* SCREEN_H_ */
