@@ -405,9 +405,10 @@ move_blocks (struct block_game *pgame, enum block_cmd cmd)
 			pgame->save = pgame->next;
 			create_block (&pgame->next);
 		} else {
-			destroy_block (&pgame->next);
-			pgame->next = pgame->save;
-			pgame->save = NULL;
+			struct block *tmp;
+			tmp = pgame->save;
+			pgame->save = pgame->next;
+			pgame->next = tmp;
 		}
 		break;
 	default:
