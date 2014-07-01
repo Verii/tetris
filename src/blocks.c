@@ -383,8 +383,6 @@ move_blocks (struct block_game *pgame, enum block_cmd cmd)
 	if (pgame->cur == NULL)
 		return 0;
 
-	debug ("%s", "Moving blocks");
-
 	pthread_mutex_lock (&pgame->lock);
 	unwrite_cur_piece (pgame);
 
