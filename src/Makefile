@@ -1,14 +1,14 @@
 BIN = blocks
 VERSION = v0.9
-SRC = main.c blocks.c screen.c debug.c db.c net.c
+SRC = main.c blocks.c screen.c debug.c
 
 OBJS = ${SRC:.c=.o}
 
 INCS = -I../include
-CPPFLAGS = -D_GNU_SOURCE -DVERSION=\"${VERSION}\" ${INCS}
+CPPFLAGS = -DVERSION=\"${VERSION}\" ${INCS}
 
 DEBUG = -g -Og -DDEBUG
-CFLAGS = -std=c99 -Wpedantic -Wall -Wextra -Werror -Os ${DEBUG}
+CFLAGS = -std=gnu99 -Wall -Wextra -Werror -Os ${DEBUG}
 
 LIBS = -lm -lncurses -lpthread -lsqlite3
 LDFLAGS = ${LIBS}

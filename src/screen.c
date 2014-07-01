@@ -1,6 +1,5 @@
 #include <ncurses.h>
 #include <pthread.h>
-#include <signal.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -111,7 +110,7 @@ void
 screen_cleanup (struct block_game *pgame)
 {
 	game_over ();
-	log_info ("%s", "Destroying ncurses context");
+	log_info ("Cleaning ncurses context");
 	endwin ();
 
 	/* TODO */
@@ -127,7 +126,7 @@ screen_main (void *vp)
 {
 	struct block_game *pgame = vp;
 
-	log_info ("%s", "Creating ncurses context");
+	log_info ("Initializing ncurses context");
 
 	/* init curses */
 	initscr ();

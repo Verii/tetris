@@ -353,7 +353,7 @@ init_blocks (struct block_game *pgame)
 	if (pgame == NULL)
 		return -1;
 
-	log_info ("%s", "Initializing game data");
+	log_info ("Initializing game data");
 	srand (time (NULL));
 
 	pgame->mod = DIFF_NORMAL;
@@ -431,10 +431,10 @@ cleanup_blocks (struct block_game *pgame)
 	if (pgame == NULL)
 		return -1;
 
-	log_info ("%s", "Cleaning game data");
+	log_info ("Cleaning game data");
 
 	if (pthread_mutex_trylock (&pgame->lock) != 0) {
-		debug ("%s", "Mutex was locked, unlocking ..");
+		debug ("Mutex was locked, unlocking ..");
 	}
 
 	pthread_mutex_unlock (&pgame->lock);
