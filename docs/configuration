@@ -1,0 +1,8 @@
+The configuration file will be parsed at startup, and will be used to specify:
+	1). The location of the log file;
+	2). The location of the game-state file, should the user quit;
+	3). The location of the high-scores database;
+	4). The server to connect to in multiplayer games; and
+	5). Including the port number, and potentially credentials.
+
+The configuration file will reside locally in "~/.config/lw-games/conf".
