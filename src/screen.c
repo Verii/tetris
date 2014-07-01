@@ -44,26 +44,31 @@ void
 screen_draw (struct block_game *pgame)
 {
 	clear ();
-	init_pair (1, COLOR_BLUE, COLOR_BLACK);
-	init_pair (2, COLOR_GREEN, COLOR_BLACK);
-	init_pair (3, COLOR_WHITE, COLOR_BLACK);
 
-	attr_t attr_text, attr_blocks, attr_border;
-	attr_border = A_BOLD | COLOR_PAIR(1);
-	attr_blocks = COLOR_PAIR(2);
-	attr_text = A_BOLD | COLOR_PAIR(3);
+	int colors[] = { COLOR_BLUE, COLOR_GREEN, COLOR_WHITE, COLOR_YELLOW,
+		COLOR_RED, COLOR_MAGENTA, COLOR_CYAN };
+
+	for (size_t i = 0; i < LEN(colors); i++) {
+		init_pair (i, colors[i], COLOR_BLACK);
+	}
+
+	attr_t attr_text, attr_border;
+	attr_border = A_BOLD | COLOR_PAIR(0);
+	attr_text = A_BOLD | COLOR_PAIR(2);
 
 	pthread_mutex_lock (&pgame->lock);
 	for (int i = 2; i < BLOCKS_ROWS; i++) {
 		attrset (attr_border);
 		printw ("*");
 
-		attrset (attr_blocks);
+		attrset (0);
 		for (int j = 0; j < BLOCKS_COLUMNS; j++) {
 
-			if (pgame->spaces[i][j] == true)
+			if (pgame->spaces[i][j] == true) {
+				attron (COLOR_PAIR(i % LEN(colors)));
 				printw ("\u00A4");
-			else if (j % 2)
+				attroff (COLOR_PAIR(i % LEN(colors)));
+			} else if (j % 2)
 				printw (".");
 			else
 				printw (" ");
