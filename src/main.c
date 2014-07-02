@@ -28,19 +28,18 @@ usage (void)
 int
 main (int argc, char **argv)
 {
-	int ch, l_flag;
+	int ch = 0;
 	FILE *stderr_out;
 	pthread_t screen_loop;
 	struct block_game game;
+	struct db_info save;
 	char log_file[80] = LOGDIR "game.log";
 
 	setlocale (LC_ALL, "");
 
-	ch = l_flag = 0;
 	while ((ch = getopt (argc, argv, "l:h")) != -1) {
 		switch (ch) {
 		case 'l':
-			l_flag = 1;
 			if (optarg) {
 				strncpy (log_file, optarg, sizeof(log_file)-1);
 				log_file[sizeof(log_file)-1] = '\0';
@@ -52,25 +51,30 @@ main (int argc, char **argv)
 			break;
 		}
 	}
-
 	argc -= optind;
 	argv += optind;
 
-	/* redirect stderr to log file */
 	stderr_out = freopen (log_file, "w", stderr);
 
-	/* Create game data and start input thread */
-	init_blocks (&game);
-	pthread_create (&screen_loop, NULL, screen_main, &game);
-	loop_blocks (&game);
+	/* Create game context and screen */
+	blocks_init (&game);
+	screen_init ();
 
-	/* Kill ncurses, cleanup */
+	/* Draw main menu */
+	screen_draw_menu (&save);
+	pthread_create (&screen_loop, NULL, screen_main, &game);
+
+	/* Main loop */
+	blocks_loop (&game);
 	pthread_cancel (screen_loop);
-	screen_cleanup (&game);
-	cleanup_blocks (&game);
+
+	/* Print scores, tell user they're a loser, etc. */
+	screen_draw_over (&game, &save);
+	screen_cleanup ();
+	blocks_cleanup (&game);
 
 	fclose (stderr_out);
-
 	printf ("Thanks for playing!\n");
+
 	return EXIT_SUCCESS;
 }

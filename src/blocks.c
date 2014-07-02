@@ -14,7 +14,7 @@
 static void create_block (struct block **);
 static void destroy_block (struct block **);
 static int destroy_lines (struct block_game *);
-static int drop_block (struct block_game *);
+static bool drop_block (struct block_game *);
 static int rotate_block (struct block_game *, enum block_cmd);
 static int translate_block (struct block_game *, enum block_cmd);
 static void unwrite_cur_piece (struct block_game *);
@@ -35,7 +35,8 @@ destroy_block (struct block **dest)
 static void
 create_block (struct block **new_block)
 {
-	struct block *pnb = malloc (sizeof *pnb);
+	struct block *pnb = calloc (1, sizeof *pnb);
+
 	if (pnb == NULL) {
 		log_err ("Out of memory, %lu", sizeof *pnb);
 		exit (2);
@@ -51,20 +52,19 @@ create_block (struct block **new_block)
 		[Z_REV_BLOCK]	= Z_REV_BLOCK,
 	};
 
-	pnb->fallen = false;
 	pnb->type = rand () % LEN(blocks);
 	pnb->col_off = BLOCKS_COLUMNS/2;
 	pnb->row_off = 1;
+	pnb->col = rand () % 0x100;
 
 	/* The position at (0, 0) is the pivot when we rotate */
 	if (pnb->type == SQUARE_BLOCK) {
-		pnb->col_off -= 1; // Help center the piece
-		pnb->p[0].x = 0; pnb->p[0].y = -1;
-		pnb->p[1].x = 1; pnb->p[1].y = -1;
-		pnb->p[2].x = 0; pnb->p[2].y = 0;
-		pnb->p[3].x = 1; pnb->p[3].y = 0;
+		pnb->p[0].x = -1; pnb->p[0].y = -1;
+		pnb->p[1].x = 0; pnb->p[1].y = -1;
+		pnb->p[2].x = -1; pnb->p[2].y = 0;
+		pnb->p[3].x = 0; pnb->p[3].y = 0;
 	} else if (pnb->type == LINE_BLOCK) {
-		pnb->col_off -= 2;
+		pnb->col_off--; // center
 		pnb->p[0].x = -1; pnb->p[0].y = 0;
 		pnb->p[1].x = 0; pnb->p[1].y = 0;
 		pnb->p[2].x = 1; pnb->p[2].y = 0;
@@ -97,9 +97,6 @@ create_block (struct block **new_block)
 	} else
 		goto error;
 
-	/* User never gets an invalid block. If we get here, everything was
-	 * initialized successfully
-	 */
 	*new_block = pnb;
 	return;
 error:
@@ -128,8 +125,8 @@ rotate_block (struct block_game *pgame, enum block_cmd cmd)
 
 		/* Check out of bounds before we write it */
 		int bounds_x, bounds_y;
-		bounds_y = py[i] + pgame->cur->row_off;
 		bounds_x = px[i] + pgame->cur->col_off;
+		bounds_y = py[i] + pgame->cur->row_off;
 
 		if (bounds_x < 0 || bounds_x >= BLOCKS_COLUMNS ||
 		    bounds_y < 0 || bounds_y >= BLOCKS_ROWS ||
@@ -179,18 +176,25 @@ destroy_lines (struct block_game *pgame)
 {
 	uint8_t destroyed = 0;
 
+	/* Check first two rows for any block */
+	for (int i = 0; i < 2; i++)
+		for (int j = 0; j < BLOCKS_COLUMNS; j++)
+			if (pgame->spaces[i][j])
+				pgame->loss = true;
+
 	/* Check each row for a full line of blocks */
-	for (int j, i = BLOCKS_ROWS-1; i >= 2; i--) {
-		for (j = 0; j < BLOCKS_COLUMNS; j++) {
+	for (int i = BLOCKS_ROWS-1; i >= 2; i--) {
+
+		int j = 0;
+		for (; j < BLOCKS_COLUMNS; j++)
 			if (pgame->spaces[i][j] == false)
 				break;
-		}
-		if (j < BLOCKS_COLUMNS)
+		if (j != BLOCKS_COLUMNS)
 			continue;
 
 		/* Full line found */
 		free (pgame->spaces[i]);
-		log_info ("Removed line %2d", i);
+		log_info ("Removed line %2d", i-1);
 		destroyed++;
 
 		/* Move everything down */
@@ -204,24 +208,25 @@ destroy_lines (struct block_game *pgame)
 			exit (2);
 		}
 
-		i++; // lines moved, recheck this one
+		i++; // recheck this one
 	}
 
 	/* Update player level and game speed if necessary */
-	pgame->lines_destroyed += destroyed;
-	if (pgame->lines_destroyed > pgame->level) {
+	for (int i = destroyed; i > 0; i--) {
+		pgame->lines_destroyed++;
+
+		if (pgame->lines_destroyed < pgame->level)
+			continue;
+
 		pgame->lines_destroyed = 0;
 		pgame->level++;
+		pgame->score += pgame->level * pgame->mod;
 
 		/* See tests/level-curve.c */
 		double speed;
-		speed = atan (pgame->level/(double)10) * pgame->mod * 2/PI +1;
+		speed = atan (pgame->level/(double)10) *pgame->mod * 2/PI +1;
 		pgame->nsec = (int) ((double)1E9/speed);
 	}
-
-	/* Update score */
-	for (int i = destroyed; i > 0; i--)
-		pgame->score += pgame->level * pgame->mod;
 
 	return destroyed;
 }
@@ -236,7 +241,9 @@ unwrite_cur_piece (struct block_game *pgame)
 		int y, x;
 		y = pgame->cur->row_off + pgame->cur->p[i].y;
 		x = pgame->cur->col_off + pgame->cur->p[i].x; 
+
 		pgame->spaces[y][x] = 0;
+		pgame->colors[y][x] = 0;
 	}
 }
 
@@ -257,130 +264,117 @@ write_cur_piece (struct block_game *pgame)
 			return;
 	}
 
-	for (size_t i = 0; i < LEN(pgame->cur->p); i++)
+	for (size_t i = 0; i < LEN(pgame->cur->p); i++) {
 		pgame->spaces[py[i]][px[i]] = 1;
+		pgame->colors[py[i]][px[i]] = pgame->cur->col;
+	}
 }
 
-static int
+/* returns true if something is below the block.
+ * else advance the block once block down
+ */
+static bool
 drop_block (struct block_game *pgame)
 {
 	if (pgame->cur == NULL)
 		return 0;
 
-	/* TODO clean this up */
-	struct point {
-		int x, y;
-	} check[4];
+	for (int i = 0; i < 4; i++) {
+		int bounds_y, bounds_x;
+		bounds_y = pgame->cur->p[i].y + pgame->cur->row_off +1;
+		bounds_x = pgame->cur->p[i].x + pgame->cur->col_off;
 
-	for (size_t i = 0; i < LEN(pgame->cur->p); i++) {
-		check[i].x = pgame->cur->p[i].x + pgame->cur->col_off;
-		check[i].y = pgame->cur->p[i].y + pgame->cur->row_off +1;
+		if (bounds_y >= BLOCKS_ROWS ||
+		    pgame->spaces[bounds_y][bounds_x])
+			return true;
 	}
 
-	unwrite_cur_piece (pgame);
-
-	int hit = 0;
-	for (size_t i = 0; i < LEN(check); i++) {
-		int y, x;
-		y = check[i].y;
-		x = check[i].x;
-
-		if (y >= BLOCKS_ROWS || pgame->spaces[y][x])
-			hit = 1;
-	}
-
-	if (hit) {
-		write_cur_piece (pgame);
-
-		bool has_fallen = pgame->cur->fallen;
-		destroy_block (&pgame->cur);
-		if (has_fallen == false)
-			return -1;
-	} else {
-		pgame->cur->fallen = true;
-		pgame->cur->row_off++;
-
-		write_cur_piece (pgame);
-	}
-
-	return hit;
+	pgame->cur->row_off++;
+	return false;
 }
 
 /*
  * Game is over when this function returns.
  */
 int
-loop_blocks (struct block_game *pgame)
+blocks_loop (struct block_game *pgame)
 {
 	if (pgame == NULL)
 		return -1;
 
 	struct timespec ts;
 	ts.tv_sec = 0;
-	ts.tv_nsec = pgame->nsec;
+	ts.tv_nsec = 0;
 
 	for (;;) {
+		ts.tv_nsec = pgame->nsec;
 		nanosleep (&ts, NULL);
 
-		if (pgame->game_over)
+		if (pgame->pause)
+			continue;
+
+		if (pgame->loss || pgame->quit)
 			break;
 
 		pthread_mutex_lock (&pgame->lock);
 
-		if (drop_block (pgame) < 0) {
-			log_info ("Game over, score: %d", pgame->score);
-			break;
-		}
-
-		/* block hit the bottom */
-		if (pgame->cur == NULL) {
+		unwrite_cur_piece (pgame);
+		bool hit = drop_block (pgame);
+		write_cur_piece (pgame);
+	
+		if (hit) {
+			destroy_block (&pgame->cur);
 			pgame->cur = pgame->next;
 			create_block (&pgame->next);
+
 			destroy_lines (pgame);
-			ts.tv_nsec = pgame->nsec;
 		}
 
 		pthread_mutex_unlock (&pgame->lock);
-		screen_draw (pgame);
+
+		screen_draw_game (pgame);
 	}
 
 	return 0;
 }
 
 int
-init_blocks (struct block_game *pgame)
+blocks_init (struct block_game *pgame)
 {
 	if (pgame == NULL)
 		return -1;
 
 	log_info ("Initializing game data");
-	srand (time (NULL));
-
+	memset (pgame, 0, sizeof *pgame);
+	pgame->level = 1;
 	pgame->mod = DIFF_NORMAL;
-	pgame->lines_destroyed = pgame->level = pgame->score = 0;
 	pgame->nsec = 1E9 -1;
-	pgame->game_over = false;
 
-	/* Create initial game blocks */
 	create_block (&pgame->cur);
 	create_block (&pgame->next);
-	pgame->save = NULL;
 
 	for (int i = 0; i < BLOCKS_ROWS; i++) {
-		pgame->spaces[i] = calloc (BLOCKS_COLUMNS, sizeof (bool));
+		pgame->spaces[i] = calloc (BLOCKS_COLUMNS, 1);
 		if (!pgame->spaces[i]) {
+			log_err ("Out of memory, %lu", BLOCKS_COLUMNS);
+			exit (2);
+		}
+
+		pgame->colors[i] = calloc (BLOCKS_COLUMNS, 1);
+		if (!pgame->colors[i]) {
 			log_err ("Out of memory, %lu", BLOCKS_COLUMNS);
 			exit (2);
 		}
 	}
 
+	srand (time (NULL));
 	pthread_mutex_init (&pgame->lock, NULL);
 
 	return 0;
 }
 
 int
-move_blocks (struct block_game *pgame, enum block_cmd cmd)
+blocks_move (struct block_game *pgame, enum block_cmd cmd)
 {
 	if (pgame == NULL)
 		return -1;
@@ -414,37 +408,35 @@ move_blocks (struct block_game *pgame, enum block_cmd cmd)
 			pgame->next = tmp;
 		}
 		break;
-	default:
-		break;
 	}
 
 	write_cur_piece (pgame);
 	pthread_mutex_unlock (&pgame->lock);
 
-	screen_draw (pgame);
 	return 1;
 }
 
 int
-cleanup_blocks (struct block_game *pgame)
+blocks_cleanup (struct block_game *pgame)
 {
 	if (pgame == NULL)
 		return -1;
 
 	log_info ("Cleaning game data");
-
-	if (pthread_mutex_trylock (&pgame->lock) != 0) {
+	if (pthread_mutex_trylock (&pgame->lock) != 0)
 		debug ("Mutex was locked, unlocking ..");
-	}
 
 	pthread_mutex_unlock (&pgame->lock);
 	pthread_mutex_destroy (&pgame->lock);
 
-	for (int i = 0; i < BLOCKS_ROWS; i++)
+	for (int i = 0; i < BLOCKS_ROWS; i++) {
 		free (pgame->spaces[i]);
+		free (pgame->colors[i]);
+	}
 
 	destroy_block (&pgame->cur);
 	destroy_block (&pgame->next);
+	destroy_block (&pgame->save);
 
 	return 1;
 }

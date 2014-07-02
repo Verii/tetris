@@ -1,3 +1,6 @@
+#define _GNU_SOURCE
+
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,11 +14,12 @@
 static int
 db_open (struct db_info *entry)
 {
+	int status;
 	if (entry == NULL)
 		return -1;
 
-	int status = sqlite3_open (entry->file_loc, &entry->db);
-	log_info ("Opening database %s\n", entry->file_loc);
+	status = sqlite3_open (entry->file_loc, &entry->db);
+	log_info ("Opening database %s", entry->file_loc);
 
 	if (status != SQLITE_OK) {
 		log_err ("Error occured: %d", status);
@@ -25,48 +29,56 @@ db_open (struct db_info *entry)
 	return 1;
 }
 
+static void
+db_close (struct db_info *entry)
+{
+	sqlite3_close_v2 (entry->db);
+}
+
 int
-db_add_game_score (struct db_info *entry, struct block_game *pgame)
+db_save_score (struct db_info *entry, struct block_game *pgame)
 {
 	sqlite3_stmt *stmt;
-	char *create, *insert;
+	char *statement;
 	time_t t = time (NULL);
 
 	if (db_open (entry) < 0)
 		return -1;
 
 	/* Make sure the db has the proper tables */
-	asprintf (&create, "CREATE TABLE Scores (name TEXT, "
+	asprintf (&statement, "CREATE TABLE Scores (name TEXT, "
 			"level INTEGER, score INTEGER, date INTEGER);");
-	if (create == NULL) {
-		log_err ("%s", "Out of memory");
+	if (statement == NULL) {
+		log_err ("Out of memory");
 		exit (2);
 	}
+	sqlite3_prepare_v2 (entry->db, statement,
+			strlen (statement), &stmt, NULL);
+	sqlite3_step (stmt);
+	sqlite3_finalize (stmt);
+	free (statement);
 
-	asprintf (&insert, "INSERT INTO Scores VALUES ( "", %d, %d, %d );",
-			pgame->level, pgame->score, (int) t);
-	if (insert == NULL) {
-		log_err ("%s", "Out of memory");
+	/* Write scores into database */
+	asprintf (&statement, "INSERT INTO Scores (name, level, score, date)"
+			" VALUES ( \"%s\", %d, %d, %d );", entry->id,
+			pgame->level, pgame->score, (uint32_t) t);
+	if (statement == NULL) {
+		log_err ("Out of memory");
 		exit (2);
 	}
-
-	sqlite3_prepare_v2 (entry->db, create, strlen (create), &stmt, NULL);
+	sqlite3_prepare_v2 (entry->db, statement,
+			strlen (statement), &stmt, NULL);
 	sqlite3_step (stmt);
 	sqlite3_finalize (stmt);
-	free (create);
+	free (statement);
 
-	sqlite3_prepare_v2 (entry->db, insert, strlen (insert), &stmt, NULL);
-	sqlite3_step (stmt);
-	sqlite3_finalize (stmt);
-	free (insert);
-
-	sqlite3_close_v2 (entry->db);
+	db_close (entry);
 
 	return 1;
 }
 
 int
-db_add_game_state (struct db_info *entry, struct block_game *pgame)
+db_save_state (struct db_info *entry, struct block_game *pgame)
 {
 	(void) entry;
 	(void) pgame;
@@ -74,29 +86,30 @@ db_add_game_state (struct db_info *entry, struct block_game *pgame)
 }
 
 struct db_results *
-db_get_scores (struct db_info *entry, int *results)
+db_get_scores (struct db_info *entry, int results)
 {
-	int attempt_res = 10;
+//	struct db_results *np;
+//	sqlite3_stmt *stmt;
+	(void) results;
 	LIST_INIT (&results_head);
 
-	// db_open (entry);
-	// sqlite3_close_v2 (entry->db);
-
 	if (entry == NULL) {
-		log_warn ("%s", "Unable to access database");
-		*results = -1;
+		log_warn ("Unable to access database");
 		return NULL;
 	}
 
-	if (results != NULL && *results > 0) {
-		attempt_res = *results;
+	db_open (entry);
+
+	/* XXX */
+#if 0
+	/* Get top 10 high scores */
+	while (1) {
+		np = calloc (1, sizeof *np);
+		LIST_INSERT_HEAD (&results_head, np, entries);
 	}
+#endif
 
-	struct db_results *np = calloc (1, sizeof *np);
-	LIST_INSERT_HEAD (&results_head, np, entries);
-
-	if (results)
-		*results = attempt_res;
+	db_close (entry);
 
 	return results_head.lh_first;
 }

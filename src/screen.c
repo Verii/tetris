@@ -10,7 +10,10 @@
 #include "debug.h"
 #include "screen.h"
 
-struct block_names names[] = {
+static const struct block_names {
+	enum block_type block;
+	char *name;
+} names[] = {
 	[SQUARE_BLOCK]	= { SQUARE_BLOCK,	"Square" },
 	[LINE_BLOCK]	= { LINE_BLOCK,		"Line" },
 	[T_BLOCK]	= { T_BLOCK,		"T" },
@@ -20,104 +23,144 @@ struct block_names names[] = {
 	[Z_REV_BLOCK]	= { Z_REV_BLOCK,	"Z_rev" },
 };
 
-struct level_names levels[] = {
+static const struct level_names {
+	enum block_diff difficulty;
+	char *name;
+} levels[] = {
 	[DIFF_EASY]	= { DIFF_EASY,		"Easy" },
 	[DIFF_NORMAL]	= { DIFF_NORMAL,	"Normal" },
 	[DIFF_HARD]	= { DIFF_HARD,		"Hard" },
 };
 
-/* Game over screen */
-static void
-game_over (void)
+void
+screen_init (void)
 {
-	return;
+	log_info ("Initializing ncurses context");
+	initscr ();
+	cbreak ();
+	noecho ();
+	nonl ();
+	intrflush (stdscr, FALSE);
+	keypad (stdscr, TRUE);
+	start_color ();
 }
 
 /* Ask user for difficulty and their name */
-static void
-user_menu (void)
+void
+screen_draw_menu (struct db_info *psave)
 {
-	return;
+	/* XXX */
+	psave->id = "blegh";
+	psave->file_loc = "../saves/game.db";
 }
 
 void
-screen_draw (struct block_game *pgame)
+screen_draw_game (struct block_game *pgame)
 {
-	clear ();
+	static const char colors[] = { COLOR_WHITE, COLOR_RED, COLOR_GREEN,
+		COLOR_YELLOW, COLOR_BLUE, COLOR_MAGENTA, COLOR_CYAN };
 
-	int colors[] = { COLOR_BLUE, COLOR_GREEN, COLOR_WHITE, COLOR_YELLOW,
-		COLOR_RED, COLOR_MAGENTA, COLOR_CYAN };
-
-	for (size_t i = 0; i < LEN(colors); i++) {
+	for (size_t i = 0; i < LEN(colors); i++)
 		init_pair (i, colors[i], COLOR_BLACK);
-	}
 
-	attr_t attr_text, attr_border;
-	attr_border = A_BOLD | COLOR_PAIR(0);
-	attr_text = A_BOLD | COLOR_PAIR(2);
+	attr_t text, border;
+	border = A_BOLD | COLOR_PAIR(4);
+	text = A_BOLD | COLOR_PAIR(0);
 
 	pthread_mutex_lock (&pgame->lock);
+
+	clear ();
+
 	for (int i = 2; i < BLOCKS_ROWS; i++) {
-		attrset (attr_border);
+		attrset (border);
 		printw ("*");
 
-		attrset (0);
 		for (int j = 0; j < BLOCKS_COLUMNS; j++) {
 
-			if (pgame->spaces[i][j] == true) {
-				attron (COLOR_PAIR(i % LEN(colors)));
-				printw ("\u00A4");
-				attroff (COLOR_PAIR(i % LEN(colors)));
-			} else if (j % 2)
-				printw (".");
-			else
-				printw (" ");
+			int color;
+			color = pgame->colors[i][j] % sizeof (colors);
+			attrset (COLOR_PAIR(color));
+
+			char *str = " ";
+			if (pgame->spaces[i][j]) {
+				attron (A_BOLD);
+				str = "\u00A4";
+			} else if (j % 2) {
+				str =  ".";
+			}
+
+			printw (str);
 		}
-		attrset (attr_border);
+
+		attrset (border);
 		printw ("*\n");
 	}
+
 	for (int i = 0; i < BLOCKS_COLUMNS+2; i++)
 		printw ("*");
-	printw ("\n");
 
-	attrset (attr_text);
+	attrset (text);
 
 	/* Just after moving a piece, before the tick thread can take over, a
 	 * block might be removed from hitting something.
 	 * Print the next piece as the current piece.
 	 */
-	if (pgame->cur == NULL) {
-		printw ("Current Block: %s\n", names[pgame->next->type].name);
-		printw ("Next Block: ...\n");
-	} else {
-		printw ("Current Block: %s\n", names[pgame->cur->type].name);
-		printw ("Next Block: %s\n",
-			pgame->next ? names[pgame->next->type].name : "...");
-	}
 
-	if (pgame->save)
-		printw ("Save Block: %s\n", names[pgame->save->type].name);
+	printw ("\nCur %s\n", pgame->cur ? names[pgame->cur->type].name :
+			names[pgame->next->type].name);
+	printw ("Next %s\n", pgame->cur ? names[pgame->next->type].name : "");
+	printw ("Save %s\n", pgame->save ? names[pgame->save->type].name : "");
 
-	printw ("Difficulty: %s\n", levels[pgame->mod].name);
-	printw ("Level: %d\n", pgame->level);
-	printw ("Score: %d\n", pgame->score);
-	pthread_mutex_unlock (&pgame->lock);
+	printw ("Level %d\t", pgame->level);
+	printw ("Score %d\n", pgame->score);
+
+	if (pgame->pause)
+		printw ("Paused\n");
 
 	refresh ();
+
+	pthread_mutex_unlock (&pgame->lock);
+}
+
+/* Game over screen */
+void
+screen_draw_over (struct block_game *pgame, struct db_info *psave)
+{
+	clear ();
+
+	/* TODO Loser screen */
+
+	/* Save scores, or save game state */
+	log_info ("Saving game.");
+	if (pgame->loss) {
+		db_save_score (psave, pgame);
+	} else {
+		db_save_state (psave, pgame);
+		return;
+	}
+
+	/* Print score board */
+	struct db_results *res;
+	res = db_get_scores (psave, 10);
+
+	printw ("Name:\t\tLevel:\tScore:\tDate:\n");
+	while (res) {
+		printw ("%.16s\t%d\t%d\%s\n",
+			res->id, res->level, res->score, ctime(&res->date));
+		res = res->entries.le_next;
+	}
+
+	db_clean_scores ();
+
+	refresh ();
+	getch ();
 }
 
 void
-screen_cleanup (struct block_game *pgame)
+screen_cleanup (void)
 {
-	game_over ();
 	log_info ("Cleaning ncurses context");
 	endwin ();
-
-	/* TODO */
-	struct db_info scores;
-	scores.file_loc = "../saves/tetris.db";
-
-	db_add_game_score (&scores, pgame);
 }
 
 /* Get user input, redraw game */
@@ -126,59 +169,58 @@ screen_main (void *vp)
 {
 	struct block_game *pgame = vp;
 
-	log_info ("Initializing ncurses context");
-
-	/* init curses */
-	initscr ();
-	cbreak ();
-	noecho ();
-	nonl ();
-	intrflush (stdscr, FALSE);
-	keypad (stdscr, TRUE);
-	start_color ();
-
-	user_menu ();
-	screen_draw (pgame);
+	screen_draw_game (pgame);
 
 	int ch;
 	while ((ch = getch()) != EOF) {
-		enum block_cmd cmd;
 
-		if (ch == 'P')
-			pgame->game_over = true;
+		if (ch == KEY_F(3)) {
+			pgame->pause = false;
+			pgame->quit = true;
+		}
+
+		/* Toggle pause */
+		if (ch == KEY_F(1))
+			pgame->pause = !pgame->pause;
+
+		/* Prevent movement while paused */
+		if (pgame->pause) {
+			screen_draw_game (pgame);
+			continue;
+		}
 
 		switch (ch) {
 		case 'a':
 		case 'A':
 		case KEY_LEFT:
-			cmd = MOVE_LEFT;
+			blocks_move (pgame, MOVE_LEFT);
 			break;
 		case 'd':
 		case 'D':
 		case KEY_RIGHT:
-			cmd = MOVE_RIGHT;
+			blocks_move (pgame, MOVE_RIGHT);
 			break;
 		case 's':
 		case 'S':
 		case KEY_DOWN:
-			cmd = MOVE_DROP;
+			blocks_move (pgame, MOVE_DROP);
 			break;
 		case ' ':
-			cmd = SAVE_PIECE;
+			blocks_move (pgame, SAVE_PIECE);
 			break;
 		case 'q':
 		case 'Q':
-			cmd = ROT_LEFT;
+			blocks_move (pgame, ROT_LEFT);
 			break;
 		case 'e':
 		case 'E':
-			cmd = ROT_RIGHT;
+			blocks_move (pgame, ROT_RIGHT);
 			break;
 		default:
-			continue;
+			break;
 		}
 
-		move_blocks (pgame, cmd);
+		screen_draw_game (pgame);
 	}
 
 	return NULL;

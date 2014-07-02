@@ -39,11 +39,10 @@ enum block_cmd {
 
 struct block {
 	enum block_type type;
-	bool fallen; /* has the block fallen atleast 1 block? */
-
-	/* offsets */
+	uint16_t col;
 	uint8_t col_off, row_off;
-	struct {
+
+	struct point {
 		int x, y;
 	} p[4];
 };
@@ -51,25 +50,26 @@ struct block {
 struct block_game {
 	pthread_mutex_t	lock;
 	uint32_t score;
-	uint32_t nsec; /* game tick delay in milliseconds */
-	uint16_t lines_destroyed; /* temp. don't print to screen */
+	uint32_t nsec;			/* game tick delay in milliseconds */
+	uint16_t lines_destroyed;	/* temp. don't print to screen */
 	uint8_t level;
-	bool game_over;
+	bool loss, pause, quit;
 	bool *spaces[BLOCKS_ROWS];
+	uint8_t *colors[BLOCKS_ROWS];
 	enum block_diff mod;
 	struct block *cur, *next, *save;
 };
 
 /* Create game state */
-int init_blocks (struct block_game *);
+int blocks_init (struct block_game *);
 
 /* Send commands to game */
-int move_blocks (struct block_game *, enum block_cmd);
+int blocks_move (struct block_game *, enum block_cmd);
 
 /* Main loop, doesn't return until game is over */
-int loop_blocks (struct block_game *);
+int blocks_loop (struct block_game *);
 
 /* Free memory */
-int cleanup_blocks (struct block_game *);
+int blocks_cleanup (struct block_game *);
 
 #endif /* BLOCKS_H_ */
