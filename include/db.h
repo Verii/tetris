@@ -15,13 +15,13 @@ struct db_info {
 };
 
 /* Linked list of top scores */
-LIST_HEAD (db_results_head, db_results) results_head;
+TAILQ_HEAD (db_results_head, db_results) results_head;
 struct db_results {
 	char *id;
 	uint32_t score;
 	uint8_t level;
 	time_t date;
-	LIST_ENTRY (db_results) entries;
+	TAILQ_ENTRY (db_results) entries;
 };
 
 /* Handles creation of database, creation of tables, and adding to the

@@ -14,15 +14,14 @@
 static int
 db_open (struct db_info *entry)
 {
-	int status;
 	if (entry == NULL)
 		return -1;
 
-	status = sqlite3_open (entry->file_loc, &entry->db);
 	log_info ("Opening database %s", entry->file_loc);
+	int status = sqlite3_open (entry->file_loc, &entry->db);
 
 	if (status != SQLITE_OK) {
-		log_err ("Error occured: %d", status);
+		log_err ("Error occured, %d", status);
 		return -1;
 	}
 
@@ -39,38 +38,39 @@ int
 db_save_score (struct db_info *entry, struct block_game *pgame)
 {
 	sqlite3_stmt *stmt;
-	char *statement;
+	char *state;
 	time_t t = time (NULL);
+
+	if (!pgame->level || !pgame->score)
+		return 0;
 
 	if (db_open (entry) < 0)
 		return -1;
 
 	/* Make sure the db has the proper tables */
-	asprintf (&statement, "CREATE TABLE Scores (name TEXT, "
+	asprintf (&state, "CREATE TABLE Scores (name TEXT, "
 			"level INTEGER, score INTEGER, date INTEGER);");
-	if (statement == NULL) {
+	if (state == NULL) {
 		log_err ("Out of memory");
 		exit (2);
 	}
-	sqlite3_prepare_v2 (entry->db, statement,
-			strlen (statement), &stmt, NULL);
+	sqlite3_prepare_v2 (entry->db, state, strlen (state), &stmt, NULL);
 	sqlite3_step (stmt);
 	sqlite3_finalize (stmt);
-	free (statement);
+	free (state);
 
 	/* Write scores into database */
-	asprintf (&statement, "INSERT INTO Scores (name, level, score, date)"
+	asprintf (&state, "INSERT INTO Scores (name, level, score, date)"
 			" VALUES ( \"%s\", %d, %d, %d );", entry->id,
 			pgame->level, pgame->score, (uint32_t) t);
-	if (statement == NULL) {
+	if (state == NULL) {
 		log_err ("Out of memory");
 		exit (2);
 	}
-	sqlite3_prepare_v2 (entry->db, statement,
-			strlen (statement), &stmt, NULL);
+	sqlite3_prepare_v2 (entry->db, state, strlen (state), &stmt, NULL);
 	sqlite3_step (stmt);
 	sqlite3_finalize (stmt);
-	free (statement);
+	free (state);
 
 	db_close (entry);
 
@@ -88,35 +88,52 @@ db_save_state (struct db_info *entry, struct block_game *pgame)
 struct db_results *
 db_get_scores (struct db_info *entry, int results)
 {
-//	struct db_results *np;
-//	sqlite3_stmt *stmt;
-	(void) results;
-	LIST_INIT (&results_head);
+	sqlite3_stmt *stmt;
 
-	if (entry == NULL) {
-		log_warn ("Unable to access database");
+	if (entry == NULL)
 		return NULL;
-	}
 
 	db_open (entry);
+	TAILQ_INIT (&results_head);
 
-	/* XXX */
-#if 0
-	/* Get top 10 high scores */
-	while (1) {
+	const char *select = "SELECT * FROM Scores ORDER BY score DESC;";
+	sqlite3_prepare_v2 (entry->db, select, strlen (select), &stmt, NULL);
+
+	while (results-- > 0 && sqlite3_step (stmt) == SQLITE_ROW) {
+		if (sqlite3_column_count (stmt) < 4)
+			break;
+
+		struct db_results *np;
 		np = calloc (1, sizeof *np);
-		LIST_INSERT_HEAD (&results_head, np, entries);
-	}
-#endif
 
+		np->level = sqlite3_column_int (stmt, 1);
+		np->score = sqlite3_column_int (stmt, 2);
+		np->date = sqlite3_column_int (stmt, 3);
+
+		if (!np->score || !np->level || !np->date) {
+			free (np);
+			break;
+		}
+
+		/* name, level, score, date */
+		int len = sqlite3_column_bytes (stmt, 0) +1;
+		np->id = calloc (len, 1);
+		strncpy (np->id, sqlite3_column_text (stmt, 0), len);
+
+		TAILQ_INSERT_TAIL (&results_head, np, entries);
+	}
+
+	sqlite3_finalize (stmt);
 	db_close (entry);
 
-	return results_head.lh_first;
+	return results_head.tqh_first;
 }
 
 void
 db_clean_scores (void)
 {
-	while (results_head.lh_first)
-		LIST_REMOVE (results_head.lh_first, entries);
+	while (results_head.tqh_first) {
+		free (results_head.tqh_first->id);
+		TAILQ_REMOVE (&results_head, results_head.tqh_first, entries);
+	}
 }
