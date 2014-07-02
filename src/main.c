@@ -74,7 +74,7 @@ main (int argc, char **argv)
 	blocks_cleanup (&game);
 
 	fclose (stderr_out);
-	printf ("Thanks for playing!\n");
+	printf ("Thanks for playing \"Falling Blocks Game\"-" VERSION "!\n");
 
 	return EXIT_SUCCESS;
 }

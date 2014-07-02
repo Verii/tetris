@@ -131,23 +131,24 @@ screen_draw_over (struct block_game *pgame, struct db_info *psave)
 	/* TODO Loser screen */
 
 	/* Save scores, or save game state */
-	log_info ("Saving game.");
-	if (pgame->loss) {
+	log_info ("Saving game");
+	if (pgame->loss)
 		db_save_score (psave, pgame);
-	} else {
+	else
 		db_save_state (psave, pgame);
-		return;
-	}
 
 	/* Print score board */
+	int count = 0;
 	struct db_results *res;
 	res = db_get_scores (psave, 10);
+	if (!res)
+		return;
 
-	printw ("Name:\t\tLevel:\tScore:\tDate:\n");
+	printw (" Rank\tName\t\tLevel\tScore\tDate\n");
 	while (res) {
-		printw ("%.16s\t%d\t%d\%s\n",
+		printw (" %2d). \t%-16s%d\t%d\t%s", ++count,
 			res->id, res->level, res->score, ctime(&res->date));
-		res = res->entries.le_next;
+		res = res->entries.tqe_next;
 	}
 
 	db_clean_scores ();

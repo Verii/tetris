@@ -35,6 +35,7 @@ destroy_block (struct block **dest)
 static void
 create_block (struct block **new_block)
 {
+	static int val = 0;
 	struct block *pnb = calloc (1, sizeof *pnb);
 
 	if (pnb == NULL) {
@@ -55,7 +56,7 @@ create_block (struct block **new_block)
 	pnb->type = rand () % LEN(blocks);
 	pnb->col_off = BLOCKS_COLUMNS/2;
 	pnb->row_off = 1;
-	pnb->col = rand () % 0x100;
+	pnb->col = val++;
 
 	/* The position at (0, 0) is the pivot when we rotate */
 	if (pnb->type == SQUARE_BLOCK) {
@@ -213,14 +214,14 @@ destroy_lines (struct block_game *pgame)
 
 	/* Update player level and game speed if necessary */
 	for (int i = destroyed; i > 0; i--) {
+
 		pgame->lines_destroyed++;
+		pgame->score += pgame->level * pgame->mod;
 
 		if (pgame->lines_destroyed < pgame->level)
 			continue;
-
 		pgame->lines_destroyed = 0;
 		pgame->level++;
-		pgame->score += pgame->level * pgame->mod;
 
 		/* See tests/level-curve.c */
 		double speed;
@@ -345,6 +346,8 @@ blocks_init (struct block_game *pgame)
 		return -1;
 
 	log_info ("Initializing game data");
+	srand (time (NULL));
+
 	memset (pgame, 0, sizeof *pgame);
 	pgame->level = 1;
 	pgame->mod = DIFF_NORMAL;
@@ -367,7 +370,6 @@ blocks_init (struct block_game *pgame)
 		}
 	}
 
-	srand (time (NULL));
 	pthread_mutex_init (&pgame->lock, NULL);
 
 	return 0;
