@@ -64,7 +64,7 @@ db_save_score (struct db_info *entry, struct block_game *pgame)
 	/* Write scores into database */
 	asprintf (&state,
 		"INSERT INTO Scores (name, level, score, date) "
-		"VALUES ( \"%s\", %d, %d, %ld );",
+		"VALUES ( \"%s\", %d, %d, %lu );",
 		entry->id, pgame->level, pgame->score, (uint64_t)time(NULL));
 	if (state == NULL) {
 		log_err ("Out of memory");
@@ -116,7 +116,7 @@ db_save_state (struct db_info *entry, struct block_game *pgame)
 
 	asprintf (&state,
 		"INSERT INTO State "
-		"VALUES (\"%s\", %d, %d, %d, %d, %ld, ?, ?);",
+		"VALUES (\"%s\", %d, %d, %d, %d, %lu, ?, ?);",
 		entry->id, pgame->score, pgame->lines_destroyed,
 		pgame->level, pgame->mod, (uint64_t) time (NULL));
 

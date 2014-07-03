@@ -1,5 +1,5 @@
 BIN = blocks
-VERSION = v0.11
+VERSION = v0.12
 SRC = main.c blocks.c screen.c debug.c db.c
 
 OBJS = ${SRC:.c=.o}
