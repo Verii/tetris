@@ -47,11 +47,19 @@ screen_init (void)
 
 /* Ask user for difficulty and their name */
 void
-screen_draw_menu (struct db_info *psave)
+screen_draw_menu (struct block_game *pgame, struct db_info *psave)
 {
-	/* XXX */
-	psave->id = "blegh";
+	/* TODO ask user for save game name, file location (with a default)
+	 * and game settings:
+	 * playermode (single/multi), difficulty
+	 */
+	psave->id = "Lorem Ipsum";
 	psave->file_loc = "../saves/game.db";
+
+	db_resume_state (psave, pgame);
+
+	pgame->name = psave->id;
+	pgame->mod = DIFF_NORMAL;
 }
 
 void
@@ -70,6 +78,9 @@ screen_draw_game (struct block_game *pgame)
 	pthread_mutex_lock (&pgame->lock);
 
 	clear ();
+
+	attrset (text);
+	printw ("%s: \n\t", pgame->name);
 
 	for (int i = 2; i < BLOCKS_ROWS; i++) {
 		attrset (border);
@@ -93,13 +104,21 @@ screen_draw_game (struct block_game *pgame)
 		}
 
 		attrset (border);
-		printw ("*\n");
+		printw ("*\n\t");
 	}
 
 	for (int i = 0; i < BLOCKS_COLUMNS+2; i++)
 		printw ("*");
 
 	attrset (text);
+
+	/* TODO move non-game information to a 'status' window, or something ..
+	 * Include prints of current game piece, and the next piece.
+	 * Include game controls, F1 to pause, F3 to save and quit,
+	 * movement controls.
+	 */
+
+	/* TODO overlay PAUSE text when the game is paused */
 
 	/* Just after moving a piece, before the tick thread can take over, a
 	 * block might be removed from hitting something.
@@ -134,8 +153,10 @@ screen_draw_over (struct block_game *pgame, struct db_info *psave)
 	log_info ("Saving game");
 	if (pgame->loss)
 		db_save_score (psave, pgame);
-	else
+	else {
 		db_save_state (psave, pgame);
+		return;
+	}
 
 	/* Print score board */
 	int count = 0;

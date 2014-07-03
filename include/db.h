@@ -24,13 +24,14 @@ struct db_results {
 	TAILQ_ENTRY (db_results) entries;
 };
 
+/* Saves game state to disk. Can be restored at a later time */
+int db_save_state (struct db_info *, struct block_game *);
+int db_resume_state (struct db_info *, struct block_game *);
+
 /* Handles creation of database, creation of tables, and adding to the
  * database. It will close the connection, and cleanup.
  */
 int db_save_score (struct db_info *, struct block_game *);
-
-/* Saves game state to disk. Can be restored at a later time */
-int db_save_state (struct db_info *, struct block_game *);
 
 /* Returns a linked list to @int results in the database */
 struct db_results *db_get_scores (struct db_info *, int);

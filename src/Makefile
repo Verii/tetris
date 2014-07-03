@@ -7,7 +7,7 @@ OBJS = ${SRC:.c=.o}
 INCS = -I../include
 CPPFLAGS = -DVERSION=\"${VERSION}\" ${INCS}
 
-DEBUG = -g -Og -DDEBUG
+DEBUG = -g -DDEBUG
 CFLAGS = -std=gnu99 -Wall -Wextra -Werror -Os ${DEBUG}
 
 LIBS = -lm -lncurses -lpthread -lsqlite3

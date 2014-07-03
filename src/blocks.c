@@ -18,6 +18,7 @@ static bool drop_block (struct block_game *);
 static int rotate_block (struct block_game *, enum block_cmd);
 static int translate_block (struct block_game *, enum block_cmd);
 static void unwrite_cur_piece (struct block_game *);
+static void update_tick_speed (struct block_game *);
 static void write_cur_piece (struct block_game *);
 
 static void
@@ -56,7 +57,7 @@ create_block (struct block **new_block)
 	pnb->type = rand () % LEN(blocks);
 	pnb->col_off = BLOCKS_COLUMNS/2;
 	pnb->row_off = 1;
-	pnb->col = val++;
+	pnb->color = val++;
 
 	/* The position at (0, 0) is the pivot when we rotate */
 	if (pnb->type == SQUARE_BLOCK) {
@@ -172,6 +173,15 @@ translate_block (struct block_game *pgame, enum block_cmd cmd)
 	return 1;
 }
 
+static void
+update_tick_speed (struct block_game *pgame)
+{
+	/* See tests/level-curve.c */
+	double speed;
+	speed = atan (pgame->level/(double)10) *pgame->mod * 2/PI +1;
+	pgame->nsec = (int) ((double)1E9/speed);
+}
+
 static int
 destroy_lines (struct block_game *pgame)
 {
@@ -223,10 +233,7 @@ destroy_lines (struct block_game *pgame)
 		pgame->lines_destroyed = 0;
 		pgame->level++;
 
-		/* See tests/level-curve.c */
-		double speed;
-		speed = atan (pgame->level/(double)10) *pgame->mod * 2/PI +1;
-		pgame->nsec = (int) ((double)1E9/speed);
+		update_tick_speed (pgame);
 	}
 
 	return destroyed;
@@ -267,7 +274,7 @@ write_cur_piece (struct block_game *pgame)
 
 	for (size_t i = 0; i < LEN(pgame->cur->p); i++) {
 		pgame->spaces[py[i]][px[i]] = 1;
-		pgame->colors[py[i]][px[i]] = pgame->cur->col;
+		pgame->colors[py[i]][px[i]] = pgame->cur->color;
 	}
 }
 
@@ -308,14 +315,18 @@ blocks_loop (struct block_game *pgame)
 	ts.tv_nsec = 0;
 
 	for (;;) {
+		update_tick_speed (pgame);
 		ts.tv_nsec = pgame->nsec;
+
 		nanosleep (&ts, NULL);
 
 		if (pgame->pause)
 			continue;
 
-		if (pgame->loss || pgame->quit)
+		if (pgame->loss || pgame->quit) {
+			unwrite_cur_piece (pgame);
 			break;
+		}
 
 		pthread_mutex_lock (&pgame->lock);
 
@@ -327,7 +338,6 @@ blocks_loop (struct block_game *pgame)
 			destroy_block (&pgame->cur);
 			pgame->cur = pgame->next;
 			create_block (&pgame->next);
-
 			destroy_lines (pgame);
 		}
 

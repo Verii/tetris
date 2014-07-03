@@ -61,7 +61,7 @@ main (int argc, char **argv)
 	screen_init ();
 
 	/* Draw main menu */
-	screen_draw_menu (&save);
+	screen_draw_menu (&game, &save);
 	pthread_create (&screen_loop, NULL, screen_main, &game);
 
 	/* Main loop */

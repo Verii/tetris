@@ -7,9 +7,9 @@
 
 #define PI 3.141592653589L
 
-#define BLOCKS_ROWS 22	/* 2 hidden rows above game, where blocks spawn*/
+#define BLOCKS_ROWS 22			/* 2 hidden rows above game */
 #define BLOCKS_COLUMNS 10
-#define LEN(x) ((sizeof(x)) / (sizeof(*x)))
+#define LEN(x) ((sizeof(x))/(sizeof(*x)))
 
 enum block_type {
 	SQUARE_BLOCK,
@@ -39,7 +39,7 @@ enum block_cmd {
 
 struct block {
 	enum block_type type;
-	uint16_t col;
+	uint16_t color;			/* block color */
 	uint8_t col_off, row_off;
 
 	struct point {
@@ -56,6 +56,7 @@ struct block_game {
 	bool loss, pause, quit;
 	bool *spaces[BLOCKS_ROWS];
 	uint8_t *colors[BLOCKS_ROWS];
+	char *name;			/* username */
 	enum block_diff mod;
 	struct block *cur, *next, *save;
 };
