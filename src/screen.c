@@ -10,28 +10,6 @@
 #include "debug.h"
 #include "screen.h"
 
-static const struct block_names {
-	enum block_type block;
-	char *name;
-} names[] = {
-	[SQUARE_BLOCK]	= { SQUARE_BLOCK,	"Square" },
-	[LINE_BLOCK]	= { LINE_BLOCK,		"Line" },
-	[T_BLOCK]	= { T_BLOCK,		"T" },
-	[L_BLOCK]	= { L_BLOCK,		"L" },
-	[L_REV_BLOCK]	= { L_REV_BLOCK,	"L_rev" },
-	[Z_BLOCK]	= { Z_BLOCK,		"Z" },
-	[Z_REV_BLOCK]	= { Z_REV_BLOCK,	"Z_rev" },
-};
-
-static const struct level_names {
-	enum block_diff difficulty;
-	char *name;
-} levels[] = {
-	[DIFF_EASY]	= { DIFF_EASY,		"Easy" },
-	[DIFF_NORMAL]	= { DIFF_NORMAL,	"Normal" },
-	[DIFF_HARD]	= { DIFF_HARD,		"Hard" },
-};
-
 void
 screen_init (void)
 {
@@ -43,6 +21,7 @@ screen_init (void)
 	intrflush (stdscr, FALSE);
 	keypad (stdscr, TRUE);
 	start_color ();
+	curs_set (0);
 }
 
 /* Ask user for difficulty and their name */
@@ -51,7 +30,7 @@ screen_draw_menu (struct block_game *pgame, struct db_info *psave)
 {
 	/* TODO ask user for save game name, file location (with a default)
 	 * and game settings:
-	 * playermode (single/multi), difficulty
+	 * playermode (single/multi), difficulty, resume
 	 */
 	psave->id = "Lorem Ipsum";
 	psave->file_loc = "../saves/game.db";
@@ -79,41 +58,71 @@ screen_draw_game (struct block_game *pgame)
 
 	clear ();
 
+	box (stdscr, 0, 0);
+
 	attrset (text);
-	printw ("%s: \n\t", pgame->name);
+	mvprintw (1, 1, "%.16s", pgame->name);
 
+	mvprintw (3, 2, "Level %d", pgame->level);
+	mvprintw (4, 2, "Score %d", pgame->score);
+
+	mvprintw (6, 2, "Next\tSave");
+	for (size_t i = 0; i < LEN(pgame->next->p); i++) {
+		int y, x;
+		y = pgame->next->p[i].y;
+		x = pgame->next->p[i].x;
+
+		attrset (COLOR_PAIR(pgame->next->type
+				% sizeof(colors)));
+		mvprintw (y+8, x+3, "\u00A4");
+
+		if (pgame->save) {
+			y = pgame->save->p[i].y;
+			x = pgame->save->p[i].x;
+
+			attrset (COLOR_PAIR(pgame->save->type
+					% sizeof(colors)));
+			mvprintw (y+8, x+9, "\u00A4");
+		}
+	}
+
+	attrset (text);
+	mvprintw (10, 2, "Controls");
+	mvprintw (11, 3, "Pause [F1]");
+	mvprintw (12, 3, "Quit [F3]");
+	mvprintw (14, 3, "Move [asd]");
+	mvprintw (15, 3, "Rotate [qe]");
+	mvprintw (16, 3, "Save [space]");
+
+	attrset (border);
+	move (2, 16);
+	vline ('*', BLOCKS_ROWS-1);
+
+	move (2, 17+BLOCKS_COLUMNS);
+	vline ('*', BLOCKS_ROWS-1);
+
+	move (BLOCKS_ROWS, 16);
+	hline ('*', BLOCKS_COLUMNS+2);
+
+	/* two hidden rows above game, where blocks spawn */
 	for (int i = 2; i < BLOCKS_ROWS; i++) {
-		attrset (border);
-		printw ("*");
-
+		move (i, 17);
 		for (int j = 0; j < BLOCKS_COLUMNS; j++) {
-
-			int color;
-			color = pgame->colors[i][j] % sizeof (colors);
+			int color = pgame->colors[i][j] % sizeof(colors);
 			attrset (COLOR_PAIR(color));
 
 			char *str = " ";
 			if (pgame->spaces[i][j]) {
 				attron (A_BOLD);
 				str = "\u00A4";
-			} else if (j % 2) {
+			} else if (j % 2)
 				str =  ".";
-			}
-
 			printw (str);
 		}
-
-		attrset (border);
-		printw ("*\n\t");
 	}
 
-	for (int i = 0; i < BLOCKS_COLUMNS+2; i++)
-		printw ("*");
-
-	attrset (text);
-
 	/* TODO move non-game information to a 'status' window, or something ..
-	 * Include prints of current game piece, and the next piece.
+	 * Include prints of current game piece and the next piece.
 	 * Include game controls, F1 to pause, F3 to save and quit,
 	 * movement controls.
 	 */
@@ -125,16 +134,9 @@ screen_draw_game (struct block_game *pgame)
 	 * Print the next piece as the current piece.
 	 */
 
-	printw ("\nCur %s\n", pgame->cur ? names[pgame->cur->type].name :
-			names[pgame->next->type].name);
-	printw ("Next %s\n", pgame->cur ? names[pgame->next->type].name : "");
-	printw ("Save %s\n", pgame->save ? names[pgame->save->type].name : "");
-
-	printw ("Level %d\t", pgame->level);
-	printw ("Score %d\n", pgame->score);
-
+	attrset (text);
 	if (pgame->pause)
-		printw ("Paused\n");
+		mvprintw (10, 19, "PAUSED");
 
 	refresh ();
 
