@@ -1,12 +1,10 @@
 #define _GNU_SOURCE
+
 #include <ctype.h>
 #include <ncurses.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-#include <sys/stat.h>
-#include <sys/types.h>
 
 #include "blocks.h"
 #include "db.h"
@@ -38,15 +36,9 @@ screen_draw_menu (struct block_game *pgame, struct db_info *psave)
 	memset (psave, 0, sizeof *psave);
 
 	strncpy (psave->id, "Lorem Ipsum", sizeof psave->id);
-	psave->id[sizeof psave->id] = '\0';
+	asprintf (&psave->file_loc, "%s/.local/share/tetris/game.db",
+			getenv ("HOME"));
 
-	char *dir_loc;
-	asprintf (&dir_loc, "%s/.local/share/tetris", getenv("HOME"));
-	mkdir (dir_loc, 0744);
-
-	asprintf (&psave->file_loc, "%s/game.db", dir_loc);
-
-	free (dir_loc);
 	db_resume_state (psave, pgame);
 }
 
