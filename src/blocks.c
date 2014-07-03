@@ -11,16 +11,6 @@
 #include "debug.h"
 #include "screen.h"
 
-static void create_block (struct block **);
-static void destroy_block (struct block **);
-static int destroy_lines (struct block_game *);
-static bool drop_block (struct block_game *);
-static int rotate_block (struct block_game *, enum block_cmd);
-static int translate_block (struct block_game *, enum block_cmd);
-static void unwrite_cur_piece (struct block_game *);
-static void update_tick_speed (struct block_game *);
-static void write_cur_piece (struct block_game *);
-
 static void
 destroy_block (struct block **dest)
 {
