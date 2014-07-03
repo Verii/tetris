@@ -6,21 +6,15 @@
 #include <unistd.h>
 
 #include "blocks.h"
-#include "debug.h"
-#include "screen.h"
 #include "db.h"
-
-#ifndef LOGDIR
-#define LOGDIR "../logs/"
-#endif
+#include "screen.h"
 
 static void
 usage (void)
 {
 	extern const char *__progname;
 	fprintf (stderr, "%s-" VERSION " : usage\n\t"
-			"-l [file] - specify a log file (/dev/null)\n\t"
-			"-c [file] - specify a config file NOT DONE\n",
+			"-h - usage\n",
 			__progname);
 	exit (EXIT_FAILURE);
 }
@@ -28,31 +22,19 @@ usage (void)
 int
 main (int argc, char **argv)
 {
-	int ch = 0;
 	FILE *stderr_out;
 	pthread_t screen_loop;
 	struct block_game game;
 	struct db_info save;
-	char log_file[80] = LOGDIR "game.log";
+	char log_file[80] = { 0 };
 
 	setlocale (LC_ALL, "");
 
-	while ((ch = getopt (argc, argv, "l:h")) != -1) {
-		switch (ch) {
-		case 'l':
-			if (optarg) {
-				strncpy (log_file, optarg, sizeof(log_file)-1);
-				log_file[sizeof(log_file)-1] = '\0';
-			}
-			break;
-		case 'h':
-		default:
-			usage ();
-			break;
-		}
-	}
-	argc -= optind;
-	argv += optind;
+	if (argc > 1 && argv[1][0] == '-' && argv[1][1] == 'h')
+		usage ();
+
+	strncat (log_file, getenv("HOME"), sizeof log_file);
+	strncat (log_file, "/.local/share/tetris/game.log" , sizeof log_file);
 
 	stderr_out = freopen (log_file, "w", stderr);
 
@@ -76,5 +58,5 @@ main (int argc, char **argv)
 	fclose (stderr_out);
 	printf ("Thanks for playing \"Falling Blocks Game\"-" VERSION "!\n");
 
-	return EXIT_SUCCESS;
+	return (EXIT_SUCCESS);
 }

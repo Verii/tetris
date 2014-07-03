@@ -1,6 +1,8 @@
 #ifndef DEBUG_H_
 #define DEBUG_H_
 
+#include <stdio.h>
+
 void debug_log (const char *fmt, ...);
 
 #ifdef DEBUG

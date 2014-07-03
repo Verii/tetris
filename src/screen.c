@@ -1,9 +1,12 @@
+#define _GNU_SOURCE
+#include <ctype.h>
 #include <ncurses.h>
-#include <pthread.h>
-#include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
-#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include "blocks.h"
 #include "db.h"
@@ -32,12 +35,18 @@ screen_draw_menu (struct block_game *pgame, struct db_info *psave)
 	 * and game settings:
 	 * playermode (single/multi), difficulty, resume
 	 */
-	psave->id = "Lorem Ipsum";
-	psave->file_loc = "../saves/game.db";
+	memset (psave, 0, sizeof *psave);
 
-	pgame->name = psave->id;
-	pgame->mod = DIFF_NORMAL;
+	strncpy (psave->id, "Lorem Ipsum", sizeof psave->id);
+	psave->id[sizeof psave->id] = '\0';
 
+	char *dir_loc;
+	asprintf (&dir_loc, "%s/.local/share/tetris", getenv("HOME"));
+	mkdir (dir_loc, 0744);
+
+	asprintf (&psave->file_loc, "%s/game.db", dir_loc);
+
+	free (dir_loc);
 	db_resume_state (psave, pgame);
 }
 
@@ -47,6 +56,8 @@ screen_draw_game (struct block_game *pgame)
 	static const char colors[] = { COLOR_WHITE, COLOR_RED, COLOR_GREEN,
 		COLOR_YELLOW, COLOR_BLUE, COLOR_MAGENTA, COLOR_CYAN };
 
+	clear ();
+
 	for (size_t i = 0; i < LEN(colors); i++)
 		init_pair (i, colors[i], COLOR_BLACK);
 
@@ -54,39 +65,14 @@ screen_draw_game (struct block_game *pgame)
 	border = A_BOLD | COLOR_PAIR(4);
 	text = A_BOLD | COLOR_PAIR(0);
 
-	pthread_mutex_lock (&pgame->lock);
-
-	clear ();
-
+	attrset (text);
 	box (stdscr, 0, 0);
 
-	attrset (text);
-	mvprintw (1, 1, "%.16s", pgame->name);
-
+	mvprintw (1, 1, "Tetris-" VERSION);
 	mvprintw (3, 2, "Level %d", pgame->level);
 	mvprintw (4, 2, "Score %d", pgame->score);
 
 	mvprintw (6, 2, "Next\tSave");
-	for (size_t i = 0; i < LEN(pgame->next->p); i++) {
-		int y, x;
-		y = pgame->next->p[i].y;
-		x = pgame->next->p[i].x;
-
-		attrset (COLOR_PAIR(pgame->next->type
-				% sizeof(colors)));
-		mvprintw (y+8, x+3, "\u00A4");
-
-		if (pgame->save) {
-			y = pgame->save->p[i].y;
-			x = pgame->save->p[i].x;
-
-			attrset (COLOR_PAIR(pgame->save->type
-					% sizeof(colors)));
-			mvprintw (y+8, x+9, "\u00A4");
-		}
-	}
-
-	attrset (text);
 	mvprintw (10, 2, "Controls");
 	mvprintw (11, 3, "Pause [F1]");
 	mvprintw (12, 3, "Quit [F3]");
@@ -121,26 +107,28 @@ screen_draw_game (struct block_game *pgame)
 		}
 	}
 
-	/* TODO move non-game information to a 'status' window, or something ..
-	 * Include prints of current game piece and the next piece.
-	 * Include game controls, F1 to pause, F3 to save and quit,
-	 * movement controls.
-	 */
+	for (size_t i = 0; i < LEN(pgame->next->p); i++) {
+		int y, x;
+		y = pgame->next->p[i].y;
+		x = pgame->next->p[i].x;
 
-	/* TODO overlay PAUSE text when the game is paused */
+		attrset (COLOR_PAIR(pgame->next->type % sizeof colors));
+		mvprintw (y+8, x+3, "\u00A4");
 
-	/* Just after moving a piece, before the tick thread can take over, a
-	 * block might be removed from hitting something.
-	 * Print the next piece as the current piece.
-	 */
+		if (pgame->save) {
+			y = pgame->save->p[i].y;
+			x = pgame->save->p[i].x;
+
+			attrset (COLOR_PAIR(pgame->save->type % sizeof colors));
+			mvprintw (y+8, x+9, "\u00A4");
+		}
+	}
 
 	attrset (text);
 	if (pgame->pause)
 		mvprintw (10, 19, "PAUSED");
 
 	refresh ();
-
-	pthread_mutex_unlock (&pgame->lock);
 }
 
 /* Game over screen */
@@ -148,6 +136,8 @@ void
 screen_draw_over (struct block_game *pgame, struct db_info *psave)
 {
 	clear ();
+
+	box (stdscr, 0, 0);
 
 	/* TODO Loser screen */
 
@@ -167,17 +157,21 @@ screen_draw_over (struct block_game *pgame, struct db_info *psave)
 	if (!res)
 		return;
 
-	printw (" Rank\tName\t\tLevel\tScore\tDate\n");
+	mvprintw (1, 1, "Local Leaderboards");
+	mvprintw (2, 3, "Rank\tName\t\tLevel\tScore\tDate\n");
 	while (res) {
-		printw (" %2d). \t%-16s%d\t%d\t%s", ++count,
+		count++;
+		mvprintw (count+2, 4, "%2d.\t%-16s%5d\t%5d\t%s", count,
 			res->id, res->level, res->score, ctime(&res->date));
 		res = res->entries.tqe_next;
 	}
 
 	db_clean_scores ();
+	free (psave->file_loc);
 
+	mvprintw (LINES-2, 1, "Press F1 to quit.");
 	refresh ();
-	getch ();
+	while (getch () != KEY_F(1));
 }
 
 void
@@ -193,58 +187,45 @@ screen_main (void *vp)
 {
 	struct block_game *pgame = vp;
 
-	screen_draw_game (pgame);
-
 	int ch;
-	while ((ch = getch()) != EOF) {
+	while ((ch = getch())) {
 
 		if (ch == KEY_F(3)) {
 			pgame->pause = false;
 			pgame->quit = true;
 		}
 
-		/* Toggle pause */
 		if (ch == KEY_F(1))
 			pgame->pause = !pgame->pause;
 
 		/* Prevent movement while paused */
-		if (pgame->pause) {
-			screen_draw_game (pgame);
+		if (pgame->pause)
 			continue;
-		}
 
-		switch (ch) {
-		case 'a':
+		enum block_cmd cmd = -1;
+
+		switch (toupper(ch)) {
 		case 'A':
-		case KEY_LEFT:
-			blocks_move (pgame, MOVE_LEFT);
+			cmd = MOVE_LEFT;
 			break;
-		case 'd':
 		case 'D':
-		case KEY_RIGHT:
-			blocks_move (pgame, MOVE_RIGHT);
+			cmd = MOVE_RIGHT;
 			break;
-		case 's':
 		case 'S':
-		case KEY_DOWN:
-			blocks_move (pgame, MOVE_DROP);
+			cmd = MOVE_DROP;
+			break;
+		case 'Q':
+			cmd = ROT_LEFT;
+			break;
+		case 'E':
+			cmd = ROT_RIGHT;
 			break;
 		case ' ':
-			blocks_move (pgame, SAVE_PIECE);
-			break;
-		case 'q':
-		case 'Q':
-			blocks_move (pgame, ROT_LEFT);
-			break;
-		case 'e':
-		case 'E':
-			blocks_move (pgame, ROT_RIGHT);
-			break;
-		default:
+			cmd = SAVE_PIECE;
 			break;
 		}
 
-		screen_draw_game (pgame);
+		blocks_move (pgame, cmd);
 	}
 
 	return NULL;

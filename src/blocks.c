@@ -19,9 +19,7 @@ destroy_block (struct block **dest)
 }
 
 /*
- * create_block
- * creates a new random (evenly distributed) block
- * and sets the initial positions of the pieces
+ * creates a random block and sets the initial positions of the pieces
  */
 static void
 create_block (struct block **new_block)
@@ -91,6 +89,7 @@ create_block (struct block **new_block)
 
 	*new_block = pnb;
 	return;
+
 error:
 	log_err ("Block type (%d) does not exist", pnb->type);
 	destroy_block (new_block);
@@ -168,7 +167,7 @@ update_tick_speed (struct block_game *pgame)
 {
 	/* See tests/level-curve.c */
 	double speed;
-	speed = atan (pgame->level/(double)10) *pgame->mod * 2/PI +1;
+	speed = atan (pgame->level/(double)10) * (pgame->mod+1) +1;
 	pgame->nsec = (int) ((double)1E9/speed);
 }
 
@@ -216,7 +215,7 @@ destroy_lines (struct block_game *pgame)
 	for (int i = destroyed; i > 0; i--) {
 
 		pgame->lines_destroyed++;
-		pgame->score += pgame->level * pgame->mod;
+		pgame->score += pgame->level * (pgame->mod+1);
 
 		if (pgame->lines_destroyed < pgame->level)
 			continue;
@@ -313,10 +312,8 @@ blocks_loop (struct block_game *pgame)
 		if (pgame->pause)
 			continue;
 
-		if (pgame->loss || pgame->quit) {
-			unwrite_cur_piece (pgame);
+		if (pgame->loss || pgame->quit)
 			break;
-		}
 
 		pthread_mutex_lock (&pgame->lock);
 
@@ -331,12 +328,12 @@ blocks_loop (struct block_game *pgame)
 			destroy_lines (pgame);
 		}
 
-		pthread_mutex_unlock (&pgame->lock);
-
 		screen_draw_game (pgame);
+
+		pthread_mutex_unlock (&pgame->lock);
 	}
 
-	return 0;
+	return 1;
 }
 
 int
@@ -372,47 +369,41 @@ blocks_init (struct block_game *pgame)
 
 	pthread_mutex_init (&pgame->lock, NULL);
 
-	return 0;
+	return 1;
 }
 
 int
 blocks_move (struct block_game *pgame, enum block_cmd cmd)
 {
-	if (pgame == NULL)
+	if (!pgame || !pgame->cur || cmd < 0)
 		return -1;
-
-	if (pgame->cur == NULL)
-		return 0;
 
 	pthread_mutex_lock (&pgame->lock);
 	unwrite_cur_piece (pgame);
 
-	switch (cmd) {
-	case MOVE_LEFT:
-	case MOVE_RIGHT:
+	if (cmd == MOVE_LEFT || cmd == MOVE_RIGHT) {
 		translate_block (pgame, cmd);
-		break;
-	case MOVE_DROP:
+
+	} else if (cmd == MOVE_DROP) {
 		drop_block (pgame);
-		break;
-	case ROT_LEFT:
-	case ROT_RIGHT:
+
+	} else if (cmd == ROT_LEFT || cmd == ROT_RIGHT) {
 		rotate_block (pgame, cmd);
-		break;
-	case SAVE_PIECE:
-		if (pgame->save == NULL) {
-			pgame->save = pgame->next;
-			create_block (&pgame->next);
-		} else {
-			struct block *tmp;
-			tmp = pgame->save;
-			pgame->save = pgame->next;
+
+	} else if (cmd == SAVE_PIECE) {
+		struct block *tmp = pgame->save;
+		pgame->save = pgame->next;
+
+		if (tmp) {
 			pgame->next = tmp;
+		} else {
+			create_block (&pgame->next);
 		}
-		break;
 	}
 
 	write_cur_piece (pgame);
+	screen_draw_game (pgame);
+
 	pthread_mutex_unlock (&pgame->lock);
 
 	return 1;
@@ -425,10 +416,6 @@ blocks_cleanup (struct block_game *pgame)
 		return -1;
 
 	log_info ("Cleaning game data");
-	if (pthread_mutex_trylock (&pgame->lock) != 0)
-		debug ("Mutex was locked, unlocking ..");
-
-	pthread_mutex_unlock (&pgame->lock);
 	pthread_mutex_destroy (&pgame->lock);
 
 	for (int i = 0; i < BLOCKS_ROWS; i++) {

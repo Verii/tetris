@@ -23,7 +23,7 @@ enum block_type {
 
 /* Game difficulty */
 enum block_diff {
-	DIFF_EASY = 1,
+	DIFF_EASY,
 	DIFF_NORMAL,
 	DIFF_HARD,
 };
@@ -54,9 +54,8 @@ struct block_game {
 	uint16_t lines_destroyed;	/* temp. don't print to screen */
 	uint8_t level;
 	bool loss, pause, quit;
-	bool *spaces[BLOCKS_ROWS];
+	uint8_t *spaces[BLOCKS_ROWS];
 	uint8_t *colors[BLOCKS_ROWS];
-	char *name;			/* username */
 	enum block_diff mod;
 	struct block *cur, *next, *save;
 };

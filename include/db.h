@@ -9,15 +9,15 @@
 #include "blocks.h"
 
 struct db_info {
-	sqlite3 *db; /* internal handler, don't modify */
-	char *file_loc; /* database location */
-	char *id; /* unique ID of a game save, e.g. username */
+	sqlite3 *db;		/* internal handler */
+	char *file_loc;		/* database location */
+	char id[16];		/* unique ID of a game save */
 };
 
 /* Linked list of top scores */
 TAILQ_HEAD (db_results_head, db_results) results_head;
 struct db_results {
-	char *id;
+	char id[16];
 	uint32_t score;
 	uint8_t level;
 	time_t date;

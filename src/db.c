@@ -1,10 +1,7 @@
 #define _GNU_SOURCE
 
-#include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sqlite3.h>
 #include <time.h>
 
 #include "db.h"
@@ -41,35 +38,27 @@ int
 db_save_score (struct db_info *entry, struct block_game *pgame)
 {
 	sqlite3_stmt *stmt;
-	char *state;
-
-	if (!pgame->level || !pgame->score)
-		return 0;
 
 	if (db_open (entry) < 0)
 		return -1;
 
 	/* Make sure the db has the proper tables */
-	asprintf (&state, "CREATE TABLE Scores (name TEXT, "
-			"level INT, score INT, date INT);");
-	if (state == NULL) {
-		log_err ("Out of memory");
-		exit (2);
-	}
-	sqlite3_prepare_v2 (entry->db, state, strlen (state), &stmt, NULL);
+	const char create[] = "CREATE TABLE Scores (name TEXT, level INT, "
+				"score INT, date INT);";
+	sqlite3_prepare_v2 (entry->db, create, sizeof create, &stmt, NULL);
 	sqlite3_step (stmt);
 	sqlite3_finalize (stmt);
-	free (state);
 
-	/* Write scores into database */
+	char *state;
 	asprintf (&state,
-		"INSERT INTO Scores (name, level, score, date) "
+		"INSERT INTO Scores "
 		"VALUES ( \"%s\", %d, %d, %lu );",
 		entry->id, pgame->level, pgame->score, (uint64_t)time(NULL));
 	if (state == NULL) {
 		log_err ("Out of memory");
 		exit (2);
 	}
+
 	sqlite3_prepare_v2 (entry->db, state, strlen (state), &stmt, NULL);
 	sqlite3_step (stmt);
 	sqlite3_finalize (stmt);
@@ -242,10 +231,8 @@ db_get_scores (struct db_info *entry, int results)
 			break;
 		}
 
-		int len = sqlite3_column_bytes (stmt, 0) +1;
-		np->id = calloc (len, 1);
-		strncpy (np->id,
-			 (const char *) sqlite3_column_text (stmt, 0), len);
+		strncpy (np->id, (const char *)
+				sqlite3_column_text (stmt, 0), sizeof np->id);
 
 		TAILQ_INSERT_TAIL (&results_head, np, entries);
 	}

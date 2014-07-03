@@ -1,10 +1,11 @@
 #define _GNU_SOURCE
 
 #include <stdarg.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+
+#include "debug.h"
 
 /* Prints a log message of the form:
  * "[time] [ERROR|WARN|INFO] message"
