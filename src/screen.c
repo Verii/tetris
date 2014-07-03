@@ -56,10 +56,10 @@ screen_draw_menu (struct block_game *pgame, struct db_info *psave)
 	psave->id = "Lorem Ipsum";
 	psave->file_loc = "../saves/game.db";
 
-	db_resume_state (psave, pgame);
-
 	pgame->name = psave->id;
 	pgame->mod = DIFF_NORMAL;
+
+	db_resume_state (psave, pgame);
 }
 
 void
