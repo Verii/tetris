@@ -11,6 +11,9 @@
 #include "debug.h"
 #include "screen.h"
 
+static const char colors[] = { COLOR_WHITE, COLOR_RED, COLOR_GREEN,
+		COLOR_YELLOW, COLOR_BLUE, COLOR_MAGENTA, COLOR_CYAN };
+
 void
 screen_init (void)
 {
@@ -23,6 +26,9 @@ screen_init (void)
 	keypad (stdscr, TRUE);
 	start_color ();
 	curs_set (0);
+
+	for (size_t i = 0; i < LEN(colors); i++)
+		init_pair (i, colors[i], COLOR_BLACK);
 }
 
 /* Ask user for difficulty and their name */
@@ -45,17 +51,9 @@ screen_draw_menu (struct block_game *pgame, struct db_info *psave)
 void
 screen_draw_game (struct block_game *pgame)
 {
-	static const char colors[] = { COLOR_WHITE, COLOR_RED, COLOR_GREEN,
-		COLOR_YELLOW, COLOR_BLUE, COLOR_MAGENTA, COLOR_CYAN };
-
-	clear ();
-
-	for (size_t i = 0; i < LEN(colors); i++)
-		init_pair (i, colors[i], COLOR_BLACK);
-
 	attr_t text, border;
+	text = COLOR_PAIR(0);
 	border = A_BOLD | COLOR_PAIR(4);
-	text = A_BOLD | COLOR_PAIR(0);
 
 	attrset (text);
 	box (stdscr, 0, 0);
@@ -65,6 +63,9 @@ screen_draw_game (struct block_game *pgame)
 	mvprintw (4, 2, "Score %d", pgame->score);
 
 	mvprintw (6, 2, "Next\tSave");
+	mvprintw (7, 3, "\t\t");
+	mvprintw (8, 3, "\t\t");
+
 	mvprintw (10, 2, "Controls");
 	mvprintw (11, 3, "Pause [F1]");
 	mvprintw (12, 3, "Quit [F3]");
@@ -72,30 +73,34 @@ screen_draw_game (struct block_game *pgame)
 	mvprintw (15, 3, "Rotate [qe]");
 	mvprintw (16, 3, "Save [space]");
 
+	int game_x_offset = 18;
+	int game_y_offset = 1;
+
 	attrset (border);
-	move (2, 16);
+	move (game_y_offset, game_x_offset);
 	vline ('*', BLOCKS_ROWS-1);
 
-	move (2, 17+BLOCKS_COLUMNS);
+	move (game_y_offset, game_x_offset+BLOCKS_COLUMNS+1);
 	vline ('*', BLOCKS_ROWS-1);
 
-	move (BLOCKS_ROWS, 16);
+	move ((BLOCKS_ROWS-2)+game_y_offset, game_x_offset);
 	hline ('*', BLOCKS_COLUMNS+2);
 
 	/* two hidden rows above game, where blocks spawn */
 	for (int i = 2; i < BLOCKS_ROWS; i++) {
-		move (i, 17);
-		for (int j = 0; j < BLOCKS_COLUMNS; j++) {
-			int color = pgame->colors[i][j] % sizeof(colors);
-			attrset (COLOR_PAIR(color));
+		move ((i-2)+game_y_offset, game_x_offset+1);
 
-			char *str = " ";
+		for (int j = 0; j < BLOCKS_COLUMNS; j++) {
+			attrset (0);
 			if (pgame->spaces[i][j]) {
+				attrset (COLOR_PAIR(pgame->colors[i][j]
+						% sizeof colors));
 				attron (A_BOLD);
-				str = "\u00A4";
+				printw ("\u00A4");
 			} else if (j % 2)
-				str =  ".";
-			printw (str);
+				printw (".");
+			else
+				printw (" ");
 		}
 	}
 
@@ -105,20 +110,24 @@ screen_draw_game (struct block_game *pgame)
 		x = pgame->next->p[i].x;
 
 		attrset (COLOR_PAIR(pgame->next->type % sizeof colors));
-		mvprintw (y+8, x+3, "\u00A4");
+		attron (A_BOLD);
+		mvprintw (y+8, x+4, "\u00A4");
 
 		if (pgame->save) {
 			y = pgame->save->p[i].y;
 			x = pgame->save->p[i].x;
 
 			attrset (COLOR_PAIR(pgame->save->type % sizeof colors));
-			mvprintw (y+8, x+9, "\u00A4");
+			attron (A_BOLD);
+			mvprintw (y+8, x+10, "\u00A4");
 		}
 	}
 
-	attrset (text);
-	if (pgame->pause)
-		mvprintw (10, 19, "PAUSED");
+	if (pgame->pause) {
+		attrset (text);
+		mvprintw (((BLOCKS_ROWS-2)/2)-2 +game_y_offset,
+			game_x_offset+3, "PAUSED");
+	}
 
 	refresh ();
 }
@@ -129,6 +138,7 @@ screen_draw_over (struct block_game *pgame, struct db_info *psave)
 {
 	clear ();
 
+	attrset (0);
 	box (stdscr, 0, 0);
 
 	/* TODO Loser screen */
@@ -190,9 +200,11 @@ screen_main (void *vp)
 		if (ch == KEY_F(1))
 			pgame->pause = !pgame->pause;
 
-		/* Prevent movement while paused */
-		if (pgame->pause)
+		/* Redraw screen with PAUSED text */
+		if (pgame->pause) {
+			blocks_move (pgame, -1);
 			continue;
+		}
 
 		enum block_cmd cmd = -1;
 

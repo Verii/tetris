@@ -303,10 +303,10 @@ blocks_loop (struct block_game *pgame)
 	ts.tv_sec = 0;
 	ts.tv_nsec = 0;
 
-	for (;;) {
-		update_tick_speed (pgame);
-		ts.tv_nsec = pgame->nsec;
+	update_tick_speed (pgame);
 
+	for (;;) {
+		ts.tv_nsec = pgame->nsec;
 		nanosleep (&ts, NULL);
 
 		if (pgame->pause)
@@ -375,8 +375,14 @@ blocks_init (struct block_game *pgame)
 int
 blocks_move (struct block_game *pgame, enum block_cmd cmd)
 {
-	if (!pgame || !pgame->cur || cmd < 0)
+	if (!pgame || !pgame->cur)
 		return -1;
+
+	if (pgame->pause)
+		screen_draw_game (pgame);
+
+	if (cmd < 0)
+		return 0;
 
 	pthread_mutex_lock (&pgame->lock);
 	unwrite_cur_piece (pgame);
