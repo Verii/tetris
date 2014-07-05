@@ -180,7 +180,7 @@ db_resume_state (struct db_info *entry, struct block_game *pgame)
 
 	/* Remove old entries to DB */
 	const char drop[] = "DROP TABLE State;";
-	sqlite3_prepare_vs (entry->db, drop, sizeof drop, &stmt, NULL);
+	sqlite3_prepare_v2 (entry->db, drop, sizeof drop, &stmt, NULL);
 	sqlite3_step (stmt);
 	sqlite3_finalize (stmt);
 
