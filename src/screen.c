@@ -43,7 +43,7 @@ screen_draw_menu (struct block_game *pgame, struct db_info *psave)
 
 	strncpy (psave->id, "Lorem Ipsum", sizeof psave->id);
 	if (asprintf (&psave->file_loc, "%s/.local/share/tetris/game.db",
-			getenv ("HOME") < 0))
+			getenv ("HOME")) < 0)
 		exit (2);
 
 	db_resume_state (psave, pgame);
@@ -200,12 +200,6 @@ screen_main (void *vp)
 
 		if (ch == KEY_F(1))
 			pgame->pause = !pgame->pause;
-
-		/* Redraw screen with PAUSED text */
-		if (pgame->pause) {
-			blocks_move (pgame, -1);
-			continue;
-		}
 
 		enum block_cmd cmd = -1;
 
