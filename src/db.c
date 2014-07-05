@@ -8,6 +8,13 @@
 #include "debug.h"
 #include "blocks.h"
 
+static const char create_scores[] = "CREATE TABLE Scores (name TEXT, level INT, "
+		"score INT, date INT);";
+
+static const char create_state[] = "CREATE TABLE State (name TEXT, score INT, "
+		"lines INT, level INT, diff INT, date INT, spaces BLOB, "
+		"colors BLOB);";
+
 static int
 db_open (struct db_info *entry)
 {
@@ -43,26 +50,30 @@ db_save_score (struct db_info *entry, struct block_game *pgame)
 		return -1;
 
 	/* Make sure the db has the proper tables */
-	const char create[] = "CREATE TABLE Scores (name TEXT, level INT, "
-				"score INT, date INT);";
-	sqlite3_prepare_v2 (entry->db, create, sizeof create, &stmt, NULL);
+	sqlite3_prepare_v2 (entry->db, create_scores,
+			sizeof create_scores, &stmt, NULL);
 	sqlite3_step (stmt);
 	sqlite3_finalize (stmt);
 
-	char *state;
-	asprintf (&state,
-		"INSERT INTO Scores "
+	debug ("Trying to insert scores to database");
+
+	char *insert;
+	int ret;
+	ret = asprintf (&insert,
+		"INSERT INTO Scores (name, level, score, date) "
 		"VALUES ( \"%s\", %d, %d, %lu );",
 		entry->id, pgame->level, pgame->score, (uint64_t)time(NULL));
-	if (state == NULL) {
+
+	if (ret < 0) {
 		log_err ("Out of memory");
 		exit (2);
 	}
 
-	sqlite3_prepare_v2 (entry->db, state, strlen (state), &stmt, NULL);
+	sqlite3_prepare_v2 (entry->db, insert, strlen(insert), &stmt, NULL);
+	free (insert);
+
 	sqlite3_step (stmt);
 	sqlite3_finalize (stmt);
-	free (state);
 
 	db_close (entry);
 
