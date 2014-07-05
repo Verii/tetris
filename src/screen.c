@@ -125,7 +125,7 @@ screen_draw_game (struct block_game *pgame)
 	}
 
 	if (pgame->pause) {
-		attrset (text);
+		attrset (text | A_BOLD);
 		mvprintw (((BLOCKS_ROWS-2)/2)-2 +game_y_offset,
 			game_x_offset+3, "PAUSED");
 	}
