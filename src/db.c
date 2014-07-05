@@ -176,8 +176,14 @@ db_resume_state (struct db_info *entry, struct block_game *pgame)
 	for (int i = 0; i < BLOCKS_COLUMNS * BLOCKS_ROWS; i++)
 		pgame->colors[i/BLOCKS_COLUMNS][i%BLOCKS_COLUMNS] = blob[i];
 
-	/* Cleanup */
 	sqlite3_finalize (stmt);
+
+	/* Remove old entries to DB */
+	const char drop[] = "DROP TABLE State;";
+	sqlite3_prepare_vs (entry->db, drop, sizeof drop, &stmt, NULL);
+	sqlite3_step (stmt);
+	sqlite3_finalize (stmt);
+
 	db_close (entry);
 
 	return 1;
