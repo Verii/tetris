@@ -192,9 +192,10 @@ destroy_lines (struct block_game *pgame)
 		if (j != BLOCKS_COLUMNS)
 			continue;
 
+		debug ("Removed line %2d", i+1);
+
 		/* Full line found */
 		free (pgame->spaces[i]);
-		log_info ("Removed line %2d", i-1);
 		destroyed++;
 
 		/* Move everything down */
@@ -332,6 +333,8 @@ blocks_loop (struct block_game *pgame)
 
 		pthread_mutex_unlock (&pgame->lock);
 	}
+
+	unwrite_cur_piece (pgame);
 
 	return 1;
 }
