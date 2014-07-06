@@ -46,6 +46,8 @@ db_save_score (struct db_info *entry, struct block_game *pgame)
 {
 	sqlite3_stmt *stmt;
 
+	log_info ("Trying to insert scores to database");
+
 	if (db_open (entry) < 0)
 		return -1;
 
@@ -54,8 +56,6 @@ db_save_score (struct db_info *entry, struct block_game *pgame)
 			sizeof create_scores, &stmt, NULL);
 	sqlite3_step (stmt);
 	sqlite3_finalize (stmt);
-
-	debug ("Trying to insert scores to database");
 
 	char *insert;
 	int ret;
@@ -85,6 +85,8 @@ db_save_state (struct db_info *entry, struct block_game *pgame)
 {
 	sqlite3_stmt *stmt;
 
+	log_info ("Trying to save state to database");
+
 	if (db_open (entry) < 0)
 		return 0;
 
@@ -93,8 +95,6 @@ db_save_state (struct db_info *entry, struct block_game *pgame)
 			sizeof create_state, &stmt, NULL);
 	sqlite3_step (stmt);
 	sqlite3_finalize (stmt);
-
-	debug ("Trying to save state to database");
 
 	/* name, score, lines, level, diff, date, spaces, colors */
 	char *insert;
@@ -141,10 +141,10 @@ db_resume_state (struct db_info *entry, struct block_game *pgame)
 {
 	sqlite3_stmt *stmt;
 
+	log_info ("Trying to restore saved game");
+
 	if (db_open (entry) < 0)
 		return -1;
-
-	log_info ("Trying to restore saved game");
 
 	/* Get freshest entry in table */
 	const char select[] = "SELECT * FROM State ORDER BY date DESC;";
@@ -197,7 +197,11 @@ db_get_scores (struct db_info *entry, int results)
 	if (entry == NULL)
 		return NULL;
 
-	db_open (entry);
+	log_info ("Trying to get (%d) highscores from database", results);
+
+	if (db_open (entry) < 0)
+		return -1;
+
 	TAILQ_INIT (&results_head);
 
 	const char *select = "SELECT * FROM Scores ORDER BY score DESC;";
