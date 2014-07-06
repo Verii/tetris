@@ -28,7 +28,7 @@ db_open (struct db_info *entry)
 	int status = sqlite3_open (entry->file_loc, &entry->db);
 
 	if (status != SQLITE_OK) {
-		log_err ("Error occured, %d", status);
+		log_err ("DB cannot be opened. Error occured (%d)", status);
 		return -1;
 	}
 
@@ -45,6 +45,8 @@ int
 db_save_score (struct db_info *entry, struct block_game *pgame)
 {
 	sqlite3_stmt *stmt;
+	char *insert;
+	int ret;
 
 	log_info ("Trying to insert scores to database");
 
@@ -57,8 +59,6 @@ db_save_score (struct db_info *entry, struct block_game *pgame)
 	sqlite3_step (stmt);
 	sqlite3_finalize (stmt);
 
-	char *insert;
-	int ret;
 	ret = asprintf (&insert,
 		"INSERT INTO Scores (name, level, score, date) "
 		"VALUES ( \"%s\", %d, %d, %lu );",
@@ -85,6 +85,8 @@ int
 db_save_state (struct db_info *entry, struct block_game *pgame)
 {
 	sqlite3_stmt *stmt;
+	char *insert;
+	int ret;
 
 	log_info ("Trying to save state to database");
 
@@ -98,8 +100,6 @@ db_save_state (struct db_info *entry, struct block_game *pgame)
 	sqlite3_finalize (stmt);
 
 	/* name, score, lines, level, diff, date, spaces, colors */
-	char *insert;
-	int ret;
 	ret = asprintf (&insert,
 		"INSERT INTO State "
 		"VALUES (\"%s\", %d, %d, %d, %d, %lu, ?, ?);",
@@ -210,9 +210,6 @@ db_get_scores (struct db_info *entry, int results)
 {
 	sqlite3_stmt *stmt;
 
-	if (entry == NULL)
-		return NULL;
-
 	log_info ("Trying to get (%d) highscores from database", results);
 
 	if (db_open (entry) < 0)
@@ -220,7 +217,7 @@ db_get_scores (struct db_info *entry, int results)
 
 	TAILQ_INIT (&results_head);
 
-	const char select[] = "SELECT (name,level,score,date) "
+	const char select[] = "SELECT name,level,score,date "
 	       "FROM Scores ORDER BY score DESC;";
 	sqlite3_prepare_v2 (entry->db, select, sizeof select, &stmt, NULL);
 
