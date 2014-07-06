@@ -200,14 +200,17 @@ db_get_scores (struct db_info *entry, int results)
 	log_info ("Trying to get (%d) highscores from database", results);
 
 	if (db_open (entry) < 0)
-		return -1;
+		return NULL;
 
 	TAILQ_INIT (&results_head);
 
-	const char *select = "SELECT * FROM Scores ORDER BY score DESC;";
-	sqlite3_prepare_v2 (entry->db, select, strlen (select), &stmt, NULL);
+	const char select[] = "SELECT (name,level,score,date) "
+	       "FROM Scores ORDER BY score DESC;";
+	sqlite3_prepare_v2 (entry->db, select, sizeof select, &stmt, NULL);
 
+	/* Get (results) entries */
 	while (results-- > 0 && sqlite3_step (stmt) == SQLITE_ROW) {
+		/* improperly formatted row */
 		if (sqlite3_column_count (stmt) < 4)
 			break;
 
@@ -239,8 +242,6 @@ db_get_scores (struct db_info *entry, int results)
 void
 db_clean_scores (void)
 {
-	while (results_head.tqh_first) {
-		free (results_head.tqh_first->id);
+	while (results_head.tqh_first)
 		TAILQ_REMOVE (&results_head, results_head.tqh_first, entries);
-	}
 }
