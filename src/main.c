@@ -21,8 +21,9 @@ static void
 redirect_stderr (void)
 {
 	char *log_file;
-	if (asprintf (&log_file, "%s/.local/share/tetris", getenv ("HOME")) < 0)
+	if (asprintf(&log_file, "%s/.local/share/tetris", getenv("HOME")) < 0) {
 		exit (2);
+	}
 
 	errno = 0;
 

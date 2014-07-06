@@ -43,8 +43,9 @@ screen_draw_menu (struct block_game *pgame, struct db_info *psave)
 
 	strncpy (psave->id, "Lorem Ipsum", sizeof psave->id);
 	if (asprintf (&psave->file_loc, "%s/.local/share/tetris/game.db",
-			getenv ("HOME")) < 0)
+			getenv ("HOME")) < 0) {
 		exit (2);
+	}
 
 	/* Start the game paused if we can resume from an old save */
 	if (db_resume_state (psave, pgame) > 0)
