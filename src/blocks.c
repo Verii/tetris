@@ -381,17 +381,11 @@ blocks_move (struct block_game *pgame, enum block_cmd cmd)
 	if (!pgame || !pgame->cur)
 		return -1;
 
-	if (pgame->pause) {
-		pthread_mutex_lock (&pgame->lock);
-		screen_draw_game (pgame);
-		pthread_mutex_unlock (&pgame->lock);
-		return 0;
-	}
-
-	if (cmd < 0)
-		return 0;
-
 	pthread_mutex_lock (&pgame->lock);
+
+	if (pgame->pause)
+		goto draw;
+
 	unwrite_cur_piece (pgame);
 
 	if (cmd == MOVE_LEFT || cmd == MOVE_RIGHT) {
@@ -415,8 +409,9 @@ blocks_move (struct block_game *pgame, enum block_cmd cmd)
 	}
 
 	write_cur_piece (pgame);
-	screen_draw_game (pgame);
 
+draw:
+	screen_draw_game (pgame);
 	pthread_mutex_unlock (&pgame->lock);
 
 	return 1;
