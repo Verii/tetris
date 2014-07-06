@@ -66,7 +66,8 @@ db_save_score (struct db_info *entry, struct block_game *pgame)
 
 	if (ret < 0) {
 		log_err ("Out of memory");
-		exit (2);
+		db_close (entry);
+		return ret;
 	}
 
 	sqlite3_prepare_v2 (entry->db, insert, strlen(insert), &stmt, NULL);
@@ -104,9 +105,11 @@ db_save_state (struct db_info *entry, struct block_game *pgame)
 		"VALUES (\"%s\", %d, %d, %d, %d, %lu, ?, ?);",
 		entry->id, pgame->score, pgame->lines_destroyed,
 		pgame->level, pgame->mod, (uint64_t) time (NULL));
+
 	if (ret < 0) {
 		log_err ("Out of memory");
-		exit (2);
+		db_close (entry);
+		return ret;
 	}
 
 	sqlite3_prepare_v2 (entry->db, insert, strlen (insert), &stmt, NULL);
@@ -115,6 +118,12 @@ db_save_state (struct db_info *entry, struct block_game *pgame)
 	/* Add binary blobs to INSERT statement */
 	debug ("Saving game spaces");
 	char *data = malloc (BLOCKS_COLUMNS * BLOCKS_ROWS);
+	if (data == NULL) {
+		log_err ("Out of memory");
+		sqlite3_finalize (stmt);
+		db_close (entry);
+		return -1;
+	}
 	for (int i = 0; i < BLOCKS_ROWS * BLOCKS_COLUMNS; i++)
 		data[i] =
 		pgame->spaces[i/BLOCKS_COLUMNS][i%BLOCKS_COLUMNS];
@@ -123,6 +132,13 @@ db_save_state (struct db_info *entry, struct block_game *pgame)
 
 	debug ("Saving game colors");
 	data = malloc (BLOCKS_COLUMNS * BLOCKS_ROWS);
+	if (data == NULL) {
+		log_err ("Out of memory");
+		sqlite3_finalize (stmt);
+		db_close (entry);
+		return -1;
+	}
+
 	for (int i = 0; i < BLOCKS_ROWS * BLOCKS_COLUMNS; i++)
 		data[i] =
 		pgame->colors[i/BLOCKS_COLUMNS][i%BLOCKS_COLUMNS];
