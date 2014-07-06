@@ -55,6 +55,8 @@ struct block_game {
 	uint16_t lines_destroyed;	/* temp. don't print to screen */
 	uint8_t level;
 	bool loss, pause, quit;
+	uint16_t block_count[7];
+	uint16_t color_val;		/* incrementing color value */
 	uint8_t *spaces[BLOCKS_ROWS];
 	uint8_t *colors[BLOCKS_ROWS];
 	enum block_diff mod;
