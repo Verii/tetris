@@ -154,10 +154,12 @@ screen_draw_over (struct block_game *pgame, struct db_info *psave)
 
 	/* Save scores, or save game state */
 	log_info ("Saving game");
-	if (pgame->loss)
-		db_save_score (psave, pgame);
-	else {
-		db_save_state (psave, pgame);
+	if (pgame->loss) {
+		if (db_save_score (psave, pgame) > 0)
+			debug ("Success");
+	} else {
+		if (db_save_state (psave, pgame) > 0)
+			debug ("Success");
 		return;
 	}
 
@@ -169,11 +171,12 @@ screen_draw_over (struct block_game *pgame, struct db_info *psave)
 		return;
 
 	mvprintw (1, 1, "Local Leaderboards");
-	mvprintw (2, 3, "Rank\tName\t\tLevel\tScore\tDate\n");
+	mvprintw (2, 3, "Rank\tName\t\tLevel\tScore\tDate");
 	while (res) {
 		count++;
-		mvprintw (count+2, 4, "%2d.\t%-16s%5d\t%5d\t%s", count,
-			res->id, res->level, res->score, ctime(&res->date));
+		char *date = ctime (&res->date);
+		mvprintw (count+2, 4, "%2d.\t%-16s%5d\t%5d\t%.*s", count,
+			res->id, res->level, res->score, strlen (date)-1, date);
 		res = res->entries.tqe_next;
 	}
 
@@ -182,7 +185,8 @@ screen_draw_over (struct block_game *pgame, struct db_info *psave)
 
 	mvprintw (LINES-2, 1, "Press F1 to quit.");
 	refresh ();
-	while (getch () != KEY_F(1));
+
+	while (getch() != KEY_F(1));
 }
 
 void
