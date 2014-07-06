@@ -46,7 +46,9 @@ screen_draw_menu (struct block_game *pgame, struct db_info *psave)
 			getenv ("HOME")) < 0)
 		exit (2);
 
-	db_resume_state (psave, pgame);
+	/* Start the game paused if we can resume from an old save */
+	if (db_resume_state (psave, pgame) > 0)
+		pgame->pause = true;
 }
 
 void
