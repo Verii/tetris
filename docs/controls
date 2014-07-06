@@ -1,19 +1,15 @@
 The game is presented as an ncurses display in a terminal. Its commands are
 input by the user at the keyboard through several key combinations:
 
-To move the current falling block horizontally press the 'a' and 'd' keys.
-The user can also use the left and right arrow keys.
-
 To rotate the current falling block press the 'q' and 'e' keys.
 'q' will rotate counter-clockwise and 'e' will rotate clockwise.
 
-To speed up the falling block the 's' or down arrow key will advance the
-falling block one step. Note that this does *not* reset the fall timer.
+To move the current falling block horizontally press the 'a' and 'd' keys.
+To speed up the falling block the 's' will advance the falling block one step.
+To make the block wall to the bottom, the 'w' key can be used.
 
 To save the next piece for later, press the space bar. If successful, a new
 field will display on screen alerting the user of the current save piece. 
-Press the space bar again to restore the current save piece. The save piece
-will *replace* the next piece. The 'next' piece will not be saved or pushed
-back, a new random next piece will be generated.
-
-The save piece keeps its location even after being saved and restored.
+Saving a piece will move the next piece to the save position, a new next piece
+will be created. 'Restoring' a save piece replaces the current save piece will
+the current next piece.

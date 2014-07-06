@@ -1,2 +1,5 @@
-Game state will be stored locally in "~/.local/share/lw-games/tetris.db", or
+Saving mid-game will write the current necessary variables to the database:
+Level, Name, Score, Difficulty, block spaces, and block colors.
+
+Game state will be stored locally in "~/.local/share/tetris/game.db", or
 optionally specified in the configuration file.

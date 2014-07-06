@@ -1,4 +1,3 @@
 The current version of the game supports:
 
--l switch with a mandatory argument, this controls the name of the output
-	file for the logs.
+-h, help and usage information.

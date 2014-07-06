@@ -44,8 +44,10 @@ static void
 usage (void)
 {
 	extern const char *__progname;
-	fprintf (stderr, "%s-" VERSION " : usage",
-			__progname);
+	fprintf (stderr, "Copyright (C) 2014 James Smith <james@theta.pw>\n"
+		"See the license.txt file included with the release\n\n"
+		"%s-" VERSION " usage:\n\t"
+		"[-h] this help\n", __progname);
 
 	exit (EXIT_FAILURE);
 }
@@ -84,7 +86,7 @@ main (int argc, char **argv)
 	blocks_cleanup (&game);
 
 	fclose (err_tofile);
-	printf ("Thanks for playing \"Falling Blocks Game\"-" VERSION "!\n");
+	printf ("Thanks for playing Blocks-" VERSION "!\n");
 
 	return (EXIT_SUCCESS);
 }
