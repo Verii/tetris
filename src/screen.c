@@ -213,6 +213,9 @@ screen_main (void *vp)
 			cmd = MOVE_RIGHT;
 			break;
 		case 'S':
+			cmd = MOVE_DOWN;
+			break;
+		case 'W':
 			cmd = MOVE_DROP;
 			break;
 		case 'Q':

@@ -391,8 +391,12 @@ blocks_move (struct block_game *pgame, enum block_cmd cmd)
 	if (cmd == MOVE_LEFT || cmd == MOVE_RIGHT) {
 		translate_block (pgame, cmd);
 
-	} else if (cmd == MOVE_DROP) {
+	} else if (cmd == MOVE_DOWN) {
 		drop_block (pgame);
+
+	} else if (cmd == MOVE_DROP) {
+		while (!drop_block (pgame));
+
 
 	} else if (cmd == ROT_LEFT || cmd == ROT_RIGHT) {
 		rotate_block (pgame, cmd);

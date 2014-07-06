@@ -31,6 +31,7 @@ enum block_diff {
 enum block_cmd {
 	MOVE_LEFT,
 	MOVE_RIGHT,
+	MOVE_DOWN,
 	MOVE_DROP,
 	ROT_LEFT,
 	ROT_RIGHT,
