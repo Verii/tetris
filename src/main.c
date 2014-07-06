@@ -29,8 +29,10 @@ redirect_stderr (void)
 
 	struct stat sb;
 	stat (log_file, &sb);
-	if (errno == ENOENT)
+
+	if (errno == ENOENT) {
 		mkdir (log_file, 0777);
+	}
 
 	log_file = realloc (log_file, strlen (log_file)+20);
 	strcat (log_file, "/game.log");

@@ -25,6 +25,11 @@ static void
 create_block (struct block **new_block)
 {
 	static int val = 0;
+
+	if (*new_block != NULL) {
+		log_warn ("Memory Leak. Block exists");
+	}
+
 	struct block *pnb = calloc (1, sizeof *pnb);
 
 	if (pnb == NULL) {
@@ -203,7 +208,7 @@ destroy_lines (struct block_game *pgame)
 			pgame->spaces[k] = pgame->spaces[k-1];
 
 		/* Add new empty row to top of game */
-		pgame->spaces[0] = calloc (BLOCKS_COLUMNS, sizeof (bool));
+		pgame->spaces[0] = calloc (BLOCKS_COLUMNS, 1);
 		if (pgame->spaces[0] == NULL) {
 			log_err ("Out of memory, %lu", BLOCKS_COLUMNS);
 			exit (2);
@@ -325,6 +330,7 @@ blocks_loop (struct block_game *pgame)
 		if (hit) {
 			destroy_block (&pgame->cur);
 			pgame->cur = pgame->next;
+			pgame->next = NULL;
 			create_block (&pgame->next);
 			destroy_lines (pgame);
 		}
@@ -403,11 +409,11 @@ blocks_move (struct block_game *pgame, enum block_cmd cmd)
 
 	} else if (cmd == SAVE_PIECE) {
 		struct block *tmp = pgame->save;
-		pgame->save = pgame->next;
 
-		if (tmp) {
-			pgame->next = tmp;
-		} else {
+		pgame->save = pgame->next;
+		pgame->next = tmp;
+
+		if (pgame->next == NULL) {
 			create_block (&pgame->next);
 		}
 	}
