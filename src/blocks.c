@@ -387,6 +387,8 @@ blocks_init (struct block_game *pgame)
 int
 blocks_move (struct block_game *pgame, enum block_cmd cmd)
 {
+	struct block tmp;
+
 	if (!pgame || !pgame->cur)
 		return -1;
 
@@ -395,38 +397,57 @@ blocks_move (struct block_game *pgame, enum block_cmd cmd)
 	if (pgame->pause)
 		goto draw;
 
-	unwrite_cur_piece (pgame);
+	unwrite_piece (pgame, pgame->cur);
 
 	if (cmd == MOVE_LEFT || cmd == MOVE_RIGHT) {
-		translate_block (pgame, cmd);
+		translate_block (pgame, pgame->cur, cmd);
 
 	} else if (cmd == MOVE_DOWN) {
 		drop_block (pgame);
 
 	} else if (cmd == MOVE_DROP) {
 		while (!drop_block (pgame));
+	}
 
 
-	} else if (cmd == ROT_LEFT || cmd == ROT_RIGHT) {
-		rotate_block (pgame, cmd);
-
-	} else if (cmd == SAVE_PIECE) {
+	/* Swap next and save pieces */
+	else if (cmd == SAVE_PIECE) {
 		struct block *tmp = pgame->save;
 
 		pgame->save = pgame->next;
 		pgame->next = tmp;
 
 		if (pgame->next == NULL) {
-			create_block (&pgame->next);
+			create_block (pgame, &pgame->next);
 		}
 	}
 
-	write_cur_piece (pgame);
+	/* We implement wall kicks */
+	else if (cmd == ROT_LEFT || cmd == ROT_RIGHT) {
 
+		memcpy (&tmp, pgame->cur, sizeof tmp);
+
+		/* Try to rotate the block, if it works commit and quit */
+		if (rotate_block (pgame, &tmp, cmd) > 0)
+			memcpy (pgame->cur, &tmp, sizeof tmp);
+
+		/* Try to move the block */
+		else {
+			if (cmd == ROT_LEFT)
+				translate_block (pgame, &tmp, MOVE_RIGHT);
+			else
+				translate_block (pgame, &tmp, MOVE_LEFT);
+
+			/* Try again to rotate */
+			if (rotate_block (pgame, &tmp, cmd) > 0)
+				memcpy (pgame->cur, &tmp, sizeof tmp);
+		}
+	}
+
+	write_piece (pgame, pgame->cur);
 draw:
 	screen_draw_game (pgame);
 	pthread_mutex_unlock (&pgame->lock);
-
 	return 1;
 }
 
