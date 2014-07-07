@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <sys/stat.h>
@@ -67,6 +68,8 @@ main (int argc, char **argv)
 		usage ();
 
 	redirect_stderr ();
+
+	srand (time (NULL));
 
 	/* Create game context and screen */
 	blocks_init (&game);

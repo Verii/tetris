@@ -3,6 +3,9 @@
 
 #include <stdio.h>
 
+/* Prints messages to stderr of the form:
+ * [TIME/DATE] [ERROR|WARN|INFO|DEBUG] message
+ */
 void debug_log (const char *fmt, ...);
 
 #ifdef DEBUG

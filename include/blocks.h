@@ -31,8 +31,8 @@ enum block_diff {
 enum block_cmd {
 	MOVE_LEFT,
 	MOVE_RIGHT,
-	MOVE_DOWN,
-	MOVE_DROP,
+	MOVE_DOWN,			/* Move down one block */
+	MOVE_DROP,			/* Drop block to bottom of board */
 	ROT_LEFT,
 	ROT_RIGHT,
 	SAVE_PIECE,
@@ -41,24 +41,31 @@ enum block_cmd {
 struct block {
 	enum block_type type;
 	uint16_t color;			/* block color */
-	uint8_t col_off, row_off;
+	uint8_t col_off, row_off;	/* column/row offsets */
 
-	struct point {
-		int x, y;
-	} p[4];
+	struct point {			/* each piece stores a value between */
+		int x, y;		/* -1 and +3, offsets are used to */
+	} p[4];				/* store the actual location */
+					/* Makes rotates much easier */
 };
 
 struct block_game {
-	pthread_mutex_t	lock;
+	/* These variables are written to the database
+	 * when restoring/saving the game state
+	 */
 	uint32_t score;
-	uint32_t nsec;			/* game tick delay in milliseconds */
-	uint16_t lines_destroyed;	/* temp. don't print to screen */
 	uint8_t level;
-	bool loss, pause, quit;
-	uint8_t *spaces[BLOCKS_ROWS];
-	uint8_t *colors[BLOCKS_ROWS];
+	uint16_t lines_destroyed;	/* temp. don't print to screen */
+	uint8_t *spaces[BLOCKS_ROWS];	/* board */
+	uint8_t *colors[BLOCKS_ROWS];	/* 1 to 1 corres. with board */
 	enum block_diff mod;
+
+	uint32_t nsec;			/* game tick delay in milliseconds */
+	bool loss, pause, quit;
+	pthread_mutex_t	lock;
 	struct block *cur, *next, *save;
+
+	struct block_game *opp;		/* pointer to opponenet */
 };
 
 /* Create game state */

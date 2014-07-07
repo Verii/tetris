@@ -213,6 +213,9 @@ db_get_scores (struct db_info *entry, int results)
 	if (db_open (entry) < 0)
 		return NULL;
 
+	if (result <= 0)
+		results = 10;
+
 	TAILQ_INIT (&results_head);
 
 	const char select[] = "SELECT name,level,score,date "
