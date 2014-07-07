@@ -12,7 +12,7 @@ int net_listen (const char *host, const char *port);
 int net_connect (const char *host, const char *port);
 
 /* Get the IP address of the connecting peer, and store it in ip */
-char *net_peer_addr (int fd);
+const char *net_peer_addr (int fd);
 
 /* Send/Recv all data, potentially send/recv'ing multiple packets */
 int net_sendall (int fd, const char *buf, size_t len);

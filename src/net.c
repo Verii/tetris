@@ -3,7 +3,6 @@
  */
 
 #include <errno.h>
-#include <err.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -15,6 +14,7 @@
 #include <netinet/in.h>
 
 #include "net.h"
+#include "debug.h"
 
 /* Establish a TCP listener on a port */
 int
@@ -23,29 +23,29 @@ net_listen (const char *host, const char *port)
 	int status, listener = 0;
 
 	struct addrinfo *ai, *p;
-	struct addrinfo hints = (struct addrinfo ) {
+	struct addrinfo hints = (struct addrinfo) {
 		.ai_family = AF_UNSPEC,
 		.ai_flags = AI_PASSIVE,
 		.ai_socktype = SOCK_STREAM,
 	};
 
-	if ((status = getaddrinfo(host, port, &hints, &ai)) < 0) {
-		warnx ("getaddrinfo: %s", gai_strerror(status));
+	if ((status = getaddrinfo (host, port, &hints, &ai)) < 0) {
+		log_warn ("getaddrinfo: %s", gai_strerror(status));
 		return -1;
 	}
 
 	for (p = ai; p; p = p->ai_next) {
-		listener = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
+		listener = socket (p->ai_family, p->ai_socktype, p->ai_protocol);
 		if (listener < 0) {
 			continue;
 		}
 
 		int sockopt = 1;
-		setsockopt(listener, SOL_SOCKET, SO_REUSEADDR,
+		setsockopt (listener, SOL_SOCKET, SO_REUSEADDR,
 				&sockopt, sizeof sockopt);
 
-		if (bind(listener, p->ai_addr, p->ai_addrlen) < 0) {
-			close(listener);
+		if (bind (listener, p->ai_addr, p->ai_addrlen) < 0) {
+			close (listener);
 			continue;
 		}
 
@@ -53,16 +53,16 @@ net_listen (const char *host, const char *port)
 	}
 
 	if (!p) {
-		warnx ("Failed to bind to %s\n", port);
-		freeaddrinfo(ai);
+		log_warn ("Failed to bind to %s\n", port);
+		freeaddrinfo (ai);
 		return -1;
 	}
 
-	freeaddrinfo(ai);
+	freeaddrinfo (ai);
 
 	errno = 0;
-	if (listen(listener, 10) != 0 || errno) {
-		warn ("listen: ");
+	if (listen (listener, 10) != 0 || errno) {
+		log_warn ("listen: ");
 		return -1;
 	}
 
@@ -97,12 +97,12 @@ net_connect (const char *host, const char *port)
 	}
 
 	if (!p) {
-		warnx ("Failed to connect to host %s on %s\n", host, port);
-		freeaddrinfo(ai);
+		log_warn ("Failed to connect to host %s on %s\n", host, port);
+		freeaddrinfo (ai);
 		return -1;
 	}
 
-	freeaddrinfo(ai);
+	freeaddrinfo (ai);
 
 	return socketfd;
 }
@@ -110,7 +110,7 @@ net_connect (const char *host, const char *port)
 /* Make sure that ip is atleast large enough to hold IPv6 addresses
  * The constant INET6_ADDRSTRLEN is defined in netinet/in.h
  */
-char *
+const char *
 net_peer_addr (int fd)
 {
 	struct sockaddr_storage sa;
@@ -124,22 +124,22 @@ net_peer_addr (int fd)
 	ip = calloc (1, INET6_ADDRSTRLEN);
 
 	if (!ip) {
-		warnx ("realloc: ");
+		log_err ("Out of memory");
 		return NULL;
 	}
 
 	errno = 0;
-	if (getpeername(fd, (struct sockaddr *) &sa, &len) < 0 || errno) {
-		warn ("getpeername: ");
+	if (getpeername (fd, (struct sockaddr *) &sa, &len) < 0 || errno) {
+		log_info ("getpeername: ");
 		return NULL;
 	}
 
 	errno = 0;
-	getnameinfo((const struct sockaddr *) &sa, len,
+	getnameinfo ((const struct sockaddr *) &sa, len,
 			ip, INET6_ADDRSTRLEN, NULL, 0, 0);
 
 	if (errno) {
-		warn ("getnameinfo: ");
+		log_info ("getnameinfo: ");
 	}
 
 	return ip;
@@ -153,7 +153,7 @@ net_sendall (int fd, const char *buf, size_t len)
 
 	n = total = 0;
 	while (total < len) {
-		n = send(fd, buf + total, len - total, 0);
+		n = send (fd, buf + total, len - total, 0);
 		if (n < 0) {
 			break;
 		}
@@ -171,7 +171,7 @@ net_recvall (int fd, char *buf, size_t len)
 
 	n = total = 0;
 	while (total < len) {
-		n = recv(fd, buf + total, len - total, 0);
+		n = recv (fd, buf + total, len - total, 0);
 		/* we quit on error (-1) or when no data remains (0) */
 		if (n < 1) {
 			break;

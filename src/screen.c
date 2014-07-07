@@ -155,11 +155,13 @@ screen_draw_over (struct block_game *pgame, struct db_info *psave)
 	/* Save scores, or save game state */
 	log_info ("Saving game");
 	if (pgame->loss) {
-		if (db_save_score (psave, pgame) > 0)
+		if (db_save_score (psave, pgame) > 0) {
 			debug ("Success");
+		}
 	} else {
-		if (db_save_state (psave, pgame) > 0)
+		if (db_save_state (psave, pgame) > 0) {
 			debug ("Success");
+		}
 		return;
 	}
 

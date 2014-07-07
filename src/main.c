@@ -14,6 +14,7 @@
 #include "blocks.h"
 #include "db.h"
 #include "screen.h"
+#include "net.h"
 
 static FILE *err_tofile;
 
