@@ -15,11 +15,11 @@ the user.
 We then create the user input thread, called screen_loop. This thread accepts
 user input from the keyboard and adjusts the blocks.
 
-blocks_loop is an infinite loop that will sleep for the specified time, and
-then advance the block one space. When the block hits another block it will
-create a new one.
+blocks_loop is an infinite loop that will sleep for the specified time and
+then advance the block one space. When the current block hits another block
+it will create a new one.
 
-blocks_loop and blocks_move both lock the game mutex, to prevent both from
+blocks_loop and blocks_move both lock the game mutex to prevent both from
 modifying the same block concurrently. As such, screen_draw_game will never be
 interrupted, and doesn't itself lock or check for mutex locks.
 
@@ -44,10 +44,10 @@ listens for updates from the server, and applys updates to opponent game data.
 
 
 screen_draw_game(): If an opponent struct exists, screen_draw_game() will
-	draw both the local player information and the opponents.
+	draw both the local player information and the opponents'.
 
-The server relay/local listener thread and the main thread will communicate
+The listener thread and the main thread will communicate
 utilizing UNIX Domain sockets. The block_game struct will store the socketfd.
 
-The server relay/locla listener thread will create its own private socket for
+The listener thread will create its own private socket for
 communication with the server.
