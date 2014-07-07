@@ -175,7 +175,7 @@ update_tick_speed (struct block_game *pgame)
 {
 	/* See tests/level-curve.c */
 	double speed;
-	speed = atan (pgame->level/(double)10) * (pgame->mod+1) +1;
+	speed = atan (pgame->level/(double)5) * (pgame->mod+1) +1;
 	pgame->nsec = (int) ((double)1E9/speed);
 }
 
@@ -226,7 +226,7 @@ destroy_lines (struct block_game *pgame)
 		pgame->lines_destroyed++;
 		pgame->score += pgame->level * (pgame->mod+1);
 
-		if (pgame->lines_destroyed < pgame->level)
+		if (pgame->lines_destroyed < (pgame->level *2 + 5))
 			continue;
 		pgame->lines_destroyed = 0;
 		pgame->level++;
