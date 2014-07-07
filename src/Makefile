@@ -5,7 +5,7 @@ SRC = main.c blocks.c screen.c debug.c db.c net.c client.c
 OBJS = ${SRC:.c=.o}
 
 INCS = -I../include
-CPPFLAGS = -DVERSION=\"${VERSION}\" ${INCS}
+CPPFLAGS = -D_GNU_SOURCE -DVERSION=\"${VERSION}\" ${INCS}
 
 DEBUG = -g -O0 -DDEBUG
 CFLAGS = -std=gnu99 -Wall -Wextra -Werror -Os ${DEBUG}

@@ -1,5 +1,3 @@
-#define _GNU_SOURCE
-
 #include <ctype.h>
 #include <ncurses.h>
 #include <string.h>
