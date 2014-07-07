@@ -1,0 +1,53 @@
+* Tentative
+
+main.c will first redirect stderr to the log file.
+main.c will then initialize the struct block_game data.
+
+blocks_init creates the initial blocks, sets an initial difficulty, etc.
+screen_init creates the ncurses context
+
+screen_draw_menu then gets input from user, taking their username, difficulty,
+multiplayer status.
+
+screen_draw_game is called to initally draw the screen, to reduce the delay for
+the user.
+
+We then create the user input thread, called screen_loop. This thread accepts
+user input from the keyboard and adjusts the blocks.
+
+blocks_loop is an infinite loop that will sleep for the specified time, and
+then advance the block one space. When the block hits another block it will
+create a new one.
+
+blocks_loop and blocks_move both lock the game mutex, to prevent both from
+modifying the same block concurrently. As such, screen_draw_game will never be
+interrupted, and doesn't itself lock or check for mutex locks.
+
+When block_loop returns the game is over, either because a block was unable to
+advance a space (the board filled up), or because the user told the game to
+quit.
+
+screen_draw_over will draw the game over screen. Saves the game state, or the
+game score. Then it will draw the highscores.
+
+screen_cleanup frees the ncurses context
+blocks_cleanup frees the block_game data
+
+
+Multiplayer changes:
+screen_draw_menu(): If the user wants to play multiplayer, a new thread
+is created to connect to the server.
+
+This thread is an infinite loop that waits until it gets input from
+the blocks_loop() function, it relays this information to the server. It also
+listens for updates from the server, and applys updates to opponent game data.
+
+
+screen_draw_game(): If an opponent struct exists, screen_draw_game() will
+	draw both the local player information and the opponents.
+
+The server relay/local listener thread and the main thread will communicate
+utilizing UNIX Domain sockets. The block_game struct will store the socketfd.
+
+The server relay/locla listener thread will create its own private socket for
+communication with the server.
