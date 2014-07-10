@@ -60,12 +60,12 @@ struct block_game {
 	uint8_t *colors[BLOCKS_ROWS];	/* 1 to 1 corres. with board */
 	enum block_diff mod;
 
+	uint16_t block_count[7];
+	uint16_t color_val;
 	uint32_t nsec;			/* game tick delay in milliseconds */
 	bool loss, pause, quit;
 	pthread_mutex_t	lock;
 	struct block *cur, *next, *save;
-
-	struct block_game *opp;		/* pointer to opponenet */
 };
 
 /* Create game state */

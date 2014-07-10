@@ -467,8 +467,5 @@ blocks_cleanup (struct block_game *pgame)
 	destroy_block (&pgame->next);
 	destroy_block (&pgame->save);
 
-	/* Remove opponent information */
-	blocks_cleanup (pgame->opp);
-
 	return 1;
 }
