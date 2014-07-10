@@ -1,5 +1,3 @@
-#define _GNU_SOURCE
-
 #include <ctype.h>
 #include <ncurses.h>
 #include <string.h>
@@ -10,6 +8,10 @@
 #include "db.h"
 #include "debug.h"
 #include "screen.h"
+
+#ifndef DB_FILE
+#define DB_FILE "/saves"
+#endif
 
 static const char colors[] = { COLOR_WHITE, COLOR_RED, COLOR_GREEN,
 		COLOR_YELLOW, COLOR_BLUE, COLOR_MAGENTA, COLOR_CYAN };
@@ -44,8 +46,8 @@ screen_draw_menu (struct block_game *pgame, struct db_info *psave)
 	memset (psave, 0, sizeof *psave);
 	strncpy (psave->id, "Lorem Ipsum", sizeof psave->id);
 
-	ret = asprintf (&psave->file_loc, "%s/.local/share/tetris/game.db",
-					getenv ("HOME"));
+	ret = asprintf (&psave->file_loc, "%s/.local/share/tetris%s",
+					getenv ("HOME"), DB_FILE);
 
 	if (ret < 0) {
 		exit (2);
@@ -155,11 +157,13 @@ screen_draw_over (struct block_game *pgame, struct db_info *psave)
 	/* Save scores, or save game state */
 	log_info ("Saving game");
 	if (pgame->loss) {
-		if (db_save_score (psave, pgame) > 0)
+		if (db_save_score (psave, pgame) > 0) {
 			debug ("Success");
+		}
 	} else {
-		if (db_save_state (psave, pgame) > 0)
+		if (db_save_state (psave, pgame) > 0) {
 			debug ("Success");
+		}
 		return;
 	}
 

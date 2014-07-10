@@ -10,8 +10,8 @@
 
 struct db_info {
 	sqlite3 *db;		/* internal handler */
-	char *file_loc;		/* database location */
-	char id[16];		/* unique ID of a game save */
+	char *file_loc;		/* database location on filesystem */
+	char id[16];		/* ID(username?) of a game save */
 };
 
 /* Linked list of top scores */
@@ -24,17 +24,19 @@ struct db_results {
 	TAILQ_ENTRY (db_results) entries;
 };
 
+/* These functions automatically open the database specified in db_info,
+ * they do their thing and then cleanup after themselves
+ */
+
 /* Saves game state to disk. Can be restored at a later time */
 int db_save_state (struct db_info *, struct block_game *);
 int db_resume_state (struct db_info *, struct block_game *);
 
-/* Handles creation of database, creation of tables, and adding to the
- * database. It will close the connection, and cleanup.
- */
+/* Save game score to disk when the player loses a game */
 int db_save_score (struct db_info *, struct block_game *);
 
-/* Returns a linked list to @int results in the database */
-struct db_results *db_get_scores (struct db_info *, int);
+/* Returns a linked list to (n) highscores in the database */
+struct db_results *db_get_scores (struct db_info *, int n);
 void db_clean_scores (void);
 
 #endif /* DB_H_ */

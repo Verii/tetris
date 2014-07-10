@@ -1,5 +1,3 @@
-#define _GNU_SOURCE
-
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -214,6 +212,9 @@ db_get_scores (struct db_info *entry, int results)
 
 	if (db_open (entry) < 0)
 		return NULL;
+
+	if (results <= 0)
+		results = 10;
 
 	TAILQ_INIT (&results_head);
 

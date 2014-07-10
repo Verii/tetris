@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <time.h>
 #include <unistd.h>
 
 #include "blocks.h"
@@ -355,9 +354,8 @@ blocks_init (struct block_game *pgame)
 		return -1;
 
 	log_info ("Initializing game data");
-	srand (time (NULL));
-
 	memset (pgame, 0, sizeof *pgame);
+
 	pgame->level = 1;
 	pgame->mod = DIFF_NORMAL;
 	pgame->nsec = 1E9 -1;
@@ -468,6 +466,9 @@ blocks_cleanup (struct block_game *pgame)
 	destroy_block (&pgame->cur);
 	destroy_block (&pgame->next);
 	destroy_block (&pgame->save);
+
+	/* Remove opponent information */
+	blocks_cleanup (pgame->opp);
 
 	return 1;
 }
