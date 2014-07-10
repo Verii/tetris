@@ -13,17 +13,24 @@
 #include "blocks.h"
 #include "db.h"
 #include "screen.h"
-#include "net.h"
+
+#ifndef LOG_FILE
+#define LOG_FILE "/logs"
+#endif
 
 static FILE *err_tofile;
+
+static pthread_t screen_loop;
+static struct block_game game;
+static struct db_info save;
+
+static char log_file[256];
 
 static void
 redirect_stderr (void)
 {
-	char *log_file;
-	if (asprintf(&log_file, "%s/.local/share/tetris", getenv("HOME")) < 0) {
-		exit (2);
-	}
+	snprintf (log_file, sizeof log_file, "%s/.local/share/tetris",
+			getenv("HOME"));
 
 	errno = 0;
 
@@ -34,13 +41,10 @@ redirect_stderr (void)
 		mkdir (log_file, 0777);
 	}
 
-	log_file = realloc (log_file, strlen (log_file)+20);
-	strcat (log_file, "/game.log");
+	strcat (log_file, LOG_FILE);
 
 	printf ("Redirecting stderr to %s.\n", log_file);
-
 	err_tofile = freopen (log_file, "w", stderr);
-	free (log_file);
 }
 
 static void
@@ -55,13 +59,20 @@ usage (void)
 	exit (EXIT_FAILURE);
 }
 
+static void
+cleanup (void)
+{
+	screen_cleanup ();
+	blocks_cleanup (&game);
+
+	fclose (err_tofile);
+	printf ("Thanks for playing Blocks-" VERSION "!\n");
+}
+
 int
 main (int argc, char **argv)
 {
-	pthread_t screen_loop;
-	struct block_game game;
-	struct db_info save;
-
+	atexit (cleanup);
 	setlocale (LC_ALL, "");
 
 	if (argc > 1 && argv[1][0] == '-' && argv[1][1] == 'h')
@@ -87,11 +98,6 @@ main (int argc, char **argv)
 
 	/* Print scores, tell user they're a loser, etc. */
 	screen_draw_over (&game, &save);
-	screen_cleanup ();
-	blocks_cleanup (&game);
-
-	fclose (err_tofile);
-	printf ("Thanks for playing Blocks-" VERSION "!\n");
 
 	return (EXIT_SUCCESS);
 }

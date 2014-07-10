@@ -6,7 +6,7 @@
 #include "debug.h"
 
 /* Prints a log message of the form:
- * "[time] [ERROR|WARN|INFO] message"
+ * "[time] [ERR|WARN|INFO] message"
  */
 void
 debug_log (const char *fmt, ...)
@@ -16,12 +16,15 @@ debug_log (const char *fmt, ...)
 	time_t s = time (NULL);
 	char date[100];
 
-	strftime (date, sizeof date, "%F %H:%M", localtime(&s));
+	strftime (date, sizeof date, "[%F %H:%M]", localtime(&s));
 
 	va_start (ap, fmt);
 	vasprintf (&msg, fmt, ap);
 	va_end (ap);
 
-	fprintf (stderr, "[%s] %s\n", date, msg);
+	if (msg[strlen(msg)-1] == '\n')
+		msg[strlen(msg)-1] = '\0';
+
+	fprintf (stderr, "%s %s\n", date, msg);
 	free (msg);
 }

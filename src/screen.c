@@ -9,6 +9,10 @@
 #include "debug.h"
 #include "screen.h"
 
+#ifndef DB_FILE
+#define DB_FILE "/saves"
+#endif
+
 static const char colors[] = { COLOR_WHITE, COLOR_RED, COLOR_GREEN,
 		COLOR_YELLOW, COLOR_BLUE, COLOR_MAGENTA, COLOR_CYAN };
 
@@ -42,8 +46,8 @@ screen_draw_menu (struct block_game *pgame, struct db_info *psave)
 	memset (psave, 0, sizeof *psave);
 	strncpy (psave->id, "Lorem Ipsum", sizeof psave->id);
 
-	ret = asprintf (&psave->file_loc, "%s/.local/share/tetris/game.db",
-					getenv ("HOME"));
+	ret = asprintf (&psave->file_loc, "%s/.local/share/tetris%s",
+					getenv ("HOME"), DB_FILE);
 
 	if (ret < 0) {
 		exit (2);

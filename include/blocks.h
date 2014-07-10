@@ -65,7 +65,6 @@ struct block_game {
 	pthread_mutex_t	lock;
 	struct block *cur, *next, *save;
 
-	int socketfd;			/* communicate with listener thread */
 	struct block_game *opp;		/* pointer to opponenet */
 };
 
