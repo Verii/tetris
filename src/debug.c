@@ -11,22 +11,17 @@
 void
 debug_log (const char *fmt, ...)
 {
+	char *msg;
 	va_list ap;
-	time_t t = time (NULL);
-	char *msg, *date;
+	time_t s = time (NULL);
+	char date[100];
 
-	date = malloc (26);
-	if (date) {
-		ctime_r (&t, date);
-		date[strlen (date)-1] = '\0';
-		fprintf (stderr, "[%s] ", date);
-		free (date);
-	}
+	strftime (date, sizeof date, "%F %H:%M", localtime(&s));
 
 	va_start (ap, fmt);
 	vasprintf (&msg, fmt, ap);
 	va_end (ap);
 
-	fprintf (stderr, "%s\n", msg);
+	fprintf (stderr, "[%s] %s\n", date, msg);
 	free (msg);
 }
