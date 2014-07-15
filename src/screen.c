@@ -13,6 +13,8 @@
 #define DB_FILE "/saves"
 #endif
 
+#define BLOCK_CHAR "0"
+
 static const char colors[] = { COLOR_WHITE, COLOR_RED, COLOR_GREEN,
 		COLOR_YELLOW, COLOR_BLUE, COLOR_MAGENTA, COLOR_CYAN };
 
@@ -21,16 +23,17 @@ screen_init (void)
 {
 	log_info ("Initializing ncurses context");
 	initscr ();
+	start_color ();
+
 	cbreak ();
 	noecho ();
 	nonl ();
 	intrflush (stdscr, FALSE);
 	keypad (stdscr, TRUE);
-	start_color ();
 	curs_set (0);
 
 	for (size_t i = 0; i < LEN(colors); i++)
-		init_pair (i, colors[i], COLOR_BLACK);
+		init_pair (i+1, colors[i], COLOR_BLACK);
 }
 
 /* Ask user for difficulty and their name */
@@ -63,8 +66,8 @@ void
 screen_draw_game (struct block_game *pgame)
 {
 	attr_t text, border;
-	text = COLOR_PAIR(0);
-	border = A_BOLD | COLOR_PAIR(4);
+	text = COLOR_PAIR(1);
+	border = A_BOLD | COLOR_PAIR(5);
 
 	attrset (text);
 	box (stdscr, 0, 0);
@@ -102,12 +105,11 @@ screen_draw_game (struct block_game *pgame)
 		move ((i-2)+game_y_offset, game_x_offset+1);
 
 		for (int j = 0; j < BLOCKS_COLUMNS; j++) {
-			attrset (0);
+			attrset (text);
 			if (pgame->spaces[i][j]) {
 				attrset (COLOR_PAIR(pgame->colors[i][j]
-						% sizeof colors));
-				attron (A_BOLD);
-				printw ("\u00A4");
+						% sizeof colors +1) | A_BOLD);
+				printw (BLOCK_CHAR);
 			} else if (j % 2)
 				printw (".");
 			else
@@ -120,24 +122,25 @@ screen_draw_game (struct block_game *pgame)
 		y = pgame->next->p[i].y;
 		x = pgame->next->p[i].x;
 
-		attrset (COLOR_PAIR(pgame->next->type % sizeof colors));
-		attron (A_BOLD);
-		mvprintw (y+8, x+4, "\u00A4");
+		attrset (COLOR_PAIR(pgame->next->type
+				%sizeof colors +1) | A_BOLD);
+		mvprintw (y+8, x+4, BLOCK_CHAR);
 
 		if (pgame->save) {
 			y = pgame->save->p[i].y;
 			x = pgame->save->p[i].x;
 
-			attrset (COLOR_PAIR(pgame->save->type % sizeof colors));
-			attron (A_BOLD);
-			mvprintw (y+8, x+10, "\u00A4");
+			attrset (COLOR_PAIR(pgame->save->type
+					%sizeof colors +1) | A_BOLD);
+
+			mvprintw (y+8, x+10, BLOCK_CHAR);
 		}
 	}
 
 	if (pgame->pause) {
 		attrset (text | A_BOLD);
 		mvprintw (((BLOCKS_ROWS-2)/2)-2 +game_y_offset,
-			game_x_offset+3, "PAUSED");
+			game_x_offset+2, "PAUSED");
 	}
 
 	refresh ();
