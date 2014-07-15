@@ -126,7 +126,7 @@ rotate_block (struct block_game *pgame, struct block *block, enum block_cmd cmd)
 
 		if (bounds_x < 0 || bounds_x >= BLOCKS_COLUMNS ||
 		    bounds_y < 0 || bounds_y >= BLOCKS_ROWS ||
-		    pgame->spaces[bounds_y][bounds_x])
+		    blocks_get_yx(pgame, bounds_y, bounds_x))
 			return -1;
 	}
 
@@ -160,7 +160,7 @@ translate_block (struct block_game *pg, struct block *block, enum block_cmd cmd)
 		/* Check out of bounds before we write it */
 		if (bounds_x < 0 || bounds_x >= BLOCKS_COLUMNS ||
 		    bounds_y < 0 || bounds_y >= BLOCKS_ROWS ||
-		    pgame->spaces[bounds_y][bounds_x])
+		    blocks_get_yx(pgame, bounds_y, bounds_x))
 			return -1;
 	}
 
@@ -186,7 +186,7 @@ destroy_lines (struct block_game *pgame)
 	/* Check first two rows for any block */
 	for (int i = 0; i < 2; i++)
 		for (int j = 0; j < BLOCKS_COLUMNS; j++)
-			if (pgame->spaces[i][j])
+			if (blocks_get_yx(pgame, i, j))
 				pgame->loss = true;
 
 	/* Check each row for a full line of blocks */
@@ -194,27 +194,19 @@ destroy_lines (struct block_game *pgame)
 
 		int j = 0;
 		for (; j < BLOCKS_COLUMNS; j++)
-			if (pgame->spaces[i][j] == false)
+			if (!blocks_get_yx(pgame, i, j))
 				break;
 		if (j != BLOCKS_COLUMNS)
 			continue;
 
 		debug ("Removed line %2d", i+1);
+		pgame->spaces[i] = 0;
 
-		/* Full line found */
-		free (pgame->spaces[i]);
 		destroyed++;
 
 		/* Move everything down */
 		for (int k = i; k > 0; k--)
 			pgame->spaces[k] = pgame->spaces[k-1];
-
-		/* Add new empty row to top of game */
-		pgame->spaces[0] = calloc (BLOCKS_COLUMNS, 1);
-		if (pgame->spaces[0] == NULL) {
-			log_err ("Out of memory, %lu", BLOCKS_COLUMNS);
-			exit (2);
-		}
 
 		i++; // recheck this one
 	}
@@ -247,7 +239,7 @@ unwrite_piece (struct block_game *pgame, struct block *block)
 		y = block->row_off + block->p[i].y;
 		x = block->col_off + block->p[i].x;
 
-		pgame->spaces[y][x] = 0;
+		pgame->spaces[y] &= ~(1 << x);
 		pgame->colors[y][x] = 0;
 	}
 }
@@ -270,7 +262,7 @@ write_piece (struct block_game *pgame, struct block *block)
 	}
 
 	for (size_t i = 0; i < LEN(pgame->cur->p); i++) {
-		pgame->spaces[py[i]][px[i]] = 1;
+		pgame->spaces[py[i]] |= (1 << px[i]);
 		pgame->colors[py[i]][px[i]] = block->color;
 	}
 }
@@ -290,7 +282,7 @@ drop_block (struct block_game *pgame)
 		bounds_x = pgame->cur->p[i].x + pgame->cur->col_off;
 
 		if (bounds_y >= BLOCKS_ROWS ||
-		    pgame->spaces[bounds_y][bounds_x])
+		    blocks_get_yx (pgame, bounds_y, bounds_x))
 			return true;
 	}
 
@@ -364,12 +356,6 @@ blocks_init (struct block_game *pgame)
 	create_block (pgame, &pgame->next);
 
 	for (int i = 0; i < BLOCKS_ROWS; i++) {
-		pgame->spaces[i] = calloc (BLOCKS_COLUMNS, 1);
-		if (!pgame->spaces[i]) {
-			log_err ("Out of memory, %lu", BLOCKS_COLUMNS);
-			exit (2);
-		}
-
 		pgame->colors[i] = calloc (BLOCKS_COLUMNS, 1);
 		if (!pgame->colors[i]) {
 			log_err ("Out of memory, %lu", BLOCKS_COLUMNS);
@@ -459,7 +445,6 @@ blocks_cleanup (struct block_game *pgame)
 	pthread_mutex_destroy (&pgame->lock);
 
 	for (int i = 0; i < BLOCKS_ROWS; i++) {
-		free (pgame->spaces[i]);
 		free (pgame->colors[i]);
 	}
 

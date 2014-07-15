@@ -106,7 +106,7 @@ screen_draw_game (struct block_game *pgame)
 
 		for (int j = 0; j < BLOCKS_COLUMNS; j++) {
 			attrset (text);
-			if (pgame->spaces[i][j]) {
+			if (blocks_get_yx (pgame, i, j)) {
 				attrset (COLOR_PAIR(pgame->colors[i][j]
 						% sizeof colors +1) | A_BOLD);
 				printw (BLOCK_CHAR);
@@ -177,7 +177,7 @@ screen_draw_over (struct block_game *pgame, struct db_info *psave)
 	if (!res)
 		return;
 
-	mvprintw (1, 1, "Local Leaderboards");
+	mvprintw (1, 1, "Local Leaderboard");
 	mvprintw (2, 3, "Rank\tName\t\tLevel\tScore\tDate");
 	while (res) {
 		count++;

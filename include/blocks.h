@@ -56,7 +56,7 @@ struct block_game {
 	uint32_t score;
 	uint8_t level;
 	uint16_t lines_destroyed;	/* temp. don't print to screen */
-	uint8_t *spaces[BLOCKS_ROWS];	/* board */
+	uint8_t spaces[BLOCKS_ROWS];	/* board */
 	uint8_t *colors[BLOCKS_ROWS];	/* 1 to 1 corres. with board */
 	enum block_diff mod;
 
@@ -67,6 +67,8 @@ struct block_game {
 	pthread_mutex_t	lock;
 	struct block *cur, *next, *save;
 };
+
+#define blocks_get_yx(p, y, x) (p->spaces[y] & (1 << x))
 
 /* Create game state */
 int blocks_init (struct block_game *);

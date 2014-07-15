@@ -6,10 +6,10 @@
 #include "debug.h"
 #include "blocks.h"
 
-static const char create_scores[] = "CREATE TABLE Scores (name TEXT, level INT, "
-		"score INT, date INT);";
+static const char create_scores[] = "CREATE TABLE Scores (name TEXT,"
+		"level INT, score INT, date INT);";
 
-static const char create_state[] = "CREATE TABLE State (name TEXT, score INT, "
+static const char create_state[] = "CREATE TABLE State (name TEXT, score INT,"
 		"lines INT, level INT, diff INT, date INT, spaces BLOB);";
 
 static int
@@ -81,7 +81,6 @@ db_save_score (struct db_info *entry, struct block_game *pgame)
 int
 db_save_state (struct db_info *entry, struct block_game *pgame)
 {
-	const int data_len = BLOCKS_COLUMNS * BLOCKS_ROWS;
 	sqlite3_stmt *stmt;
 	char *insert;
 	int ret;
@@ -115,22 +114,9 @@ db_save_state (struct db_info *entry, struct block_game *pgame)
 
 	/* Add binary blobs to INSERT statement */
 	debug ("Saving game spaces");
-	char *data = malloc (data_len);
-	if (data == NULL) {
-		log_err ("Out of memory");
-		sqlite3_finalize (stmt);
-		db_close (entry);
-		return -1;
-	}
-
-	/* We can't do a memcpy because pgame->spaces is an array of pointers
-	 * to memory
-	 */
-	for (int i = 0; i < data_len; i++)
-		data[i] =
-		pgame->spaces[i/BLOCKS_COLUMNS][i%BLOCKS_COLUMNS];
-
-	sqlite3_bind_blob (stmt, 1, data, data_len, free);
+	unsigned char data[BLOCKS_ROWS-2];
+	memcpy (&data[0], &pgame->spaces[2], BLOCKS_ROWS-2);
+	sqlite3_bind_blob (stmt, 1, data, sizeof data, SQLITE_STATIC);
 
 	/* Commit, and cleanup */
 	sqlite3_step (stmt);
@@ -146,7 +132,6 @@ db_resume_state (struct db_info *entry, struct block_game *pgame)
 	sqlite3_stmt *stmt;
 
 	log_info ("Trying to restore saved game");
-
 	if (db_open (entry) < 0)
 		return -1;
 
@@ -173,18 +158,11 @@ db_resume_state (struct db_info *entry, struct block_game *pgame)
 	debug ("Restoring game spaces and colors");
 
 	const char *blob = sqlite3_column_blob (stmt, 6);
-	int blob_len = sqlite3_column_bytes (stmt, 6);
+	memcpy (&pgame->spaces[2], &blob[0], BLOCKS_ROWS-2);
 
-	if (blob_len == BLOCKS_COLUMNS * BLOCKS_ROWS) {
-		for (int i = 0; i < blob_len; i++) {
-			int y, x;
-			y = i / BLOCKS_COLUMNS;
-			x = i % BLOCKS_COLUMNS;
-
-			pgame->spaces[y][x] = blob[i];
-			pgame->colors[y][x] = (blob[i] * rand ());
-		}
-	}
+	for (int i = 0; i < BLOCKS_ROWS; i++)
+		for (int j = 0; j < BLOCKS_COLUMNS; j++)
+			pgame->colors[i][j] = rand();
 
 	sqlite3_finalize (stmt);
 
