@@ -159,16 +159,11 @@ screen_draw_over (struct block_game *pgame, struct db_info *psave)
 
 	/* Save scores, or save game state */
 	log_info ("Saving game");
-	if (pgame->loss) {
-		if (db_save_score (psave, pgame) > 0) {
-			debug ("Success");
-		}
-	} else {
-		if (db_save_state (psave, pgame) > 0) {
-			debug ("Success");
-		}
-		return;
-	}
+	if (pgame->loss)
+		db_save_score (psave, pgame);
+	else
+		db_save_state (psave, pgame);
+
 
 	/* Print score board */
 	int count = 0;
@@ -187,11 +182,11 @@ screen_draw_over (struct block_game *pgame, struct db_info *psave)
 		res = res->entries.tqe_next;
 	}
 
-	db_clean_scores ();
-	free (psave->file_loc);
-
 	mvprintw (LINES-2, 1, "Press F1 to quit.");
 	refresh ();
+
+	db_clean_scores ();
+	free (psave->file_loc);
 
 	while (getch() != KEY_F(1));
 }

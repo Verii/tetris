@@ -56,6 +56,9 @@ db_save_score (struct db_info *entry, struct block_game *pgame)
 	sqlite3_step (stmt);
 	sqlite3_finalize (stmt);
 
+	if (!entry->id || pgame->level < 2 || pgame->score == 0)
+		goto done;
+
 	ret = asprintf (&insert,
 		"INSERT INTO Scores (name, level, score, date) "
 		"VALUES ( \"%s\", %d, %d, %lu );",
@@ -73,6 +76,7 @@ db_save_score (struct db_info *entry, struct block_game *pgame)
 	sqlite3_step (stmt);
 	sqlite3_finalize (stmt);
 
+done:
 	db_close (entry);
 
 	return 1;
