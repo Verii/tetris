@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 /* Prints messages to stderr of the form:
- * [TIME/DATE] [ERROR|WARN|INFO|DEBUG] message
+ * [TIME/DATE] message
  */
 void debug_log (const char *fmt, ...);
 
@@ -20,14 +20,10 @@ void debug_log (const char *fmt, ...);
 	fflush (NULL); \
 	} while(0)
 
-#define log_warn(M, ...) do { \
-	debug_log("[WARN] " M " (%s:%d)", \
-		##__VA_ARGS__, __FILE__, __LINE__); \
-	} while(0)
+#define log_warn(M, ...) debug_log("[WARN] " M " (%s:%d)", ##__VA_ARGS__, \
+		__FILE__, __LINE__)
 
-#define log_info(M, ...) do { \
-	debug_log("[INFO] " M " (%s:%d)", \
-		##__VA_ARGS__, __FILE__, __LINE__); \
-	} while(0)
+#define log_info(M, ...) debug_log("[INFO] " M " (%s:%d)", ##__VA_ARGS__, \
+		__FILE__, __LINE__)
 
 #endif	/* DEBUG_H_ */
