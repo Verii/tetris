@@ -7,8 +7,8 @@
 
 #define PI 3.141592653589L
 
-#define BLOCKS_ROWS 22			/* 2 hidden rows above game */
-#define BLOCKS_COLUMNS 10
+#define BLOCKS_ROWS 18			/* 2 hidden rows above game */
+#define BLOCKS_COLUMNS 8
 #define LEN(x) ((sizeof(x))/(sizeof(*x)))
 
 enum block_type {
