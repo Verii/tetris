@@ -152,7 +152,7 @@ screen_draw_over (struct block_game *pgame, struct db_info *psave)
 {
 	clear ();
 
-	attrset (0);
+	attrset (COLOR_PAIR(1));
 	box (stdscr, 0, 0);
 
 	/* TODO Loser screen */
@@ -182,7 +182,7 @@ screen_draw_over (struct block_game *pgame, struct db_info *psave)
 	while (res) {
 		count++;
 		char *date = ctime (&res->date);
-		mvprintw (count+2, 4, "%2d.\t%-16s%5d\t%5d\t%.*s", count,
+		mvprintw (count+2, 4, "%2d.\t%-16s%-5d\t%-5d\t%.*s", count,
 			res->id, res->level, res->score, strlen (date)-1, date);
 		res = res->entries.tqe_next;
 	}
