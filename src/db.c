@@ -10,8 +10,7 @@ static const char create_scores[] = "CREATE TABLE Scores (name TEXT, level INT, 
 		"score INT, date INT);";
 
 static const char create_state[] = "CREATE TABLE State (name TEXT, score INT, "
-		"lines INT, level INT, diff INT, date INT, spaces BLOB, "
-		"colors BLOB);";
+		"lines INT, level INT, diff INT, date INT, spaces BLOB);";
 
 static int
 db_open (struct db_info *entry)
@@ -82,6 +81,7 @@ db_save_score (struct db_info *entry, struct block_game *pgame)
 int
 db_save_state (struct db_info *entry, struct block_game *pgame)
 {
+	const int data_len = BLOCKS_COLUMNS * BLOCKS_ROWS;
 	sqlite3_stmt *stmt;
 	char *insert;
 	int ret;
@@ -97,10 +97,10 @@ db_save_state (struct db_info *entry, struct block_game *pgame)
 	sqlite3_step (stmt);
 	sqlite3_finalize (stmt);
 
-	/* name, score, lines, level, diff, date, spaces, colors */
+	/* name, score, lines, level, diff, date, spaces */
 	ret = asprintf (&insert,
 		"INSERT INTO State "
-		"VALUES (\"%s\", %d, %d, %d, %d, %lu, ?, ?);",
+		"VALUES (\"%s\", %d, %d, %d, %d, %lu, ?);",
 		entry->id, pgame->score, pgame->lines_destroyed,
 		pgame->level, pgame->mod, (uint64_t) time (NULL));
 
@@ -115,32 +115,22 @@ db_save_state (struct db_info *entry, struct block_game *pgame)
 
 	/* Add binary blobs to INSERT statement */
 	debug ("Saving game spaces");
-	char *data = malloc (BLOCKS_COLUMNS * BLOCKS_ROWS);
+	char *data = malloc (data_len);
 	if (data == NULL) {
 		log_err ("Out of memory");
 		sqlite3_finalize (stmt);
 		db_close (entry);
 		return -1;
 	}
-	for (int i = 0; i < BLOCKS_ROWS * BLOCKS_COLUMNS; i++)
+
+	/* We can't do a memcpy because pgame->spaces is an array of pointers
+	 * to memory
+	 */
+	for (int i = 0; i < data_len; i++)
 		data[i] =
 		pgame->spaces[i/BLOCKS_COLUMNS][i%BLOCKS_COLUMNS];
 
-	sqlite3_bind_blob (stmt, 1, data, 220, free);
-
-	debug ("Saving game colors");
-	data = malloc (BLOCKS_COLUMNS * BLOCKS_ROWS);
-	if (data == NULL) {
-		log_err ("Out of memory");
-		sqlite3_finalize (stmt);
-		db_close (entry);
-		return -1;
-	}
-
-	for (int i = 0; i < BLOCKS_ROWS * BLOCKS_COLUMNS; i++)
-		data[i] =
-		pgame->colors[i/BLOCKS_COLUMNS][i%BLOCKS_COLUMNS];
-	sqlite3_bind_blob (stmt, 2, data, 220, free);
+	sqlite3_bind_blob (stmt, 1, data, data_len, free);
 
 	/* Commit, and cleanup */
 	sqlite3_step (stmt);
@@ -180,15 +170,21 @@ db_resume_state (struct db_info *entry, struct block_game *pgame)
 	pgame->level = sqlite3_column_int (stmt, 3);
 	pgame->mod = sqlite3_column_int (stmt, 4);
 
-	debug ("Restoring game spaces");
-	const char *blob = sqlite3_column_blob (stmt, 6);
-	for (int i = 0; i < BLOCKS_COLUMNS * BLOCKS_ROWS; i++)
-		pgame->spaces[i/BLOCKS_COLUMNS][i%BLOCKS_COLUMNS] = blob[i];
+	debug ("Restoring game spaces and colors");
 
-	debug ("Restoring game colors");
-	blob = sqlite3_column_blob (stmt, 7);
-	for (int i = 0; i < BLOCKS_COLUMNS * BLOCKS_ROWS; i++)
-		pgame->colors[i/BLOCKS_COLUMNS][i%BLOCKS_COLUMNS] = blob[i];
+	const char *blob = sqlite3_column_blob (stmt, 6);
+	int blob_len = sqlite3_column_bytes (stmt, 6);
+
+	if (blob_len == BLOCKS_COLUMNS * BLOCKS_ROWS) {
+		for (int i = 0; i < blob_len; i++) {
+			int y, x;
+			y = i / BLOCKS_COLUMNS;
+			x = i % BLOCKS_COLUMNS;
+
+			pgame->spaces[y][x] = blob[i];
+			pgame->colors[y][x] = (blob[i] * rand ());
+		}
+	}
 
 	sqlite3_finalize (stmt);
 
