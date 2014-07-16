@@ -6,6 +6,6 @@ first read docs/flow-control. It will atleast outline what happens. src/main.c
 is also a good place to start.
 
 ##License
-Read the license.txt file.
+Read the LICENSE file.
 
 ![screenshot](assets/screenshot.png "falling blocks game")
