@@ -151,7 +151,7 @@ db_resume_state (struct db_info *entry, struct block_game *pgame)
 	sqlite3_prepare_v2 (entry->db, select_state,
 			sizeof select_state, &stmt, NULL);
 
-	if (sqlite3_step (stmt == SQLITE_ROW)) {
+	if (sqlite3_step (stmt) == SQLITE_ROW) {
 		strncpy (entry->id, (const char *)
 			sqlite3_column_text (stmt, 0), sizeof entry->id);
 
