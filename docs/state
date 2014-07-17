@@ -1,5 +1,8 @@
-Saving mid-game will write the current necessary variables to the database:
-Level, Name, Score, Difficulty, block spaces, and block colors.
+Saving mid-game will write the following necessary variables to the database:
+level, name, score, difficulty and block spaces.
 
-Game state will be stored locally in "~/.local/share/tetris/game.db", or
-optionally specified in the configuration file.
+The game board is currently 8x16 (COLUMNS, ROWS), plus two ROWS above the game
+that the player doesn't interact with. Each ROW is stored as a bit field in a
+single byte. Thus the entire board state can fit into 16 bytes.
+
+Game state will be stored locally in "~/.local/share/tetris/saves".

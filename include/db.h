@@ -25,7 +25,7 @@ struct db_results {
 };
 
 /* These functions automatically open the database specified in db_info,
- * they do their thing and then cleanup after themselves
+ * they do their thing and then cleanup after themselves.
  */
 
 /* Saves game state to disk. Can be restored at a later time */
@@ -37,6 +37,9 @@ int db_save_score (struct db_info *, struct block_game *);
 
 /* Returns a linked list to (n) highscores in the database */
 struct db_results *db_get_scores (struct db_info *, int n);
-void db_clean_scores (void);
+
+/* Cleanup memory */
+#define db_clean_scores() while (results_head.tqh_first) { \
+	TAILQ_REMOVE (&results_head, results_head.tqh_first, entries);}
 
 #endif /* DB_H_ */
