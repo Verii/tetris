@@ -18,11 +18,11 @@ const const char select_scores[] =
 
 /* State: name, score, lines, level, diff, date, spaces */
 static const char create_state[] =
-	"CREATE TABLE State(name TEXT,score INT,"
-	"lines INT,level INT,diff INT,date INT,spaces BLOB);";
+	"CREATE TABLE State(name TEXT,score INT,lines INT,level INT,"
+	"diff INT,date INT,width INT,height INT,spaces BLOB);";
 
 static const char insert_state[] =
-	"INSERT INTO State VALUES(\"%s\",%d,%d,%d,%d,%lu,?);";
+	"INSERT INTO State VALUES(\"%s\",%d,%d,%d,%d,%lu,%d,%d,?);";
 
 const const char select_state[] =
 	"SELECT * FROM State ORDER BY date DESC;";
@@ -112,7 +112,8 @@ db_save_state (struct db_info *entry, struct block_game *pgame)
 
 	ret = asprintf (&insert, insert_state,
 		entry->id, pgame->score, pgame->lines_destroyed,
-		pgame->level, pgame->mod, (uint64_t) time (NULL));
+		pgame->level, pgame->mod, (uint64_t) time (NULL),
+		pgame->width, pgame->height);
 
 	if (ret < 0) {
 		log_err ("Out of memory");
@@ -123,7 +124,8 @@ db_save_state (struct db_info *entry, struct block_game *pgame)
 		free (insert);
 
 		unsigned char data[BLOCKS_ROWS-2];
-		memcpy (&data[0], &pgame->spaces[2], BLOCKS_ROWS-2);
+		memcpy (&data[0], &pgame->spaces[2],
+			(BLOCKS_ROWS-2) * sizeof(*pgame->spaces));
 
 		sqlite3_bind_blob (stmt, 1, data, sizeof data, SQLITE_STATIC);
 		sqlite3_step (stmt);
@@ -140,6 +142,7 @@ db_save_state (struct db_info *entry, struct block_game *pgame)
 int
 db_resume_state (struct db_info *entry, struct block_game *pgame)
 {
+	int ret;
 	sqlite3_stmt *stmt;
 
 	log_info ("Trying to restore saved game");
@@ -160,27 +163,39 @@ db_resume_state (struct db_info *entry, struct block_game *pgame)
 		pgame->level = sqlite3_column_int (stmt, 3);
 		pgame->mod = sqlite3_column_int (stmt, 4);
 
-		const char *blob = sqlite3_column_blob (stmt, 6);
-		memcpy (&pgame->spaces[2], &blob[0], BLOCKS_ROWS-2);
+		pgame->width = sqlite3_column_int (stmt, 6);
+		pgame->height = sqlite3_column_int (stmt, 7);
+
+		const char *blob = sqlite3_column_blob (stmt, 8);
+		memcpy (&pgame->spaces[2], &blob[0],
+			(BLOCKS_ROWS-2) * sizeof(*pgame->spaces));
 
 		/* Set block spaces to random colors, we don't really need to
 		 * save them ... */
 		for (int i = 0; i < BLOCKS_ROWS; i++)
 			for (int j = 0; j < BLOCKS_COLUMNS; j++)
 				pgame->colors[i][j] = rand();
+		ret = 1;
 	} else {
 		log_warn ("No game saves found");
+		ret = -1;
 	}
 
 	sqlite3_finalize (stmt);
 
 	/* TODO
-	 * Remove entry from table 
+	 * Remove single entry from table 
 	 */
+
+	const char drop_state[] = "DROP TABLE State;";
+	sqlite3_prepare_v2 (entry->db, drop_state, sizeof drop_state,
+			&stmt, NULL);
+	sqlite3_step (stmt);
+	sqlite3_finalize (stmt);
 
 	db_close (entry);
 
-	return 1;
+	return ret;
 }
 
 /* Returns a pointer to the first element of a tail queue, of @results length.
