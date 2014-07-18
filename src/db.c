@@ -7,24 +7,24 @@
 #include "blocks.h"
 
 /* Scores: name, score, diff, date */
-static const char create_scores[] =
+const char create_scores[] =
 	"CREATE TABLE Scores(name TEXT,level INT,score INT,date INT);";
 
-static const char insert_scores[] = 
+const char insert_scores[] =
 	"INSERT INTO Scores VALUES(\"%s\",%d,%d,%lu);";
 
-const const char select_scores[] =
+const char select_scores[] =
 	"SELECT * FROM Scores ORDER BY score DESC;";
 
 /* State: name, score, lines, level, diff, date, spaces */
-static const char create_state[] =
+const char create_state[] =
 	"CREATE TABLE State(name TEXT,score INT,lines INT,level INT,"
 	"diff INT,date INT,width INT,height INT,spaces BLOB);";
 
-static const char insert_state[] =
+const char insert_state[] =
 	"INSERT INTO State VALUES(\"%s\",%d,%d,%d,%d,%lu,%d,%d,?);";
 
-const const char select_state[] =
+const char select_state[] =
 	"SELECT * FROM State ORDER BY date DESC;";
 
 static int
