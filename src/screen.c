@@ -42,17 +42,38 @@ screen_draw_menu (struct block_game *pgame, struct db_info *psave)
 {
 	int ret;
 
-	/* TODO ask user for save game name, file location (with a default)
-	 * and game settings:
-	 * playermode (single/multi), difficulty, resume
+	/* TODO: user menu pre-game
+	 *
+	 * New Game
+	 * 	> <Name>
+	 * 	> [Difficulty]
+	 * 	> (Board size) ...
+	 * 	{
+	 * 	 <Local>
+	 * 	 <Network>
+	 * 	   {
+	 * 		> Client: <server IP> <server PORT>
+	 * 		> Server: <listen IP> <listen PORT>
+	 *	   }
+	 * 	 }
+	 *
+	 * Resume
+	 * 	> Select Game
+	 * 		> ...
+	 * Settings
+	 * 	> Log File: [file]
+	 * 	> Database File: [file]
+	 * 	> Block Character: <char>
+	 *
+	 * Quit
 	 */
 	memset (psave, 0, sizeof *psave);
 	strncpy (psave->id, "Lorem Ipsum", sizeof psave->id);
 
 	ret = asprintf (&psave->file_loc, "%s/.local/share/tetris%s",
 					getenv ("HOME"), DB_FILE);
-
 	if (ret < 0) {
+		log_err ("Out of memory");
 		exit (2);
 	}
 
@@ -64,6 +85,7 @@ screen_draw_menu (struct block_game *pgame, struct db_info *psave)
 
 void
 screen_draw_game (struct block_game *pgame)
+//screen_draw_game (WINDOW *w, struct block_game *pgame)
 {
 	attr_t text, border;
 	text = COLOR_PAIR(1);
@@ -139,8 +161,11 @@ screen_draw_game (struct block_game *pgame)
 
 	if (pgame->pause) {
 		attrset (text | A_BOLD);
-		mvprintw (((BLOCKS_ROWS-2)/2)-2 +game_y_offset,
-			game_x_offset+2, "PAUSED");
+
+		int x_off = ((BLOCKS_COLUMNS  -6)/2 +1) +game_x_offset;
+		int y_off = ((BLOCKS_ROWS     -2)/2 -2) +game_y_offset;
+
+		mvprintw (y_off, x_off, "PAUSED");
 	}
 
 	refresh ();
@@ -150,24 +175,7 @@ screen_draw_game (struct block_game *pgame)
 void
 screen_draw_over (struct block_game *pgame, struct db_info *psave)
 {
-	/* TODO Loser screen */
-
-	/* Save scores, or save game state */
 	log_info ("Saving game");
-	if (pgame->loss)
-		db_save_score (psave, pgame);
-	else {
-		db_save_state (psave, pgame);
-		return;
-	}
-
-
-	/* Print score board */
-	int count = 0;
-	struct db_results *res;
-	res = db_get_scores (psave, 10);
-	if (!res)
-		return;
 
 	clear ();
 
@@ -176,6 +184,19 @@ screen_draw_over (struct block_game *pgame, struct db_info *psave)
 
 	mvprintw (1, 1, "Local Leaderboard");
 	mvprintw (2, 3, "Rank\tName\t\tLevel\tScore\tDate");
+
+	if (pgame->loss) {
+		refresh ();
+		db_save_score (psave, pgame);
+	} else {
+		db_save_state (psave, pgame);
+		return;
+	}
+
+	/* Print score board */
+	int count = 0;
+	struct db_results *res = db_get_scores (psave, 10);
+
 	while (res) {
 		count++;
 		char *date = ctime (&res->date);
