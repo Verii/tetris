@@ -6,10 +6,15 @@
 #include <stdint.h>
 
 #define PI 3.141592653589L
-
-#define BLOCKS_ROWS 18			/* 2 hidden rows above game */
-#define BLOCKS_COLUMNS 8
 #define LEN(x) ((sizeof(x))/(sizeof(*x)))
+
+/* These are the size dimensions for the game:
+ * Small (8x16)
+ * Medium (10x20)
+ * Large (12x24)
+ */
+#define BLOCKS_ROWS 26			/* 2 hidden rows above game */
+#define BLOCKS_COLUMNS 12
 
 /* Only the currently falling block, the next block, and the save block are
  * stored in this structure. Once a block hits another piece, we forget about
@@ -17,9 +22,9 @@
  */
 struct block {
 	uint8_t col_off, row_off;	/* column/row offsets */
-	uint8_t color;
+	uint8_t type, color;
 	struct {			/* each piece stores a value between */
-		int x, y;		/* -1 and +3, offsets are used to */
+		int8_t x, y;		/* -1 and +3, offsets are used to */
 	} p[4];				/* store the actual location */
 };
 
@@ -34,10 +39,10 @@ struct block_game {
 	/* These variables are written to the database
 	 * when restoring/saving the game state
 	 */
-	uint32_t score;
-	uint8_t level;
+	uint8_t width, height, level;
 	uint16_t lines_destroyed;	/* temp. don't print to screen */
-	uint8_t spaces[BLOCKS_ROWS];	/* board */
+	uint16_t spaces[BLOCKS_ROWS];	/* array of shorts, one per row.*/
+	uint32_t score;
 	enum block_diff mod;
 
 	uint8_t *colors[BLOCKS_ROWS];	/* 1-to-1 with board */
@@ -57,6 +62,7 @@ enum block_cmd {
 	SAVE_PIECE,
 };
 
+/* Does a block exist at the specified (y, x) coordinate? */
 #define blocks_at_yx(p, y, x) (p->spaces[y] & (1 << x))
 
 /* Create game state */

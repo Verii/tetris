@@ -28,14 +28,15 @@ enum {
  * This is the most called function in the file (that adds/removes memory).
  */
 static void
-create_block (struct block *block)
+create_block (struct block_game *pgame, struct block *block)
 {
-	block->col_off = BLOCKS_COLUMNS/2;
+	block->type = rand() %NUM_BLOCKS;
+	block->col_off = pgame->width/2;
 	block->row_off = 1;
 	block->color++;
 
 	/* The piece at (0, 0) is the pivot when we rotate */
-	switch (rand() %NUM_BLOCKS) {
+	switch (block->type) {
 	case SQUARE_BLOCK:
 		block->p[0].x = -1;	block->p[0].y = -1;
 		block->p[1].x = 0;	block->p[1].y = -1;
@@ -93,7 +94,7 @@ update_cur_next (struct block_game *pgame)
 	pgame->cur = pgame->next;
 	pgame->next = old;
 
-	create_block (pgame->next);
+	create_block (pgame, pgame->next);
 }
 
 /*
@@ -104,6 +105,9 @@ rotate_block (struct block_game *pgame, struct block *block, enum block_cmd cmd)
 {
 	if (!pgame || !block)
 		return -1;
+
+	if (block->type == SQUARE_BLOCK)
+		return 1;
 
 	int py[4], px[4], mod = 1;
 	if (cmd == ROT_LEFT)
@@ -119,8 +123,8 @@ rotate_block (struct block_game *pgame, struct block *block, enum block_cmd cmd)
 		bounds_y = py[i] + block->row_off;
 
 		/* Check out of bounds on each block */
-		if (bounds_x < 0 || bounds_x >= BLOCKS_COLUMNS ||
-		    bounds_y < 0 || bounds_y >= BLOCKS_ROWS ||
+		if (bounds_x < 0 || bounds_x >= pgame->width ||
+		    bounds_y < 0 || bounds_y >= pgame->height ||
 		    blocks_at_yx(pgame, bounds_y, bounds_x))
 			return -1;
 	}
@@ -151,8 +155,8 @@ translate_block (struct block_game *pg, struct block *block, enum block_cmd cmd)
 		bounds_y = block->p[i].y + block->row_off;
 
 		/* Check out of bounds before we write it */
-		if (bounds_x < 0 || bounds_x >= BLOCKS_COLUMNS ||
-		    bounds_y < 0 || bounds_y >= BLOCKS_ROWS ||
+		if (bounds_x < 0 || bounds_x >= pg->width ||
+		    bounds_y < 0 || bounds_y >= pg->height ||
 		    blocks_at_yx(pg, bounds_y, bounds_x))
 			return -1;
 	}
@@ -178,18 +182,19 @@ destroy_lines (struct block_game *pgame)
 
 	/* Check first two rows for any block */
 	for (int i = 0; i < 2; i++)
-		for (int j = 0; j < BLOCKS_COLUMNS; j++)
+		for (int j = 0; j < pgame->width; j++)
 			if (blocks_at_yx(pgame, i, j))
 				pgame->loss = true;
 
 	/* Check each row for a full line of blocks */
-	for (int i = BLOCKS_ROWS-1; i >= 2; i--) {
+	for (int i = pgame->height-1; i >= 2; i--) {
 
 		int j = 0;
-		for (; j < BLOCKS_COLUMNS; j++)
+		for (; j < pgame->width; j++)
 			if (!blocks_at_yx(pgame, i, j))
 				break;
-		if (j != BLOCKS_COLUMNS)
+
+		if (j != pgame->width)
 			continue;
 
 		debug ("Removed line %2d", i+1);
@@ -250,8 +255,8 @@ write_piece (struct block_game *pgame, struct block *block)
 		py[i] = block->row_off + block->p[i].y;
 		px[i] = block->col_off + block->p[i].x;
 
-		if (py[i] < 0 || py[i] >= BLOCKS_ROWS ||
-		    px[i] < 0 || px[i] >= BLOCKS_COLUMNS)
+		if (px[i] < 0 || px[i] >= pgame->width ||
+		    py[i] < 0 || py[i] >= pgame->height)
 			return;
 	}
 
@@ -276,7 +281,7 @@ drop_block (struct block_game *pgame)
 		bounds_y = pgame->cur->p[i].y + pgame->cur->row_off +1;
 		bounds_x = pgame->cur->p[i].x + pgame->cur->col_off;
 
-		if (bounds_y >= BLOCKS_ROWS ||
+		if (bounds_y >= pgame->height ||
 		    blocks_at_yx (pgame, bounds_y, bounds_x))
 			return true;
 	}
@@ -340,12 +345,24 @@ blocks_init (struct block_game *pgame)
 	log_info ("Initializing game data");
 	memset (pgame, 0, sizeof *pgame);
 
-	pgame->level = 1;
+	pthread_mutex_init (&pgame->lock, NULL);
+
+	/* Default dimensions, modified in screen_draw_menu()
+	 * We assume the board is the max size (12x24). If the user wants a
+	 * smaller board, we only use the smaller pieces
+	 */
+	pgame->width = BLOCKS_COLUMNS;
+	pgame->height = BLOCKS_ROWS;
+
+	/* Default difficulty, modified in screen_draw_menu() */
 	pgame->mod = DIFF_NORMAL;
+
+	pgame->level = 1;
 	pgame->nsec = 1E9 -1;
 
+	/* Initialize the blocks */
 	for (size_t i = 0; i < LEN(blocks); i++) {
-		create_block (&blocks[i]);
+		create_block (pgame, &blocks[i]);
 		blocks[i].color = rand(); // Start with random color
 	}
 
@@ -353,15 +370,16 @@ blocks_init (struct block_game *pgame)
 	pgame->next = &blocks[1];
 	pgame->save = NULL;
 
+	/* Allocate the maximum size necessary to accomodate the
+	 * largest board size */
 	for (int i = 0; i < BLOCKS_ROWS; i++) {
-		pgame->colors[i] = calloc (BLOCKS_COLUMNS, 1);
+		pgame->colors[i] = calloc (BLOCKS_COLUMNS,
+				sizeof (*pgame->colors[i]));
 		if (!pgame->colors[i]) {
-			log_err ("Out of memory, %lu", BLOCKS_COLUMNS);
+			log_err ("Out of memory");
 			exit (2);
 		}
 	}
-
-	pthread_mutex_init (&pgame->lock, NULL);
 
 	return 1;
 }
@@ -446,6 +464,7 @@ blocks_cleanup (struct block_game *pgame)
 	log_info ("Cleaning game data");
 	pthread_mutex_destroy (&pgame->lock);
 
+	/* Don't use board size; free all the memory allocated */
 	for (int i = 0; i < BLOCKS_ROWS; i++)
 		free (pgame->colors[i]);
 
