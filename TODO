@@ -1,2 +1,8 @@
 If ~/.local/share/ does not exist in the user's home directory, the game will segfault.
 Fix this.
+
+Modular board sizes.
+
+Main menu
+
+Configuration file
