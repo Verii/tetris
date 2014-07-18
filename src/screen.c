@@ -77,10 +77,14 @@ screen_draw_menu (struct block_game *pgame, struct db_info *psave)
 		exit (2);
 	}
 
+	pgame->width = 10;
+	pgame->height = (pgame->width*2)+2;
+
 	/* Start the game paused if we can resume from an old save */
 	if (db_resume_state (psave, pgame) > 0) {
 		pgame->pause = true;
 	}
+	clear ();
 }
 
 void
@@ -114,30 +118,13 @@ screen_draw_game (struct block_game *pgame)
 
 	attrset (border);
 	move (game_y_offset, game_x_offset);
-	vline ('*', BLOCKS_ROWS-1);
+	vline ('*', pgame->height-1);
 
-	move (game_y_offset, game_x_offset+BLOCKS_COLUMNS+1);
-	vline ('*', BLOCKS_ROWS-1);
+	move (game_y_offset, game_x_offset +pgame->width +1);
+	vline ('*', pgame->height-1);
 
-	move ((BLOCKS_ROWS-2)+game_y_offset, game_x_offset);
-	hline ('*', BLOCKS_COLUMNS+2);
-
-	/* two hidden rows above game, where blocks spawn */
-	for (int i = 2; i < BLOCKS_ROWS; i++) {
-		move ((i-2)+game_y_offset, game_x_offset+1);
-
-		for (int j = 0; j < BLOCKS_COLUMNS; j++) {
-			attrset (text);
-			if (blocks_at_yx (pgame, i, j)) {
-				attrset (COLOR_PAIR(pgame->colors[i][j]
-						% sizeof colors +1) | A_BOLD);
-				printw (BLOCK_CHAR);
-			} else if (j % 2)
-				printw (".");
-			else
-				printw (" ");
-		}
-	}
+	move ((pgame->height-2)+game_y_offset, game_x_offset);
+	hline ('*', pgame->width+2);
 
 	for (size_t i = 0; i < LEN(pgame->next->p); i++) {
 		int y, x;
@@ -159,11 +146,27 @@ screen_draw_game (struct block_game *pgame)
 		}
 	}
 
+	/* two hidden rows above game, where blocks spawn */
+	for (int i = 2; i < pgame->height; i++) {
+		move ((i-2)+game_y_offset, game_x_offset+1);
+
+		for (int j = 0; j < pgame->width; j++) {
+			if (blocks_at_yx (pgame, i, j)) {
+				attrset (COLOR_PAIR(pgame->colors[i][j]
+						% sizeof colors +1) | A_BOLD);
+				printw (BLOCK_CHAR);
+			} else {
+				attrset (text);
+				printw ((j%2) ? "." : " ");
+			}
+		}
+	}
+
 	if (pgame->pause) {
 		attrset (text | A_BOLD);
 
-		int x_off = ((BLOCKS_COLUMNS  -6)/2 +1) +game_x_offset;
-		int y_off = ((BLOCKS_ROWS     -2)/2 -2) +game_y_offset;
+		int x_off = ((pgame->width  -6)/2 +1) +game_x_offset;
+		int y_off = ((pgame->height -2)/2 -2) +game_y_offset;
 
 		mvprintw (y_off, x_off, "PAUSED");
 	}
@@ -218,6 +221,7 @@ void
 screen_cleanup (void)
 {
 	log_info ("Cleaning ncurses context");
+	clear ();
 	endwin ();
 }
 
