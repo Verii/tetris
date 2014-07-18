@@ -10,126 +10,122 @@
 #include "debug.h"
 #include "screen.h"
 
-static void
-destroy_block (struct block **dest)
-{
-	free (*dest);
-	*dest = NULL;
-}
+static struct block blocks[3];
+
+#define NUM_BLOCKS 7
+enum {
+	SQUARE_BLOCK,
+	LINE_BLOCK,
+	T_BLOCK,
+	L_BLOCK,
+	L_REV_BLOCK,
+	Z_BLOCK,
+	Z_REV_BLOCK
+};
 
 /*
  * creates a random block and sets the initial positions of the pieces
+ * This is the most called function in the file (that adds/removes memory).
  */
 static void
-create_block (struct block_game *pgame, struct block **new_block)
+create_block (struct block *block)
 {
-	if (*new_block != NULL) {
-		log_warn ("Memory Leak. Block exists");
+	block->col_off = BLOCKS_COLUMNS/2;
+	block->row_off = 1;
+	block->color++;
+
+	/* The piece at (0, 0) is the pivot when we rotate */
+	switch (rand() %NUM_BLOCKS) {
+	case SQUARE_BLOCK:
+		block->p[0].x = -1;	block->p[0].y = -1;
+		block->p[1].x = 0;	block->p[1].y = -1;
+		block->p[2].x = -1;	block->p[2].y = 0;
+		block->p[3].x = 0;	block->p[3].y = 0;
+		break;
+	case LINE_BLOCK:
+		block->col_off--; // center
+		block->p[0].x = -1;	block->p[0].y = 0;
+		block->p[1].x = 0;	block->p[1].y = 0;
+		block->p[2].x = 1;	block->p[2].y = 0;
+		block->p[3].x = 2;	block->p[3].y = 0;
+		break;
+	case T_BLOCK:
+		block->p[0].x = 0;	block->p[0].y = -1;
+		block->p[1].x = -1;	block->p[1].y = 0;
+		block->p[2].x = 0;	block->p[2].y = 0;
+		block->p[3].x = 1;	block->p[3].y = 0;
+		break;
+	case L_BLOCK:
+		block->p[0].x = 1;	block->p[0].y = -1;
+		block->p[1].x = -1;	block->p[1].y = 0;
+		block->p[2].x = 0;	block->p[2].y = 0;
+		block->p[3].x = 1;	block->p[3].y = 0;
+		break;
+	case L_REV_BLOCK:
+		block->p[0].x = -1;	block->p[0].y = -1;
+		block->p[1].x = -1;	block->p[1].y = 0;
+		block->p[2].x = 0;	block->p[2].y = 0;
+		block->p[3].x = 1;	block->p[3].y = 0;
+		break;
+	case Z_BLOCK:
+		block->p[0].x = -1;	block->p[0].y = -1;
+		block->p[1].x = 0;	block->p[1].y = -1;
+		block->p[2].x = 0;	block->p[2].y = 0;
+		block->p[3].x = 1;	block->p[3].y = 0;
+		break;
+	case Z_REV_BLOCK:
+		block->p[0].x = 0;	block->p[0].y = -1;
+		block->p[1].x = 1;	block->p[1].y = -1;
+		block->p[2].x = -1;	block->p[2].y = 0;
+		block->p[3].x = 0;	block->p[3].y = 0;
+		break;
 	}
+}
 
-	struct block *pnb = calloc (1, sizeof *pnb);
+/* Current block hit the bottom of the game, remove it.
+ * Then make the next block the current block, and create a random next block
+ */
+static void
+update_cur_next (struct block_game *pgame)
+{
+	struct block *old = pgame->cur;
 
-	if (pnb == NULL) {
-		log_err ("Out of memory, %lu", sizeof *pnb);
-		exit (2);
-	}
+	pgame->cur = pgame->next;
+	pgame->next = old;
 
-	enum block_type blocks[] = {
-		[SQUARE_BLOCK]	= SQUARE_BLOCK,
-		[LINE_BLOCK]	= LINE_BLOCK,
-		[T_BLOCK]	= T_BLOCK,
-		[L_BLOCK]	= L_BLOCK,
-		[L_REV_BLOCK]	= L_REV_BLOCK,
-		[Z_BLOCK]	= Z_BLOCK,
-		[Z_REV_BLOCK]	= Z_REV_BLOCK,
-	};
-
-	pnb->type = rand () % LEN(blocks);
-	pnb->col_off = BLOCKS_COLUMNS/2;
-	pnb->row_off = 1;
-	pnb->color = pgame->color_val++;
-
-	/* increment block counts */
-	pgame->block_count[pnb->type]++;
-
-	/* The position at (0, 0) is the pivot when we rotate */
-	if (pnb->type == SQUARE_BLOCK) {
-		pnb->p[0].x = -1; pnb->p[0].y = -1;
-		pnb->p[1].x = 0; pnb->p[1].y = -1;
-		pnb->p[2].x = -1; pnb->p[2].y = 0;
-		pnb->p[3].x = 0; pnb->p[3].y = 0;
-	} else if (pnb->type == LINE_BLOCK) {
-		pnb->col_off--; // center
-		pnb->p[0].x = -1; pnb->p[0].y = 0;
-		pnb->p[1].x = 0; pnb->p[1].y = 0;
-		pnb->p[2].x = 1; pnb->p[2].y = 0;
-		pnb->p[3].x = 2; pnb->p[3].y = 0;
-	} else if (pnb->type == T_BLOCK) {
-		pnb->p[0].x = 0; pnb->p[0].y = -1;
-		pnb->p[1].x = -1; pnb->p[1].y = 0;
-		pnb->p[2].x = 0; pnb->p[2].y = 0;
-		pnb->p[3].x = 1; pnb->p[3].y = 0;
-	} else if (pnb->type == L_BLOCK) {
-		pnb->p[0].x = 1; pnb->p[0].y = -1;
-		pnb->p[1].x = -1; pnb->p[1].y = 0;
-		pnb->p[2].x = 0; pnb->p[2].y = 0;
-		pnb->p[3].x = 1; pnb->p[3].y = 0;
-	} else if (pnb->type == L_REV_BLOCK) {
-		pnb->p[0].x = -1; pnb->p[0].y = -1;
-		pnb->p[1].x = -1; pnb->p[1].y = 0;
-		pnb->p[2].x = 0; pnb->p[2].y = 0;
-		pnb->p[3].x = 1; pnb->p[3].y = 0;
-	} else if (pnb->type == Z_BLOCK) {
-		pnb->p[0].x = -1; pnb->p[0].y = -1;
-		pnb->p[1].x = 0; pnb->p[1].y = -1;
-		pnb->p[2].x = 0; pnb->p[2].y = 0;
-		pnb->p[3].x = 1; pnb->p[3].y = 0;
-	} else if (pnb->type == Z_REV_BLOCK) {
-		pnb->p[0].x = 0; pnb->p[0].y = -1;
-		pnb->p[1].x = 1; pnb->p[1].y = -1;
-		pnb->p[2].x = -1; pnb->p[2].y = 0;
-		pnb->p[3].x = 0; pnb->p[3].y = 0;
-	} else
-		goto error;
-
-	*new_block = pnb;
-	return;
-
-error:
-	log_err ("Block type (%d) does not exist", pnb->type);
-	destroy_block (new_block);
+	create_block (pgame->next);
 }
 
 /*
- * rotate blocks
- * move_blocks locks the game mutex, so we can be sure the blocks won't update
- * while we're doing this
+ * rotate blocks by either 90^ or -90^.
  */
 static int
 rotate_block (struct block_game *pgame, struct block *block, enum block_cmd cmd)
 {
-	if (pgame->cur->type == SQUARE_BLOCK)
-		return 1;
+	if (!pgame || !block)
+		return -1;
 
-	int py[4], px[4], mod;
-	mod = (cmd == ROT_LEFT) ? -1 : 1;
+	int py[4], px[4], mod = 1;
+	if (cmd == ROT_LEFT)
+		mod = -1;
 
 	for (size_t i = 0; i < LEN(block->p); i++) {
 		/* Rotate each piece */
-		px[i] = block->p[i].y * -1 * mod;
+		px[i] = block->p[i].y * (-mod);
 		py[i] = block->p[i].x * mod;
 
-		/* Check out of bounds before we write it */
 		int bounds_x, bounds_y;
 		bounds_x = px[i] + block->col_off;
 		bounds_y = py[i] + block->row_off;
 
+		/* Check out of bounds on each block */
 		if (bounds_x < 0 || bounds_x >= BLOCKS_COLUMNS ||
 		    bounds_y < 0 || bounds_y >= BLOCKS_ROWS ||
 		    blocks_at_yx(pgame, bounds_y, bounds_x))
 			return -1;
 	}
 
+	/* No collisions, update block position */
 	for (int i = 0; i < 4; i++) {
 		block->p[i].x = px[i];
 		block->p[i].y = py[i];
@@ -139,21 +135,18 @@ rotate_block (struct block_game *pgame, struct block *block, enum block_cmd cmd)
 }
 
 /*
- * translate horizontally
- * move_blocks locks the game mutex, so we can be sure the blocks won't update
- * while we're doing this
+ * translate horizontally to the right or left.
  */
 static int
 translate_block (struct block_game *pg, struct block *block, enum block_cmd cmd)
 {
-	struct block_game *pgame = pg; // Needed dec. to fit on one line, sorry
-
-	int dir;
-	dir = (cmd == MOVE_LEFT) ? -1 : 1;
+	int dir = 1;
+	if (cmd == MOVE_LEFT)
+		dir = -1;
 
 	for (size_t i = 0; i < LEN(block->p); i++) {
-		int bounds_x, bounds_y;
 
+		int bounds_x, bounds_y;
 		bounds_x = block->p[i].x + block->col_off + dir;
 		bounds_y = block->p[i].y + block->row_off;
 
@@ -186,7 +179,7 @@ destroy_lines (struct block_game *pgame)
 	/* Check first two rows for any block */
 	for (int i = 0; i < 2; i++)
 		for (int j = 0; j < BLOCKS_COLUMNS; j++)
-			if (blocks_get_yx(pgame, i, j))
+			if (blocks_at_yx(pgame, i, j))
 				pgame->loss = true;
 
 	/* Check each row for a full line of blocks */
@@ -194,7 +187,7 @@ destroy_lines (struct block_game *pgame)
 
 		int j = 0;
 		for (; j < BLOCKS_COLUMNS; j++)
-			if (!blocks_get_yx(pgame, i, j))
+			if (!blocks_at_yx(pgame, i, j))
 				break;
 		if (j != BLOCKS_COLUMNS)
 			continue;
@@ -239,6 +232,7 @@ unwrite_piece (struct block_game *pgame, struct block *block)
 		y = block->row_off + block->p[i].y;
 		x = block->col_off + block->p[i].x;
 
+		/* Remove the bit where the block exists */
 		pgame->spaces[y] &= ~(1 << x);
 		pgame->colors[y][x] = 0;
 	}
@@ -262,6 +256,7 @@ write_piece (struct block_game *pgame, struct block *block)
 	}
 
 	for (size_t i = 0; i < LEN(pgame->cur->p); i++) {
+		/* Set the bit where the block exists */
 		pgame->spaces[py[i]] |= (1 << px[i]);
 		pgame->colors[py[i]][px[i]] = block->color;
 	}
@@ -282,7 +277,7 @@ drop_block (struct block_game *pgame)
 		bounds_x = pgame->cur->p[i].x + pgame->cur->col_off;
 
 		if (bounds_y >= BLOCKS_ROWS ||
-		    blocks_get_yx (pgame, bounds_y, bounds_x))
+		    blocks_at_yx (pgame, bounds_y, bounds_x))
 			return true;
 	}
 
@@ -322,10 +317,7 @@ blocks_loop (struct block_game *pgame)
 		write_piece (pgame, pgame->cur);
 	
 		if (hit) {
-			destroy_block (&pgame->cur);
-			pgame->cur = pgame->next;
-			pgame->next = NULL;
-			create_block (pgame, &pgame->next);
+			update_cur_next (pgame);
 			destroy_lines (pgame);
 		}
 
@@ -352,8 +344,14 @@ blocks_init (struct block_game *pgame)
 	pgame->mod = DIFF_NORMAL;
 	pgame->nsec = 1E9 -1;
 
-	create_block (pgame, &pgame->cur);
-	create_block (pgame, &pgame->next);
+	for (size_t i = 0; i < LEN(blocks); i++) {
+		create_block (&blocks[i]);
+		blocks[i].color = rand(); // Start with random color
+	}
+
+	pgame->cur = &blocks[0];
+	pgame->next = &blocks[1];
+	pgame->save = NULL;
 
 	for (int i = 0; i < BLOCKS_ROWS; i++) {
 		pgame->colors[i] = calloc (BLOCKS_COLUMNS, 1);
@@ -371,16 +369,14 @@ blocks_init (struct block_game *pgame)
 int
 blocks_move (struct block_game *pgame, enum block_cmd cmd)
 {
-	struct block tmp;
-
 	if (!pgame || !pgame->cur)
 		return -1;
 
 	pthread_mutex_lock (&pgame->lock);
-
 	if (pgame->pause)
 		goto draw;
 
+	/* unwrite current piece, modify it, rewrite it */
 	unwrite_piece (pgame, pgame->cur);
 
 	if (cmd == MOVE_LEFT || cmd == MOVE_RIGHT) {
@@ -393,25 +389,29 @@ blocks_move (struct block_game *pgame, enum block_cmd cmd)
 		while (!drop_block (pgame));
 	}
 
-
 	/* Swap next and save pieces */
 	else if (cmd == SAVE_PIECE) {
+		if (pgame->save == NULL) {
+			pgame->save = &blocks[2];
+		}
+
 		struct block *tmp = pgame->save;
 
 		pgame->save = pgame->next;
 		pgame->next = tmp;
-
-		if (pgame->next == NULL) {
-			create_block (pgame, &pgame->next);
-		}
 	}
+
+	/* XXX This is horribly hacky, and only works if you rotate LEFT on the
+	 * RIGHT wall, and RIGHT on the LEFT wall. Make this better
+	 */
 
 	/* We implement wall kicks */
 	else if (cmd == ROT_LEFT || cmd == ROT_RIGHT) {
 
+		struct block tmp;
 		memcpy (&tmp, pgame->cur, sizeof tmp);
 
-		/* Try to rotate the block, if it works commit and quit */
+		/* Try to rotate the block; if it works, commit and quit. */
 		if (rotate_block (pgame, &tmp, cmd) > 0)
 			memcpy (pgame->cur, &tmp, sizeof tmp);
 
@@ -429,9 +429,11 @@ blocks_move (struct block_game *pgame, enum block_cmd cmd)
 	}
 
 	write_piece (pgame, pgame->cur);
+
 draw:
 	screen_draw_game (pgame);
 	pthread_mutex_unlock (&pgame->lock);
+
 	return 1;
 }
 
@@ -444,13 +446,8 @@ blocks_cleanup (struct block_game *pgame)
 	log_info ("Cleaning game data");
 	pthread_mutex_destroy (&pgame->lock);
 
-	for (int i = 0; i < BLOCKS_ROWS; i++) {
+	for (int i = 0; i < BLOCKS_ROWS; i++)
 		free (pgame->colors[i]);
-	}
-
-	destroy_block (&pgame->cur);
-	destroy_block (&pgame->next);
-	destroy_block (&pgame->save);
 
 	return 1;
 }

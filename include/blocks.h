@@ -11,14 +11,16 @@
 #define BLOCKS_COLUMNS 8
 #define LEN(x) ((sizeof(x))/(sizeof(*x)))
 
-enum block_type {
-	SQUARE_BLOCK,
-	LINE_BLOCK,
-	T_BLOCK,
-	L_BLOCK,
-	L_REV_BLOCK,
-	Z_BLOCK,
-	Z_REV_BLOCK,
+/* Only the currently falling block, the next block, and the save block are
+ * stored in this structure. Once a block hits another piece, we forget about
+ * it. It becomes part of the game board.
+ */
+struct block {
+	uint8_t col_off, row_off;	/* column/row offsets */
+	uint8_t color;
+	struct {			/* each piece stores a value between */
+		int x, y;		/* -1 and +3, offsets are used to */
+	} p[4];				/* store the actual location */
 };
 
 /* Game difficulty */
@@ -26,27 +28,6 @@ enum block_diff {
 	DIFF_EASY,
 	DIFF_NORMAL,
 	DIFF_HARD,
-};
-
-enum block_cmd {
-	MOVE_LEFT,
-	MOVE_RIGHT,
-	MOVE_DOWN,			/* Move down one block */
-	MOVE_DROP,			/* Drop block to bottom of board */
-	ROT_LEFT,
-	ROT_RIGHT,
-	SAVE_PIECE,
-};
-
-struct block {
-	enum block_type type;
-	uint16_t color;			/* block color */
-	uint8_t col_off, row_off;	/* column/row offsets */
-
-	struct point {			/* each piece stores a value between */
-		int x, y;		/* -1 and +3, offsets are used to */
-	} p[4];				/* store the actual location */
-					/* Makes rotates much easier */
 };
 
 struct block_game {
@@ -57,15 +38,23 @@ struct block_game {
 	uint8_t level;
 	uint16_t lines_destroyed;	/* temp. don't print to screen */
 	uint8_t spaces[BLOCKS_ROWS];	/* board */
-	uint8_t *colors[BLOCKS_ROWS];	/* 1 to 1 corres. with board */
 	enum block_diff mod;
 
-	uint16_t block_count[7];
-	uint16_t color_val;
+	uint8_t *colors[BLOCKS_ROWS];	/* 1-to-1 with board */
 	uint32_t nsec;			/* game tick delay in milliseconds */
-	bool loss, pause, quit;
+	bool loss, pause, quit;		/* how/when we quit */
 	pthread_mutex_t	lock;
 	struct block *cur, *next, *save;
+};
+
+enum block_cmd {
+	MOVE_LEFT,
+	MOVE_RIGHT,
+	MOVE_DOWN,			/* Move down one block */
+	MOVE_DROP,			/* Drop block to bottom of board */
+	ROT_LEFT,
+	ROT_RIGHT,
+	SAVE_PIECE,
 };
 
 #define blocks_at_yx(p, y, x) (p->spaces[y] & (1 << x))
