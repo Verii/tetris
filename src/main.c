@@ -19,12 +19,8 @@
 #endif
 
 static FILE *err_tofile;
-
-static pthread_t screen_loop;
 static struct block_game game;
-static struct db_info save;
-
-static char log_file[256];
+static char log_file[128];
 
 static void
 redirect_stderr (void)
@@ -72,6 +68,8 @@ cleanup (void)
 int
 main (int argc, char **argv)
 {
+	struct db_info save;
+
 	atexit (cleanup);
 	setlocale (LC_ALL, "");
 
@@ -96,6 +94,7 @@ main (int argc, char **argv)
 	screen_draw_menu (&game, &save);
 	screen_draw_game (&game);
 
+	pthread_t screen_loop;
 	pthread_create (&screen_loop, NULL, screen_main, &game);
 
 	/* Main loop */
