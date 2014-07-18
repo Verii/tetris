@@ -126,7 +126,7 @@ rotate_block (struct block_game *pgame, struct block *block, enum block_cmd cmd)
 
 		if (bounds_x < 0 || bounds_x >= BLOCKS_COLUMNS ||
 		    bounds_y < 0 || bounds_y >= BLOCKS_ROWS ||
-		    blocks_get_yx(pgame, bounds_y, bounds_x))
+		    blocks_at_yx(pgame, bounds_y, bounds_x))
 			return -1;
 	}
 
@@ -160,7 +160,7 @@ translate_block (struct block_game *pg, struct block *block, enum block_cmd cmd)
 		/* Check out of bounds before we write it */
 		if (bounds_x < 0 || bounds_x >= BLOCKS_COLUMNS ||
 		    bounds_y < 0 || bounds_y >= BLOCKS_ROWS ||
-		    blocks_get_yx(pgame, bounds_y, bounds_x))
+		    blocks_at_yx(pg, bounds_y, bounds_x))
 			return -1;
 	}
 
