@@ -83,7 +83,13 @@ main (int argc, char **argv)
 	srand (time (NULL));
 
 	/* Create game context and screen */
-	blocks_init (&game);
+	if (blocks_init (&game) > 0) {
+		printf ("Game successfully initialized\n");
+	} else {
+		printf ("Failed to initialize game\nExiting ..\n");
+		exit (2);
+	}
+
 	screen_init ();
 
 	/* Draw main menu */
