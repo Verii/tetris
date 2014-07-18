@@ -68,7 +68,7 @@ struct block_game {
 	struct block *cur, *next, *save;
 };
 
-#define blocks_get_yx(p, y, x) (p->spaces[y] & (1 << x))
+#define blocks_at_yx(p, y, x) (p->spaces[y] & (1 << x))
 
 /* Create game state */
 int blocks_init (struct block_game *);
