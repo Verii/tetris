@@ -122,7 +122,7 @@ screen_draw_game (struct block_game *pgame)
 		y = pgame->next->p[i].y;
 		x = pgame->next->p[i].x;
 
-		attrset (COLOR_PAIR(pgame->next->type
+		attrset (COLOR_PAIR(pgame->next->color
 				%sizeof colors +1) | A_BOLD);
 		mvprintw (y+8, x+4, BLOCK_CHAR);
 
@@ -130,7 +130,7 @@ screen_draw_game (struct block_game *pgame)
 			y = pgame->save->p[i].y;
 			x = pgame->save->p[i].x;
 
-			attrset (COLOR_PAIR(pgame->save->type
+			attrset (COLOR_PAIR(pgame->save->color
 					%sizeof colors +1) | A_BOLD);
 
 			mvprintw (y+8, x+10, BLOCK_CHAR);
@@ -150,19 +150,16 @@ screen_draw_game (struct block_game *pgame)
 void
 screen_draw_over (struct block_game *pgame, struct db_info *psave)
 {
-	clear ();
-
-	attrset (COLOR_PAIR(1));
-	box (stdscr, 0, 0);
-
 	/* TODO Loser screen */
 
 	/* Save scores, or save game state */
 	log_info ("Saving game");
 	if (pgame->loss)
 		db_save_score (psave, pgame);
-	else
+	else {
 		db_save_state (psave, pgame);
+		return;
+	}
 
 
 	/* Print score board */
@@ -171,6 +168,11 @@ screen_draw_over (struct block_game *pgame, struct db_info *psave)
 	res = db_get_scores (psave, 10);
 	if (!res)
 		return;
+
+	clear ();
+
+	attrset (COLOR_PAIR(1));
+	box (stdscr, 0, 0);
 
 	mvprintw (1, 1, "Local Leaderboard");
 	mvprintw (2, 3, "Rank\tName\t\tLevel\tScore\tDate");
