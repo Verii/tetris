@@ -391,6 +391,7 @@ blocks_move (struct block_game *pgame, enum block_cmd cmd)
 		return -1;
 
 	pthread_mutex_lock (&pgame->lock);
+
 	if (pgame->pause)
 		goto draw;
 
