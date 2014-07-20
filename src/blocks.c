@@ -134,7 +134,7 @@ rotate_block (struct block_game *pgame, struct block *block, enum block_cmd cmd)
 	}
 
 	/* No collisions, update block position */
-	for (int i = 0; i < LEN(block->p); i++) {
+	for (size_t i = 0; i < LEN(block->p); i++) {
 		block->p[i].x = block->p[i].y * (-mod);
 		block->p[i].y = block->p[i].x * mod;
 	}
