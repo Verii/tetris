@@ -18,7 +18,7 @@ debug_log (const char *fmt, ...)
 
 	va_list ap;
 	va_start (ap, fmt);
-	int ret vasprintf (&msg, fmt, ap);
+	int ret = vasprintf (&msg, fmt, ap);
 	va_end (ap);
 
 
