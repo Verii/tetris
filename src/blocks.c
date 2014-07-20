@@ -392,10 +392,9 @@ blocks_move (struct block_game *pgame, enum block_cmd cmd)
 
 	pthread_mutex_lock (&pgame->lock);
 
-	if (pgame->pause)
+	if (pgame->pause || pgame->quit)
 		goto draw;
 
-	/* unwrite current piece, modify it, rewrite it */
 	unwrite_piece (pgame, pgame->cur);
 
 	if (cmd == MOVE_LEFT || cmd == MOVE_RIGHT) {

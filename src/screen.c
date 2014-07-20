@@ -245,15 +245,7 @@ screen_main (void *vp)
 	int ch;
 	while ((ch = getch())) {
 
-		if (ch == KEY_F(3)) {
-			pgame->pause = false;
-			pgame->quit = true;
-		}
-
-		if (ch == KEY_F(1))
-			pgame->pause = !pgame->pause;
-
-		enum block_cmd cmd;
+		enum block_cmd cmd = -1;
 
 		switch (toupper(ch)) {
 		case 'A':
@@ -277,8 +269,13 @@ screen_main (void *vp)
 		case ' ':
 			cmd = SAVE_PIECE;
 			break;
-		default:
-			continue;
+		case KEY_F(1):
+			pgame->pause = !pgame->pause;
+			break;
+		case KEY_F(3):
+			pgame->pause = false;
+			pgame->quit = true;
+			break;
 		}
 
 		blocks_move (pgame, cmd);
