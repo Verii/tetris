@@ -12,6 +12,7 @@
 
 #include "blocks.h"
 #include "db.h"
+#include "debug.h"
 #include "screen.h"
 
 #ifndef LOG_FILE
@@ -21,6 +22,7 @@
 static FILE *err_tofile;
 static struct block_game game;
 static char log_file[128];
+static pthread_t screen_loop;
 
 static void
 redirect_stderr (void)
@@ -68,17 +70,12 @@ cleanup (void)
 int
 main (int argc, char **argv)
 {
-	struct db_info save;
-
-	atexit (cleanup);
 	setlocale (LC_ALL, "");
-
 	if (argc > 1 && argv[1][0] == '-' && argv[1][1] == 'h')
 		usage ();
 
-	redirect_stderr ();
-
 	srand (time (NULL));
+	redirect_stderr ();
 
 	/* Create game context and screen */
 	if (blocks_init (&game) > 0) {
@@ -88,16 +85,16 @@ main (int argc, char **argv)
 		exit (2);
 	}
 
-	screen_init ();
+	struct db_info save;
 
-	/* Draw main menu */
+	screen_init ();
+	atexit (cleanup);
+
 	screen_draw_menu (&game, &save);
 	screen_draw_game (&game);
 
-	pthread_t screen_loop;
 	pthread_create (&screen_loop, NULL, screen_main, &game);
 
-	/* Main loop */
 	blocks_loop (&game);
 	pthread_cancel (screen_loop);
 
