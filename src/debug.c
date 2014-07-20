@@ -21,7 +21,6 @@ debug_log (const char *fmt, ...)
 	int ret = vasprintf (&msg, fmt, ap);
 	va_end (ap);
 
-
 	if (ret < 0) {
 		msg = NULL;
 	} else {

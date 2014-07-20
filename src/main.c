@@ -27,18 +27,20 @@ static pthread_t screen_loop;
 static void
 redirect_stderr (void)
 {
+	struct stat sb;
+
 	snprintf (log_file, sizeof log_file, "%s/.local/share/tetris",
 			getenv("HOME"));
 
 	errno = 0;
-
-	struct stat sb;
 	stat (log_file, &sb);
 
+	/* segfaults if ~/.local/share doesn not exist */
 	if (errno == ENOENT) {
 		mkdir (log_file, 0777);
 	}
 
+	/* add name of log file to string */
 	strcat (log_file, LOG_FILE);
 
 	printf ("Redirecting stderr to %s.\n", log_file);
@@ -57,6 +59,7 @@ usage (void)
 	exit (EXIT_FAILURE);
 }
 
+/* We can exit() at any point and still safely cleanup */
 static void
 cleanup (void)
 {
@@ -77,7 +80,7 @@ main (int argc, char **argv)
 	srand (time (NULL));
 	redirect_stderr ();
 
-	/* Create game context and screen */
+	/* Create game context */
 	if (blocks_init (&game) > 0) {
 		printf ("Game successfully initialized\n");
 	} else {
@@ -85,16 +88,19 @@ main (int argc, char **argv)
 		exit (2);
 	}
 
-	struct db_info save;
-
+	/* create ncurses display */
 	screen_init ();
+
 	atexit (cleanup);
 
+	struct db_info save;
 	screen_draw_menu (&game, &save);
+
 	screen_draw_game (&game);
 
 	pthread_create (&screen_loop, NULL, screen_main, &game);
 
+	/* when blocks_loop returns, kill the input thread and cleanup */
 	blocks_loop (&game);
 	pthread_cancel (screen_loop);
 
