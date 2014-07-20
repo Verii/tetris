@@ -33,15 +33,16 @@ screen_init (void)
 	keypad (stdscr, TRUE);
 	curs_set (0);
 
-	box (stdscr, 0, 0);
-	refresh ();
-
 	board = newwin (BLOCKS_ROWS-1, BLOCKS_COLUMNS+2, 1, 18);
 	control = newwin (16, 16, 1, 1);
 
 	start_color ();
 	for (size_t i = 0; i < LEN(colors); i++)
 		init_pair (i+1, colors[i], COLOR_BLACK);
+
+	attrset (COLOR_PAIR(1));
+	box (stdscr, 0, 0);
+	refresh ();
 }
 
 /* Ask user for difficulty and their name */
