@@ -1,0 +1,15 @@
+debug.h contains macros to present a cleaner logging interface to the program
+
+there is no functional difference to log_info or log_warn
+
+log_warn writes [WARN] messages to stderr
+log_info writes [INFO] messages to stderr
+log_err writes [ERROR] messages to stderr, it also flushes all streams.
+	should the program crash it should be easier to find where things
+	went wrong.
+
+debug writes [DEBUG] messages to stderr, only compiles in if DEBUG is defined
+
+debug_log is a function that prints the time and date of the message
+	macros defined above are wrappers that prefix [WARNS|INFO|DEBUG|ERROR]
+	and include the file and line number where the function was called.

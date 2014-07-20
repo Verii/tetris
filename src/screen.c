@@ -9,6 +9,7 @@
 #include "debug.h"
 #include "screen.h"
 
+/* database is saved in ~/.local/share/tetris/saves */
 #ifndef DB_FILE
 #define DB_FILE "/saves"
 #endif
@@ -47,14 +48,16 @@ screen_init (void)
 void
 screen_draw_menu (struct block_game *pgame, struct db_info *psave)
 {
-	WINDOW *menu;
+//	WINDOW *menu;
+	memset (psave, 0, sizeof *psave);
+
 	/* TODO: user menu pre-game
 	 *
 	 * New Game
 	 * 	> <Name>
 	 * 	> [Difficulty]
 	 * 	> (Board size) ...
-	 * 	{
+	 * 	> {
 	 * 	 <Local>
 	 * 	 <Network>
 	 * 	   {
@@ -73,9 +76,8 @@ screen_draw_menu (struct block_game *pgame, struct db_info *psave)
 	 *
 	 * Quit
 	 */
-	(void) menu;
 
-	memset (psave, 0, sizeof *psave);
+	/* TODO place holder name, get from user later */
 	strncpy (psave->id, "Lorem Ipsum", sizeof psave->id);
 
 	int ret = asprintf (&psave->file_loc, "%s/.local/share/tetris%s",
@@ -85,6 +87,7 @@ screen_draw_menu (struct block_game *pgame, struct db_info *psave)
 		exit (2);
 	}
 
+	/* TODO set the board game to 'medium' size, get from user later */
 	pgame->width = 10;
 	pgame->height = (pgame->width*2)+2;
 
@@ -119,7 +122,7 @@ screen_draw_control (struct block_game *pgame)
 		x = pgame->next->p[i].x;
 
 		wattrset (control, COLOR_PAIR((pgame->next->color
-				%sizeof colors) +1) | A_BOLD);
+				%LEN(colors)) +1) | A_BOLD);
 		mvwprintw (control, y+7, x+3, BLOCK_CHAR);
 
 	}
@@ -130,7 +133,7 @@ screen_draw_control (struct block_game *pgame)
 		x = pgame->save->p[i].x;
 
 		wattrset (control, COLOR_PAIR((pgame->save->color
-				%sizeof colors) +1) | A_BOLD);
+				%LEN(colors)) +1) | A_BOLD);
 		mvwprintw (control, y+7, x+9, BLOCK_CHAR);
 	}
 
@@ -154,7 +157,7 @@ screen_draw_board (struct block_game *pgame)
 		for (int j = 0; j < pgame->width; j++) {
 			if (blocks_at_yx (pgame, i, j)) {
 				wattrset (board, COLOR_PAIR((pgame->colors[i][j]
-						% sizeof colors) +1) | A_BOLD);
+						%LEN(colors)) +1) | A_BOLD);
 				wprintw (board, BLOCK_CHAR);
 			} else {
 				wattrset (board, COLOR_PAIR(1));
@@ -219,7 +222,7 @@ screen_draw_over (struct block_game *pgame, struct db_info *psave)
 		return;
 	}
 
-	/* Print score board */
+	/* Print score board when you lose a game */
 	struct db_results *res = db_get_scores (psave, 10);
 	while (res) {
 		char *date = ctime (&res->date);

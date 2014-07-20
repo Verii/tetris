@@ -1,0 +1,52 @@
+static struct block blocks[3]; are the three stack-allocated blocks of the
+game.
+
+Inside of the block_game structure there are three pointers (cur, next, save)
+that point to the above structures.
+
+Creating/Removing blocks was the most intense memory allocator, so this design
+removes lots of the overhead, and speeds up the program.
+
+static void create_block() randomizes the given block.
+
+static void update_cur_next() rotates the (cur) and (next) blocks. It's used
+after a block hits the bottom of the game, the (next) block needs to become the
+(cur) block, and the old (cur) block, after randomizing, becomes the (next)
+block.
+
+static int rotate_block() is used to rotate the given block by 90-degrees or
+270-degrees. It performs its own collision detection, and does not touch the
+block if a collision is detected. returns >0 on success.
+
+static int translate_block() is conceptually similar to rotate_block, except
+that is moves a block left or right.
+
+static void update_tick_speed() is called after the player levels up to
+increase the fall block rate.
+
+static int destroy_lines() is used to remove full lines in a board. It will
+first check if there exist any block in the two hidden rows above the game.
+This is the game-over condition. It then checks each subsequent row, and
+advances all rows above it down if a full row is found. This function will also
+increase player score, level, and call update_tick_speed;
+
+static void {,un}write_piece() are used to remove/write the given block to the
+game board. write_piece performs collision detection.
+
+static int drop_block() will advance the given block a single space. It
+performs collision detection.
+
+int block_loop() is the main loop of the game, called in main.c. The game is
+over when it returns. block_loop will sleep for the appropiate tick delay, then
+try to advance the current block one space. If the block hits something, it
+will try to destroy lines. If that function signals the game-over condition,
+block_loop will return, and main.c will clean things up.
+
+int blocks_init() initializes the block_game structure with default values. It
+also allocates memory for the colors array.
+
+int blocks_move() is a wrapper script, called from screen_main, that processes
+user input events into game actions. Addmitedly, it is the worst, ugliest
+function in the application. A large rewrite is planned.
+
+int blocks_cleanup() is self explanatory.

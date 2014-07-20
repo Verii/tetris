@@ -10,6 +10,7 @@
 #include "debug.h"
 #include "screen.h"
 
+/* three blocks, adjust game pointers to modify */
 static struct block blocks[3];
 
 #define NUM_BLOCKS 7
@@ -24,8 +25,7 @@ enum {
 };
 
 /*
- * creates a random block and sets the initial positions of the pieces
- * This is the most called function in the file (that adds/removes memory).
+ * randomizes block and sets the initial positions of the pieces
  */
 static void
 create_block (struct block_game *pgame, struct block *block)
@@ -34,6 +34,8 @@ create_block (struct block_game *pgame, struct block *block)
 		return;
 
 	block->type = rand() %NUM_BLOCKS;
+
+	/* Try to center the block on the board */
 	block->col_off = pgame->width/2;
 	block->row_off = 1;
 	block->color++;
@@ -87,7 +89,7 @@ create_block (struct block_game *pgame, struct block *block)
 }
 
 /* Current block hit the bottom of the game, remove it.
- * Then make the next block the current block, and create a random next block
+ * Swap the "next block" with "current block", and randomize next block.
  */
 static inline void
 update_cur_next (struct block_game *pgame)
@@ -104,7 +106,7 @@ update_cur_next (struct block_game *pgame)
 }
 
 /*
- * rotate blocks by either 90^ or -90^.
+ * rotate pieces in blocks by either 90^ or -90^ around (0, 0) pivot
  */
 static int
 rotate_block (struct block_game *pgame, struct block *block, enum block_cmd cmd)
@@ -115,16 +117,16 @@ rotate_block (struct block_game *pgame, struct block *block, enum block_cmd cmd)
 	if (block->type == SQUARE_BLOCK)
 		return 1;
 
-	int mod = 1;
+	int8_t mod = 1;
 	if (cmd == ROT_LEFT)
 		mod = -1;
 
-	/* Check each block for a collision */
+	/* Check each piece for a collision before we write any changes */
 	for (size_t i = 0; i < LEN(block->p); i++) {
 
-		int bounds_x, bounds_y;
+		int8_t bounds_x, bounds_y;
 		bounds_x = block->p[i].y * (-mod) + block->col_off;
-		bounds_y = block->p[i].x * mod + block->row_off;
+		bounds_y = block->p[i].x * ( mod) + block->row_off;
 
 		/* Check out of bounds on each block */
 		if (bounds_x < 0 || bounds_x >= pgame->width ||
@@ -133,8 +135,9 @@ rotate_block (struct block_game *pgame, struct block *block, enum block_cmd cmd)
 			return -1;
 	}
 
-	/* No collisions, update block position */
+	/* No collisions, so update the block position. */
 	for (size_t i = 0; i < LEN(block->p); i++) {
+
 		int8_t new_x, new_y;
 		new_x = block->p[i].y * (-mod);
 		new_y = block->p[i].x * mod;
@@ -147,7 +150,7 @@ rotate_block (struct block_game *pgame, struct block *block, enum block_cmd cmd)
 }
 
 /*
- * translate horizontally to the right or left.
+ * translate pieces in block horizontally.
  */
 static int
 translate_block (struct block_game *pg, struct block *block, enum block_cmd cmd)
@@ -155,14 +158,14 @@ translate_block (struct block_game *pg, struct block *block, enum block_cmd cmd)
 	if (!pg || !block)
 		return -1;
 
-	int dir = 1;
+	int8_t dir = 1;
 	if (cmd == MOVE_LEFT)
 		dir = -1;
 
-	/* Check each block for a collision */
+	/* Check each piece for a collision */
 	for (size_t i = 0; i < LEN(block->p); i++) {
 
-		int bounds_x, bounds_y;
+		int8_t bounds_x, bounds_y;
 		bounds_x = block->p[i].x + block->col_off + dir;
 		bounds_y = block->p[i].y + block->row_off;
 
@@ -198,7 +201,7 @@ destroy_lines (struct block_game *pgame)
 
 	uint8_t destroyed = 0;
 
-	/* Check first two rows for any block */
+	/* If at any time the first two rows contain a block piece we lose. */
 	for (int i = 0; i < 2; i++)
 		for (int j = 0; j < pgame->width; j++)
 			if (blocks_at_yx(pgame, i, j))
@@ -216,11 +219,12 @@ destroy_lines (struct block_game *pgame)
 			continue;
 
 		debug ("Removed line %2d", i+1);
+		/* bit field: setting to 0 removes line */
 		pgame->spaces[i] = 0;
 
 		destroyed++;
 
-		/* Move everything down */
+		/* Move lines above destroyed line down */
 		for (int k = i; k > 0; k--)
 			pgame->spaces[k] = pgame->spaces[k-1];
 
@@ -230,11 +234,15 @@ destroy_lines (struct block_game *pgame)
 	/* Update player level and game speed if necessary */
 	for (int i = destroyed; i > 0; i--) {
 
+		/* pgame stores its own lines_destroyed data */
 		pgame->lines_destroyed++;
 		pgame->score += pgame->level * (pgame->mod+1);
 
+		/* if we destroy level*2 +5 lines, we level up */
 		if (pgame->lines_destroyed < (pgame->level *2 + 5))
 			continue;
+
+		/* level up, reset destroy count */
 		pgame->lines_destroyed = 0;
 		pgame->level++;
 
@@ -244,6 +252,7 @@ destroy_lines (struct block_game *pgame)
 	return destroyed;
 }
 
+/* removes the block from the board */
 static void
 unwrite_piece (struct block_game *pgame, struct block *block)
 {
@@ -261,6 +270,7 @@ unwrite_piece (struct block_game *pgame, struct block *block)
 	}
 }
 
+/* writes the piece to the board, checking bounds and collisions */
 static void
 write_piece (struct block_game *pgame, struct block *block)
 {
@@ -278,34 +288,37 @@ write_piece (struct block_game *pgame, struct block *block)
 			return;
 	}
 
+	/* pgame->spaces is an array of bit fields, 1 per row */
 	for (size_t i = 0; i < LEN(pgame->cur->p); i++) {
+
 		/* Set the bit where the block exists */
 		pgame->spaces[py[i]] |= (1 << px[i]);
 		pgame->colors[py[i]][px[i]] = block->color;
 	}
 }
 
-/* returns true if something is below the block.
- * else advance the block once block down
- */
-static bool
-drop_block (struct block_game *pgame)
+/* tries to advance the block one space down */
+static int
+drop_block (struct block_game *pgame, struct block *block)
 {
-	if (!pgame->cur)
-		return 0;
+	if (!pgame || !block)
+		return -1;
 
-	for (int i = 0; i < 4; i++) {
-		int bounds_y, bounds_x;
-		bounds_y = pgame->cur->p[i].y + pgame->cur->row_off +1;
-		bounds_x = pgame->cur->p[i].x + pgame->cur->col_off;
+	for (uint8_t i = 0; i < 4; i++) {
+
+		uint8_t bounds_y, bounds_x;
+		bounds_y = block->p[i].y + block->row_off +1;
+		bounds_x = block->p[i].x + block->col_off;
 
 		if (bounds_y >= pgame->height ||
 		    blocks_at_yx (pgame, bounds_y, bounds_x))
-			return true;
+			return 0;
 	}
 
-	pgame->cur->row_off++;
-	return false;
+	/* increment the row offset moves the block down one space */
+	block->row_off++;
+
+	return 1;
 }
 
 /*
@@ -321,6 +334,10 @@ blocks_loop (struct block_game *pgame)
 	ts.tv_sec = 0;
 	ts.tv_nsec = 0;
 
+	/* When we read in from the database, it sets the current level
+	 * for the game. Update the tick delay so we resume at proper
+	 * difficulty
+	 */
 	update_tick_speed (pgame);
 
 	for (;;) {
@@ -336,12 +353,14 @@ blocks_loop (struct block_game *pgame)
 		pthread_mutex_lock (&pgame->lock);
 
 		unwrite_piece (pgame, pgame->cur);
-		bool hit = drop_block (pgame);
+		int hit = drop_block (pgame, pgame->cur);
 		write_piece (pgame, pgame->cur);
 	
-		if (hit) {
+		if (hit == 0) {
 			update_cur_next (pgame);
 			destroy_lines (pgame);
+		} else if (hit < 0) {
+			exit (2);
 		}
 
 		screen_draw_game (pgame);
@@ -349,6 +368,10 @@ blocks_loop (struct block_game *pgame)
 		pthread_mutex_unlock (&pgame->lock);
 	}
 
+	/* remove the current piece from the board, when we write to the
+	 * database it would otherwise save the location of a block in mid-air.
+	 * We can't restore from blocks like that, so just remove it.
+	 */
 	unwrite_piece (pgame, pgame->cur);
 
 	return 1;
@@ -378,7 +401,7 @@ blocks_init (struct block_game *pgame)
 	pgame->level = 1;
 	pgame->nsec = 1E9 -1;
 
-	/* Initialize the blocks */
+	/* randomize the initial blocks */
 	for (size_t i = 0; i < LEN(blocks); i++) {
 		create_block (pgame, &blocks[i]);
 		/* Start with random color, so cur and next don't follow each
@@ -410,21 +433,26 @@ blocks_move (struct block_game *pgame, enum block_cmd cmd)
 	if (!pgame || !pgame->cur)
 		return -1;
 
+	/* prevent modification of the game from blocks_loop in the other
+	 * thread */
 	pthread_mutex_lock (&pgame->lock);
 
+	/* just redraw the screen, no commands */
 	if (pgame->pause || pgame->quit)
 		goto draw;
 
+	/* remove the current piece from the board, modify it, then rewrite it */
 	unwrite_piece (pgame, pgame->cur);
 
 	if (cmd == MOVE_LEFT || cmd == MOVE_RIGHT) {
 		translate_block (pgame, pgame->cur, cmd);
 
 	} else if (cmd == MOVE_DOWN) {
-		drop_block (pgame);
+		drop_block (pgame, pgame->cur);
 
 	} else if (cmd == MOVE_DROP) {
-		while (!drop_block (pgame));
+		/* drop the block to the bottom of the game */
+		while (drop_block (pgame, pgame->cur));
 	}
 
 	/* Swap next and save pieces */
@@ -484,7 +512,7 @@ blocks_cleanup (struct block_game *pgame)
 	log_info ("Cleaning game data");
 	pthread_mutex_destroy (&pgame->lock);
 
-	/* Don't use board size; we need to free all the memory allocated */
+	/* Free all the memory allocated */
 	for (int i = 0; i < BLOCKS_ROWS; i++)
 		free (pgame->colors[i]);
 

@@ -18,12 +18,16 @@ debug_log (const char *fmt, ...)
 
 	va_list ap;
 	va_start (ap, fmt);
-	vasprintf (&msg, fmt, ap);
+	int ret = vasprintf (&msg, fmt, ap);
 	va_end (ap);
 
-	if (msg[strlen(msg)-1] == '\n')
-		msg[strlen(msg)-1] = '\0';
+	if (ret < 0) {
+		msg = NULL;
+	} else {
+		if (msg[strlen(msg)-1] == '\n')
+			msg[strlen(msg)-1] = '\0';
+	}
 
-	fprintf (stderr, "%s %s\n", date, msg);
+	fprintf (stderr, "%s %s\n", date, msg ? msg : "");
 	free (msg);
 }
