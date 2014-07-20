@@ -27,6 +27,18 @@ const char insert_state[] =
 const char select_state[] =
 	"SELECT * FROM State ORDER BY date DESC;";
 
+/* Find the entry we just pulled from the database.
+ * There's probably a simpler way than using two SELECT calls, but I'm a total
+ * SQL noob, so ... */
+const char select_state_rowid[] =
+	"SELECT ROWID,date FROM State ORDER BY date DESC;";
+
+/* Remove the entry pulled from the database. This lets us have multiple saves
+ * in the database concurently.
+ */
+const char delete_state_rowid[] =
+	"DELETE FROM State WHERE ROWID = ?;";
+
 static int
 db_open (struct db_info *entry)
 {
@@ -118,23 +130,35 @@ db_save_state (struct db_info *entry, struct block_game *pgame)
 	if (ret < 0) {
 		log_err ("Out of memory");
 	} else {
+		unsigned char data_len = 0;
+		unsigned char *data;
 
+		data_len = (BLOCKS_ROWS-2) * sizeof(*pgame->spaces);
+		data = malloc (data_len);
+
+		if (data == NULL) {
+			/* Non-fatal, we just don't save to database */
+			log_err ("Unable to acquire memory, %d", data_len);
+			goto mem_err;
+		}
+
+		memcpy (data, &pgame->spaces[2], data_len);
 		sqlite3_prepare_v2 (entry->db, insert, strlen (insert),
 				&stmt, NULL);
 		free (insert);
 
-		unsigned char data[BLOCKS_ROWS-2];
-		memcpy (&data[0], &pgame->spaces[2],
-			(BLOCKS_ROWS-2) * sizeof(*pgame->spaces));
-
-		sqlite3_bind_blob (stmt, 1, data, sizeof data, SQLITE_STATIC);
+		/* NOTE sqlite will free the @data block for us */
+		sqlite3_bind_blob (stmt, 1, data, data_len, free);
 		sqlite3_step (stmt);
 		sqlite3_finalize (stmt);
 	}
 
 	db_close (entry);
-
 	return 1;
+
+mem_err:
+	db_close (entry);
+	return 0;
 }
 
 /* Queries database for newest game state information and copies it to pgame.
@@ -183,18 +207,30 @@ db_resume_state (struct db_info *entry, struct block_game *pgame)
 
 	sqlite3_finalize (stmt);
 
-	/* TODO
-	 * Remove single entry from table 
-	 */
+	log_info ("Level = %d, Score = %d, Difficulty = %d, (%d, %d)",
+		pgame->level, pgame->score, pgame->mod,
+		pgame->width, pgame->height);
 
-	const char drop_state[] = "DROP TABLE State;";
-	sqlite3_prepare_v2 (entry->db, drop_state, sizeof drop_state,
-			&stmt, NULL);
-	sqlite3_step (stmt);
+	int rowid;
+	sqlite3_prepare_v2 (entry->db, select_state_rowid,
+			sizeof select_state_rowid, &stmt, NULL);
+
+	if (sqlite3_step (stmt) == SQLITE_ROW) {
+		rowid = sqlite3_column_int (stmt, 0);
+
+		/* delete from table */
+		sqlite3_stmt *delete;
+		sqlite3_prepare_v2 (entry->db, delete_state_rowid,
+			sizeof delete_state_rowid, &delete, NULL);
+
+		sqlite3_bind_int (delete, 1, rowid);
+		sqlite3_step (delete);
+		sqlite3_finalize (delete);
+	}
+
 	sqlite3_finalize (stmt);
 
 	db_close (entry);
-
 	return ret;
 }
 
