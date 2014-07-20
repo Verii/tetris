@@ -1,0 +1,33 @@
+db.c contains the implementation of the SQLite3 database wrappers.
+
+db_info structure contains information about a database, including:
+	the internal sqlite3 handler
+	the name of the file containing the database
+	and a unique handler.
+
+Thinking more about this now, the "unique handler" needs to be moved to the
+game structure, and removed from db_info. TODO.
+
+
+The functions below will open the database for reading/writing themselves,
+perform their tasks, and then close the database.
+
+db_results struct contains information about a specific game highscore.
+It is returned by db_get_scores in a linked-list format.
+
+int db_save_state() writes to the database specified in db_info, the current
+board position and state. It can be resumed from later by db_resume_state.
+
+int db_resume_state() see above. It will also remove the pulled entry from the
+database, to prevent abuse from the users.
+
+int db_save_score() does much the same, but it ammends the game score/level/etc. 
+to the database for lookup.
+
+the macro db_clean_scores cleans up after db_get_scores().
+
+
+We have a few char arrays defining several SQL commands. Those are self
+explanatory if you understand SQL.
+
+Finally, we have wrapper functions for sqlite3_open, and sqlite3_close.
