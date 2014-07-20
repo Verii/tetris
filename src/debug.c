@@ -6,18 +6,17 @@
 #include "debug.h"
 
 /* Prints a log message of the form:
- * "[time] [ERR|WARN|INFO] message"
+ * "[time] message"
  */
 void
 debug_log (const char *fmt, ...)
 {
-	char *msg;
-	va_list ap;
 	time_t s = time (NULL);
-	char date[100];
+	char *msg, date[32];
 
 	strftime (date, sizeof date, "[%F %H:%M]", localtime(&s));
 
+	va_list ap;
 	va_start (ap, fmt);
 	vasprintf (&msg, fmt, ap);
 	va_end (ap);
