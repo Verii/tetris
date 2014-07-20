@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <sqlite3.h>
 
 #include "db.h"
 #include "debug.h"
@@ -104,8 +105,6 @@ int
 db_save_state (struct db_info *entry, const struct block_game *pgame)
 {
 	sqlite3_stmt *stmt;
-	char *insert;
-	int ret;
 
 	log_info ("Trying to save state to database");
 
@@ -120,7 +119,8 @@ db_save_state (struct db_info *entry, const struct block_game *pgame)
 
 	debug ("Saving game spaces");
 
-	ret = asprintf (&insert, insert_state,
+	char *insert;
+	int ret = asprintf (&insert, insert_state,
 		entry->id, pgame->score, pgame->lines_destroyed,
 		pgame->level, pgame->mod, (uint64_t) time (NULL),
 		pgame->width, pgame->height);

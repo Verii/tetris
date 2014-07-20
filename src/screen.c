@@ -15,6 +15,8 @@
 
 #define BLOCK_CHAR "x"
 
+static WINDOW *board, *control;
+
 static const char colors[] = { COLOR_WHITE, COLOR_RED, COLOR_GREEN,
 		COLOR_YELLOW, COLOR_BLUE, COLOR_MAGENTA, COLOR_CYAN };
 
@@ -30,6 +32,12 @@ screen_init (void)
 	keypad (stdscr, TRUE);
 	curs_set (0);
 
+	box (stdscr, 0, 0);
+	refresh ();
+
+	board = newwin (BLOCKS_ROWS-1, BLOCKS_COLUMNS+2, 1, 18);
+	control = newwin (16, 16, 1, 1);
+
 	start_color ();
 	for (size_t i = 0; i < LEN(colors); i++)
 		init_pair (i+1, colors[i], COLOR_BLACK);
@@ -39,6 +47,7 @@ screen_init (void)
 void
 screen_draw_menu (struct block_game *pgame, struct db_info *psave)
 {
+	WINDOW *menu;
 	/* TODO: user menu pre-game
 	 *
 	 * New Game
@@ -64,6 +73,8 @@ screen_draw_menu (struct block_game *pgame, struct db_info *psave)
 	 *
 	 * Quit
 	 */
+	(void) menu;
+
 	memset (psave, 0, sizeof *psave);
 	strncpy (psave->id, "Lorem Ipsum", sizeof psave->id);
 
@@ -83,54 +94,33 @@ screen_draw_menu (struct block_game *pgame, struct db_info *psave)
 	}
 }
 
-
-void
-screen_draw_game (struct block_game *pgame)
+static inline void
+screen_draw_control (struct block_game *pgame)
 {
-	const char game_x_offset = 18;
-	const char game_y_offset = 1;
+	wattrset (control, COLOR_PAIR(1));
+	mvwprintw (control, 0, 0, "Tetris-" VERSION);
+	mvwprintw (control, 2, 1, "Level %d", pgame->level);
+	mvwprintw (control, 3, 1, "Score %d", pgame->score);
 
-	attr_t text, border;
-	text = COLOR_PAIR(1);
-	border = A_BOLD | COLOR_PAIR(5);
+	mvwprintw (control, 5, 1, "Next   Save");
+	mvwprintw (control, 6, 2, "           ");
+	mvwprintw (control, 7, 2, "           ");
 
-	attrset (text);
-	box (stdscr, 0, 0);
-
-	mvprintw (1, 1, "Tetris-" VERSION);
-	mvprintw (3, 2, "Level %d", pgame->level);
-	mvprintw (4, 2, "Score %d", pgame->score);
-
-	mvprintw (6, 2, "Next   Save");
-	mvprintw (7, 3, "           ");
-	mvprintw (8, 3, "           ");
-
-
-	mvprintw (10, 2, "Controls");
-	mvprintw (11, 3, "Pause [F1]");
-	mvprintw (12, 3, "Quit [F3]");
-	mvprintw (14, 3, "Move [asd]");
-	mvprintw (15, 3, "Rotate [qe]");
-	mvprintw (16, 3, "Save [space]");
-
-	attrset (border);
-	mvvline (game_y_offset, game_x_offset,
-			(unsigned) '*', pgame->height-1);
-
-	mvvline (game_y_offset, game_x_offset+pgame->width+1,
-			(unsigned) '*', pgame->height-1);
-
-	mvhline ((pgame->height-2)+game_y_offset, game_x_offset,
-			(unsigned) '*', pgame->width+2);
+	mvwprintw (control,  9, 1, "Controls");
+	mvwprintw (control, 10, 2, "Pause [F1]");
+	mvwprintw (control, 11, 2, "Quit [F3]");
+	mvwprintw (control, 13, 2, "Move [asd]");
+	mvwprintw (control, 14, 2, "Rotate [qe]");
+	mvwprintw (control, 15, 2, "Save [space]");
 
 	for (size_t i = 0; i < LEN(pgame->next->p); i++) {
 		char y, x;
 		y = pgame->next->p[i].y;
 		x = pgame->next->p[i].x;
 
-		attrset (COLOR_PAIR((pgame->next->color
+		wattrset (control, COLOR_PAIR((pgame->next->color
 				%sizeof colors) +1) | A_BOLD);
-		mvprintw (y+8, x+4, BLOCK_CHAR);
+		mvwprintw (control, y+7, x+3, BLOCK_CHAR);
 
 	}
 
@@ -139,42 +129,62 @@ screen_draw_game (struct block_game *pgame)
 		y = pgame->save->p[i].y;
 		x = pgame->save->p[i].x;
 
-		attrset (COLOR_PAIR((pgame->save->color
+		wattrset (control, COLOR_PAIR((pgame->save->color
 				%sizeof colors) +1) | A_BOLD);
-		mvprintw (y+8, x+10, BLOCK_CHAR);
+		mvwprintw (control, y+7, x+9, BLOCK_CHAR);
 	}
+
+	wrefresh (control);
+}
+
+static inline void
+screen_draw_board (struct block_game *pgame)
+{
+	wattrset (board, A_BOLD | COLOR_PAIR(5));
+	mvwvline (board, 0, 0, '*', pgame->height-1);
+
+	mvwvline (board, 0, pgame->width+1, '*', pgame->height-1);
+
+	mvwhline (board, pgame->height-2, 0, '*', pgame->width+2);
 
 	/* Draw the game board, minus the two hidden rows above the game */
 	for (int i = 2; i < pgame->height; i++) {
-		move ((i-2)+game_y_offset, game_x_offset+1);
+		wmove (board, i-2, 1);
 
 		for (int j = 0; j < pgame->width; j++) {
 			if (blocks_at_yx (pgame, i, j)) {
-				attrset (COLOR_PAIR((pgame->colors[i][j]
+				wattrset (board, COLOR_PAIR((pgame->colors[i][j]
 						% sizeof colors) +1) | A_BOLD);
-				printw (BLOCK_CHAR);
+				wprintw (board, BLOCK_CHAR);
 			} else {
-				attrset (text);
-				printw ((j%2) ? "." : " ");
+				wattrset (board, COLOR_PAIR(1));
+				wprintw (board, (j%2) ? "." : " ");
 			}
 		}
 	}
 
 	/* Overlay the PAUSED text */
-	attrset (text | A_BOLD);
+	wattrset (board, COLOR_PAIR(1) | A_BOLD);
 	if (pgame->pause) {
 		char y_off, x_off;
 
 		/* Center the text horizontally, place the text slightly above
 		 * the middle vertically.
 		 */
-		x_off = ((pgame->width  -6)/2 +1) +game_x_offset;
-		y_off = ((pgame->height -2)/2 -2) +game_y_offset;
+		x_off = (pgame->width  -6)/2 +1;
+		y_off = (pgame->height -2)/2 -2;
 
-		mvprintw (y_off, x_off, "PAUSED");
+		mvwprintw (board, y_off, x_off, "PAUSED");
 	}
 
-	refresh ();
+	wrefresh (board);
+}
+
+void
+screen_draw_game (struct block_game *pgame)
+{
+	screen_draw_control (pgame);
+	screen_draw_board (pgame);
 }
 
 /* Game over screen */
@@ -184,7 +194,7 @@ screen_draw_over (struct block_game *pgame, struct db_info *psave)
 	if (!pgame || !psave)
 		return;
 
-	log_info ("Game over.");
+	log_info ("Game over");
 
 	clear ();
 	attrset (COLOR_PAIR(1));
@@ -232,6 +242,8 @@ void
 screen_cleanup (void)
 {
 	log_info ("Cleaning ncurses context");
+	delwin (board);
+	delwin (control);
 	clear ();
 	endwin ();
 }
