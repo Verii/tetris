@@ -30,6 +30,9 @@ enum {
 static void
 create_block (struct block_game *pgame, struct block *block)
 {
+	if (!pgame || !block)
+		return;
+
 	block->type = rand() %NUM_BLOCKS;
 	block->col_off = pgame->width/2;
 	block->row_off = 1;
@@ -39,46 +42,46 @@ create_block (struct block_game *pgame, struct block *block)
 	switch (block->type) {
 	case SQUARE_BLOCK:
 		block->p[0].x = -1;	block->p[0].y = -1;
-		block->p[1].x = 0;	block->p[1].y = -1;
-		block->p[2].x = -1;	block->p[2].y = 0;
-		block->p[3].x = 0;	block->p[3].y = 0;
+		block->p[1].x =  0;	block->p[1].y = -1;
+		block->p[2].x = -1;	block->p[2].y =  0;
+		block->p[3].x =  0;	block->p[3].y =  0;
 		break;
 	case LINE_BLOCK:
 		block->col_off--; // center
-		block->p[0].x = -1;	block->p[0].y = 0;
-		block->p[1].x = 0;	block->p[1].y = 0;
-		block->p[2].x = 1;	block->p[2].y = 0;
-		block->p[3].x = 2;	block->p[3].y = 0;
+		block->p[0].x = -1;	block->p[0].y =  0;
+		block->p[1].x =  0;	block->p[1].y =  0;
+		block->p[2].x =  1;	block->p[2].y =  0;
+		block->p[3].x =  2;	block->p[3].y =  0;
 		break;
 	case T_BLOCK:
-		block->p[0].x = 0;	block->p[0].y = -1;
-		block->p[1].x = -1;	block->p[1].y = 0;
-		block->p[2].x = 0;	block->p[2].y = 0;
-		block->p[3].x = 1;	block->p[3].y = 0;
+		block->p[0].x =  0;	block->p[0].y = -1;
+		block->p[1].x = -1;	block->p[1].y =  0;
+		block->p[2].x =  0;	block->p[2].y =  0;
+		block->p[3].x =  1;	block->p[3].y =  0;
 		break;
 	case L_BLOCK:
-		block->p[0].x = 1;	block->p[0].y = -1;
-		block->p[1].x = -1;	block->p[1].y = 0;
-		block->p[2].x = 0;	block->p[2].y = 0;
-		block->p[3].x = 1;	block->p[3].y = 0;
+		block->p[0].x =  1;	block->p[0].y = -1;
+		block->p[1].x = -1;	block->p[1].y =  0;
+		block->p[2].x =  0;	block->p[2].y =  0;
+		block->p[3].x =  1;	block->p[3].y =  0;
 		break;
 	case L_REV_BLOCK:
 		block->p[0].x = -1;	block->p[0].y = -1;
-		block->p[1].x = -1;	block->p[1].y = 0;
-		block->p[2].x = 0;	block->p[2].y = 0;
-		block->p[3].x = 1;	block->p[3].y = 0;
+		block->p[1].x = -1;	block->p[1].y =  0;
+		block->p[2].x =  0;	block->p[2].y =  0;
+		block->p[3].x =  1;	block->p[3].y =  0;
 		break;
 	case Z_BLOCK:
 		block->p[0].x = -1;	block->p[0].y = -1;
-		block->p[1].x = 0;	block->p[1].y = -1;
-		block->p[2].x = 0;	block->p[2].y = 0;
-		block->p[3].x = 1;	block->p[3].y = 0;
+		block->p[1].x =  0;	block->p[1].y = -1;
+		block->p[2].x =  0;	block->p[2].y =  0;
+		block->p[3].x =  1;	block->p[3].y =  0;
 		break;
 	case Z_REV_BLOCK:
-		block->p[0].x = 0;	block->p[0].y = -1;
-		block->p[1].x = 1;	block->p[1].y = -1;
-		block->p[2].x = -1;	block->p[2].y = 0;
-		block->p[3].x = 0;	block->p[3].y = 0;
+		block->p[0].x =  0;	block->p[0].y = -1;
+		block->p[1].x =  1;	block->p[1].y = -1;
+		block->p[2].x = -1;	block->p[2].y =  0;
+		block->p[3].x =  0;	block->p[3].y =  0;
 		break;
 	}
 }
@@ -86,9 +89,12 @@ create_block (struct block_game *pgame, struct block *block)
 /* Current block hit the bottom of the game, remove it.
  * Then make the next block the current block, and create a random next block
  */
-static void
+static inline void
 update_cur_next (struct block_game *pgame)
 {
+	if (!pgame)
+		return;
+
 	struct block *old = pgame->cur;
 
 	pgame->cur = pgame->next;
@@ -109,18 +115,16 @@ rotate_block (struct block_game *pgame, struct block *block, enum block_cmd cmd)
 	if (block->type == SQUARE_BLOCK)
 		return 1;
 
-	int py[4], px[4], mod = 1;
+	int mod = 1;
 	if (cmd == ROT_LEFT)
 		mod = -1;
 
+	/* Check each block for a collision */
 	for (size_t i = 0; i < LEN(block->p); i++) {
-		/* Rotate each piece */
-		px[i] = block->p[i].y * (-mod);
-		py[i] = block->p[i].x * mod;
 
 		int bounds_x, bounds_y;
-		bounds_x = px[i] + block->col_off;
-		bounds_y = py[i] + block->row_off;
+		bounds_x = block->p[i].y * (-mod) + block->col_off;
+		bounds_y = block->p[i].x * mod + block->row_off;
 
 		/* Check out of bounds on each block */
 		if (bounds_x < 0 || bounds_x >= pgame->width ||
@@ -130,9 +134,9 @@ rotate_block (struct block_game *pgame, struct block *block, enum block_cmd cmd)
 	}
 
 	/* No collisions, update block position */
-	for (int i = 0; i < 4; i++) {
-		block->p[i].x = px[i];
-		block->p[i].y = py[i];
+	for (int i = 0; i < LEN(block->p); i++) {
+		block->p[i].x = block->p[i].y * (-mod);
+		block->p[i].y = block->p[i].x * mod;
 	}
 
 	return 1;
@@ -144,10 +148,14 @@ rotate_block (struct block_game *pgame, struct block *block, enum block_cmd cmd)
 static int
 translate_block (struct block_game *pg, struct block *block, enum block_cmd cmd)
 {
+	if (!pg || !block)
+		return -1;
+
 	int dir = 1;
 	if (cmd == MOVE_LEFT)
 		dir = -1;
 
+	/* Check each block for a collision */
 	for (size_t i = 0; i < LEN(block->p); i++) {
 
 		int bounds_x, bounds_y;
@@ -169,6 +177,9 @@ translate_block (struct block_game *pg, struct block *block, enum block_cmd cmd)
 static void
 update_tick_speed (struct block_game *pgame)
 {
+	if (!pgame)
+		return;
+
 	/* See tests/level-curve.c */
 	double speed;
 	speed = atan (pgame->level/(double)5) * (pgame->mod+1) +1;
@@ -178,6 +189,9 @@ update_tick_speed (struct block_game *pgame)
 static int
 destroy_lines (struct block_game *pgame)
 {
+	if (!pgame)
+		return -1;
+
 	uint8_t destroyed = 0;
 
 	/* Check first two rows for any block */
@@ -229,7 +243,7 @@ destroy_lines (struct block_game *pgame)
 static void
 unwrite_piece (struct block_game *pgame, struct block *block)
 {
-	if (pgame == NULL || block == NULL)
+	if (!pgame || !block)
 		return;
 
 	for (size_t i = 0; i < LEN(block->p); i++) {
@@ -246,7 +260,7 @@ unwrite_piece (struct block_game *pgame, struct block *block)
 static void
 write_piece (struct block_game *pgame, struct block *block)
 {
-	if (pgame == NULL || block == NULL)
+	if (!pgame || !block)
 		return;
 
 	int px[4], py[4];
@@ -273,7 +287,7 @@ write_piece (struct block_game *pgame, struct block *block)
 static bool
 drop_block (struct block_game *pgame)
 {
-	if (pgame->cur == NULL)
+	if (!pgame->cur)
 		return 0;
 
 	for (int i = 0; i < 4; i++) {
@@ -296,7 +310,7 @@ drop_block (struct block_game *pgame)
 int
 blocks_loop (struct block_game *pgame)
 {
-	if (pgame == NULL)
+	if (!pgame)
 		return -1;
 
 	struct timespec ts;
@@ -339,7 +353,7 @@ blocks_loop (struct block_game *pgame)
 int
 blocks_init (struct block_game *pgame)
 {
-	if (pgame == NULL)
+	if (!pgame)
 		return -1;
 
 	log_info ("Initializing game data");
@@ -363,7 +377,9 @@ blocks_init (struct block_game *pgame)
 	/* Initialize the blocks */
 	for (size_t i = 0; i < LEN(blocks); i++) {
 		create_block (pgame, &blocks[i]);
-		blocks[i].color = rand(); // Start with random color
+		/* Start with random color, so cur and next don't follow each
+		 * other. Then just increment normally. */
+		blocks[i].color = rand();
 	}
 
 	pgame->cur = &blocks[0];
@@ -458,13 +474,13 @@ draw:
 int
 blocks_cleanup (struct block_game *pgame)
 {
-	if (pgame == NULL)
+	if (!pgame)
 		return -1;
 
 	log_info ("Cleaning game data");
 	pthread_mutex_destroy (&pgame->lock);
 
-	/* Don't use board size; free all the memory allocated */
+	/* Don't use board size; we need to free all the memory allocated */
 	for (int i = 0; i < BLOCKS_ROWS; i++)
 		free (pgame->colors[i]);
 

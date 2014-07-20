@@ -18,7 +18,7 @@
 
 /* Only the currently falling block, the next block, and the save block are
  * stored in this structure. Once a block hits another piece, we forget about
- * it. It becomes part of the game board.
+ * it; It becomes part of the game board.
  */
 struct block {
 	uint8_t col_off, row_off;	/* column/row offsets */

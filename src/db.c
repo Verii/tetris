@@ -6,7 +6,7 @@
 #include "debug.h"
 #include "blocks.h"
 
-/* Scores: name, score, diff, date */
+/* Scores: name, level, score, date */
 const char create_scores[] =
 	"CREATE TABLE Scores(name TEXT,level INT,score INT,date INT);";
 
@@ -16,7 +16,7 @@ const char insert_scores[] =
 const char select_scores[] =
 	"SELECT * FROM Scores ORDER BY score DESC;";
 
-/* State: name, score, lines, level, diff, date, spaces */
+/* State: name, score, lines, level, diff, date, width, height, spaces */
 const char create_state[] =
 	"CREATE TABLE State(name TEXT,score INT,lines INT,level INT,"
 	"diff INT,date INT,width INT,height INT,spaces BLOB);";
@@ -42,13 +42,12 @@ const char delete_state_rowid[] =
 static int
 db_open (struct db_info *entry)
 {
-	int status;
-	if (entry == NULL || entry->file_loc == NULL)
+	if (!entry || !entry->file_loc)
 		return -1;
 
 	log_info ("Opening database %s", entry->file_loc);
 
-	status = sqlite3_open (entry->file_loc, &entry->db);
+	int status = sqlite3_open (entry->file_loc, &entry->db);
 	if (status != SQLITE_OK) {
 		log_err ("DB cannot be opened. Error occured (%d)", status);
 		return -1;
@@ -64,11 +63,9 @@ db_close (struct db_info *entry)
 }
 
 int
-db_save_score (struct db_info *entry, struct block_game *pgame)
+db_save_score (struct db_info *entry, const struct block_game *pgame)
 {
 	sqlite3_stmt *stmt;
-	char *insert;
-	int ret;
 
 	if (!entry->id || pgame->score == 0)
 		return 0;
@@ -84,7 +81,8 @@ db_save_score (struct db_info *entry, struct block_game *pgame)
 	sqlite3_step (stmt);
 	sqlite3_finalize (stmt);
 
-	ret = asprintf (&insert, insert_scores,
+	char *insert;
+	int ret = asprintf (&insert, insert_scores,
 		entry->id, pgame->level, pgame->score, (uint64_t)time(NULL));
 
 	if (ret < 0) {
@@ -103,7 +101,7 @@ db_save_score (struct db_info *entry, struct block_game *pgame)
 }
 
 int
-db_save_state (struct db_info *entry, struct block_game *pgame)
+db_save_state (struct db_info *entry, const struct block_game *pgame)
 {
 	sqlite3_stmt *stmt;
 	char *insert;
@@ -238,8 +236,7 @@ db_resume_state (struct db_info *entry, struct block_game *pgame)
  * This list can be iterated over to extract the fields:
  * name, level, score, date.
  *
- * Be sure to call db_clean_scores after this to prevent memory leaks.
- * The user can also do it themselves, but it's much easier to call a function.
+ * NOTE Be sure to call db_clean_scores after this to free memory.
  */
 struct db_results *
 db_get_scores (struct db_info *entry, int results)

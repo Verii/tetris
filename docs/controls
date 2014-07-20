@@ -4,12 +4,12 @@ input by the user at the keyboard through several key combinations:
 To rotate the current falling block press the 'q' and 'e' keys.
 'q' will rotate counter-clockwise and 'e' will rotate clockwise.
 
-To move the current falling block horizontally press the 'a' and 'd' keys.
-To speed up the falling block the 's' will advance the falling block one step.
-To make the block wall to the bottom, the 'w' key can be used.
+To move the current falling block horizontally, press the 'a' and 'd' keys.
+To speed up the falling block, the 's' will advance the falling block one step.
+To make the block fall to the bottom, the 'w' key can be used.
 
 To save the next piece for later, press the space bar. If successful, a new
 field will display on screen alerting the user of the current save piece. 
 Saving a piece will move the next piece to the save position, a new next piece
-will be created. 'Restoring' a save piece replaces the current save piece will
+will be created. 'Restoring' a save piece replaces the current save piece with
 the current next piece.

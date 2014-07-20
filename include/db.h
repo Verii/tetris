@@ -11,10 +11,10 @@
 struct db_info {
 	sqlite3 *db;		/* internal handler */
 	char *file_loc;		/* database location on filesystem */
-	char id[16];		/* ID(username?) of a game save */
+	char id[16];		/* ID of a game save */
 };
 
-/* Linked list of top scores */
+/* Linked list returned to user after db_get_scores() call */
 TAILQ_HEAD (db_results_head, db_results) results_head;
 struct db_results {
 	char id[16];
@@ -29,11 +29,11 @@ struct db_results {
  */
 
 /* Saves game state to disk. Can be restored at a later time */
-int db_save_state (struct db_info *, struct block_game *);
+int db_save_state (struct db_info *, const struct block_game *);
 int db_resume_state (struct db_info *, struct block_game *);
 
 /* Save game score to disk when the player loses a game */
-int db_save_score (struct db_info *, struct block_game *);
+int db_save_score (struct db_info *, const struct block_game *);
 
 /* Returns a linked list to (n) highscores in the database */
 struct db_results *db_get_scores (struct db_info *, int n);
