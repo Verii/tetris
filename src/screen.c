@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "blocks.h"
 #include "db.h"
@@ -22,10 +23,10 @@ screen_init (void)
 	log_info ("Initializing ncurses context");
 	initscr ();
 
+	keypad (stdscr, true);
 	cbreak ();
 	noecho ();
 	nonl ();
-	keypad (stdscr, TRUE);
 	curs_set (0);
 
 	board = newwin (BLOCKS_ROWS-1, BLOCKS_COLUMNS+2, 1, 18);
@@ -44,39 +45,7 @@ screen_init (void)
 void
 screen_draw_menu (struct block_game *pgame, struct db_info *psave)
 {
-	WINDOW *menu;
-	menu = newwin (0, 0, 0, 0);
-	wattrset (menu, 0);
-	delwin (menu);
-
 	memset (psave, 0, sizeof *psave);
-
-	/* TODO: user menu pre-game
-	 *
-	 * New Game
-	 * 	> <Name>
-	 * 	> [Difficulty]
-	 * 	> (Board size) ...
-	 * 	> {
-	 * 	 <Local>
-	 * 	 <Network>
-	 * 	   {
-	 * 		> Client: <server IP> <server PORT>
-	 * 		> Server: <listen IP> <listen PORT>
-	 *	   }
-	 * 	 }
-	 *
-	 * Resume
-	 * 	> Select Game
-	 * 		> ...
-	 * Settings
-	 * 	> Log File: [file]
-	 * 	> Database File: [file]
-	 * 	> Block Character: <char>
-	 *
-	 * Quit
-	 */
-
 	/* TODO place holder name, get from user later */
 	strncpy (pgame->id, "Lorem Ipsum", sizeof pgame->id);
 
@@ -253,6 +222,7 @@ screen_cleanup (void)
 	log_info ("Cleaning ncurses context");
 	delwin (board);
 	delwin (control);
+
 	clear ();
 	endwin ();
 }

@@ -58,10 +58,10 @@ usage (void)
 static void
 cleanup (void)
 {
+	log_err ("Cleanup .. ");
 	screen_cleanup ();
 	blocks_cleanup (&game);
 
-	fclose (err_tofile);
 	printf ("Thanks for playing Blocks-" VERSION "!\n");
 }
 
@@ -123,6 +123,7 @@ main (int argc, char **argv)
 
 	/* Print scores, tell user they're a loser, etc. */
 	screen_draw_over (&game, &save);
+	fclose (err_tofile);
 
 	return (EXIT_SUCCESS);
 }
