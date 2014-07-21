@@ -187,6 +187,11 @@ update_tick_speed (struct block_game *pgame)
 	if (!pgame)
 		return;
 
+	if (pgame->level == 0) {
+		pgame->nsec = 1E9 -1;
+		return;
+	}
+
 	/* See tests/level-curve.c */
 	double speed;
 	speed = atan (pgame->level/(double)5) * (pgame->mod+1) +1;
@@ -202,19 +207,18 @@ destroy_lines (struct block_game *pgame)
 	uint8_t destroyed = 0;
 
 	/* If at any time the first two rows contain a block piece we lose. */
-	for (int i = 0; i < 2; i++)
-		for (int j = 0; j < pgame->width; j++)
+	for (int8_t i = 0; i < 2; i++)
+		for (int8_t j = 0; j < pgame->width; j++)
 			if (blocks_at_yx(pgame, i, j))
 				pgame->loss = true;
 
 	/* Check each row for a full line of blocks */
-	for (int i = pgame->height-1; i >= 2; i--) {
+	for (int8_t i = pgame->height-1; i >= 2; i--) {
 
-		int j = 0;
+		int8_t j = 0;
 		for (; j < pgame->width; j++)
-			if (!blocks_at_yx(pgame, i, j))
+			if (blocks_at_yx(pgame, i, j) == 0)
 				break;
-
 		if (j != pgame->width)
 			continue;
 
@@ -224,15 +228,14 @@ destroy_lines (struct block_game *pgame)
 
 		destroyed++;
 
-		/* Move lines above destroyed line down */
-		for (int k = i; k > 0; k--)
+		for (int8_t k = i; k > 0; k--)
 			pgame->spaces[k] = pgame->spaces[k-1];
 
 		i++; // recheck this one
 	}
 
 	/* Update player level and game speed if necessary */
-	for (int i = destroyed; i > 0; i--) {
+	for (int8_t i = destroyed; i > 0; i--) {
 
 		/* pgame stores its own lines_destroyed data */
 		pgame->lines_destroyed++;
@@ -277,7 +280,7 @@ write_piece (struct block_game *pgame, struct block *block)
 	if (!pgame || !block)
 		return;
 
-	int px[4], py[4];
+	int8_t px[4], py[4];
 
 	for (size_t i = 0; i < LEN(pgame->cur->p); i++) {
 		py[i] = block->row_off + block->p[i].y;
@@ -304,7 +307,7 @@ drop_block (struct block_game *pgame, struct block *block)
 	if (!pgame || !block)
 		return -1;
 
-	for (uint8_t i = 0; i < 4; i++) {
+	for (uint8_t i = 0; i < LEN(block->p); i++) {
 
 		uint8_t bounds_y, bounds_x;
 		bounds_y = block->p[i].y + block->row_off +1;
@@ -355,10 +358,10 @@ blocks_loop (struct block_game *pgame)
 		unwrite_piece (pgame, pgame->cur);
 		int hit = drop_block (pgame, pgame->cur);
 		write_piece (pgame, pgame->cur);
-	
+
 		if (hit == 0) {
-			update_cur_next (pgame);
 			destroy_lines (pgame);
+			update_cur_next (pgame);
 		} else if (hit < 0) {
 			exit (2);
 		}
@@ -437,69 +440,44 @@ blocks_move (struct block_game *pgame, enum block_cmd cmd)
 	 * thread */
 	pthread_mutex_lock (&pgame->lock);
 
-	/* just redraw the screen, no commands */
-	if (pgame->pause || pgame->quit)
-		goto draw;
-
 	/* remove the current piece from the board, modify it, then rewrite it */
 	unwrite_piece (pgame, pgame->cur);
 
-	if (cmd == MOVE_LEFT || cmd == MOVE_RIGHT) {
+	switch (cmd) {
+	case MOVE_LEFT:
+	case MOVE_RIGHT:
 		translate_block (pgame, pgame->cur, cmd);
-
-	} else if (cmd == MOVE_DOWN) {
+		break;
+	case MOVE_DOWN:
 		drop_block (pgame, pgame->cur);
-
-	} else if (cmd == MOVE_DROP) {
+		break;
+	case MOVE_DROP:
 		/* drop the block to the bottom of the game */
-		while (drop_block (pgame, pgame->cur));
-	}
-
-	/* Swap next and save pieces */
-	else if (cmd == SAVE_PIECE) {
+		while (drop_block (pgame, pgame->cur) == 1);
+		break;
+	case ROT_LEFT:
+	case ROT_RIGHT:
+		rotate_block (pgame, pgame->cur, cmd);
+		break;
+	case SAVE_PIECE:
+		/* Swap next and save pieces */
 		if (pgame->save == NULL) {
 			pgame->save = &blocks[2];
 		}
 
 		struct block *tmp = pgame->save;
-
 		pgame->save = pgame->next;
 		pgame->next = tmp;
-	}
 
-	/* XXX This is horribly hacky, and only works if you rotate LEFT on the
-	 * RIGHT wall, and RIGHT on the LEFT wall. Make this better
-	 */
-
-	/* We implement wall kicks */
-	else if (cmd == ROT_LEFT || cmd == ROT_RIGHT) {
-
-		struct block tmp;
-		memcpy (&tmp, pgame->cur, sizeof tmp);
-
-		/* Try to rotate the block; if it works, commit and quit. */
-		if (rotate_block (pgame, &tmp, cmd) > 0)
-			memcpy (pgame->cur, &tmp, sizeof tmp);
-
-		/* Try to move the block */
-		else {
-			if (cmd == ROT_LEFT)
-				translate_block (pgame, &tmp, MOVE_RIGHT);
-			else
-				translate_block (pgame, &tmp, MOVE_LEFT);
-
-			/* Try again to rotate */
-			if (rotate_block (pgame, &tmp, cmd) > 0)
-				memcpy (pgame->cur, &tmp, sizeof tmp);
-		}
+		break;
+	default:
+		break;
 	}
 
 	write_piece (pgame, pgame->cur);
-
-draw:
 	screen_draw_game (pgame);
-	pthread_mutex_unlock (&pgame->lock);
 
+	pthread_mutex_unlock (&pgame->lock);
 	return 1;
 }
 

@@ -39,6 +39,7 @@ struct block_game {
 	/* These variables are written to the database
 	 * when restoring/saving the game state
 	 */
+	char id[16];
 	uint8_t width, height, level;
 	uint16_t lines_destroyed;	/* temp. don't print to screen */
 	uint16_t spaces[BLOCKS_ROWS];	/* array of shorts, one per row.*/

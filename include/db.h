@@ -11,10 +11,9 @@
 struct db_info {
 	sqlite3 *db;		/* internal handler */
 	char *file_loc;		/* database location on filesystem */
-	char id[16];		/* ID of a game save */
 };
 
-/* Linked list returned to user after db_get_scores() call */
+/* Linked list returned to user by db_get_scores() call */
 TAILQ_HEAD (db_results_head, db_results) results_head;
 struct db_results {
 	char id[16];

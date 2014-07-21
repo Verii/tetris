@@ -3,11 +3,6 @@ db.c contains the implementation of the SQLite3 database wrappers.
 db_info structure contains information about a database, including:
 	the internal sqlite3 handler
 	the name of the file containing the database
-	and a unique handler.
-
-Thinking more about this now, the "unique handler" needs to be moved to the
-game structure, and removed from db_info. TODO.
-
 
 The functions below will open the database for reading/writing themselves,
 perform their tasks, and then close the database.

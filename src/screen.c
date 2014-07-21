@@ -9,11 +9,6 @@
 #include "debug.h"
 #include "screen.h"
 
-/* database is saved in ~/.local/share/tetris/saves */
-#ifndef DB_FILE
-#define DB_FILE "/saves"
-#endif
-
 #define BLOCK_CHAR "x"
 
 static WINDOW *board, *control;
@@ -49,7 +44,11 @@ screen_init (void)
 void
 screen_draw_menu (struct block_game *pgame, struct db_info *psave)
 {
-//	WINDOW *menu;
+	WINDOW *menu;
+	menu = newwin (0, 0, 0, 0);
+	wattrset (menu, 0);
+	delwin (menu);
+
 	memset (psave, 0, sizeof *psave);
 
 	/* TODO: user menu pre-game
@@ -79,10 +78,10 @@ screen_draw_menu (struct block_game *pgame, struct db_info *psave)
 	 */
 
 	/* TODO place holder name, get from user later */
-	strncpy (psave->id, "Lorem Ipsum", sizeof psave->id);
+	strncpy (pgame->id, "Lorem Ipsum", sizeof pgame->id);
 
-	int ret = asprintf (&psave->file_loc, "%s/.local/share/tetris%s",
-					getenv ("HOME"), DB_FILE);
+	int ret = asprintf (&psave->file_loc,
+			"%s/.local/share/tetris/saves", getenv ("HOME"));
 	if (ret < 0) {
 		log_err ("Out of memory");
 		exit (2);
@@ -96,6 +95,63 @@ screen_draw_menu (struct block_game *pgame, struct db_info *psave)
 	if (db_resume_state (psave, pgame) > 0) {
 		pgame->pause = true;
 	}
+}
+
+/* Game over screen */
+void
+screen_draw_over (struct block_game *pgame, struct db_info *psave)
+{
+	if (!pgame || !psave)
+		return;
+
+	if (pgame->quit) {
+		/* Don't print high scores if the user quits */
+		db_save_state (psave, pgame);
+		return;
+	}
+
+	log_info ("Game over");
+
+	/* DB access is probably the slowest operation in this program.
+	 * Especially when the DB starts to get large with many saves and many
+	 * high scores.
+	 *
+	 * refresh() the screen before we access the DB to make it feel faster
+	 * to the luser
+	 */
+
+	clear ();
+	attrset (COLOR_PAIR(1));
+	box (stdscr, 0, 0);
+
+	mvprintw (1, 1, "Local Leaderboard");
+	mvprintw (2, 3, "Rank\tName\t\tLevel\tScore\tDate");
+	mvprintw (LINES-2, 1, "Press F1 to quit.");
+	refresh ();
+
+	/* Save the game scores if we lost */
+	if (pgame->loss)
+		db_save_score (psave, pgame);
+
+	/* Get 10 highscores from DB */
+	struct db_results *res = db_get_scores (psave, 10);
+
+	while (res) {
+		/* convert DB unix time to string */
+		char *date = ctime (&res->date);
+		static uint8_t count = 0;
+		count ++;
+
+		mvprintw (count+2, 4, "%2d.\t%-16s%-5d\t%-5d\t%.*s", count,
+			res->id, res->level, res->score, strlen (date)-1, date);
+		res = res->entries.tqe_next;
+	}
+	refresh (); // display scores
+
+	db_clean_scores ();
+	free (psave->file_loc);
+
+	while (getch() != KEY_F(1)); // wait till user presses F1
 }
 
 static inline void
@@ -189,57 +245,6 @@ screen_draw_game (struct block_game *pgame)
 {
 	screen_draw_control (pgame);
 	screen_draw_board (pgame);
-}
-
-/* Game over screen */
-void
-screen_draw_over (struct block_game *pgame, struct db_info *psave)
-{
-	if (!pgame || !psave)
-		return;
-
-	log_info ("Game over");
-
-	clear ();
-	attrset (COLOR_PAIR(1));
-	box (stdscr, 0, 0);
-
-	mvprintw (1, 1, "Local Leaderboard");
-	mvprintw (2, 3, "Rank\tName\t\tLevel\tScore\tDate");
-	mvprintw (LINES-2, 1, "Press F1 to quit.");
-
-	/* DB access is probably the slowest operation in this function.
-	 * Especially when the DB starts to get large with many saves and many
-	 * high scores.
-	 *
-	 * refresh() the screen before we access the DB to make it feel faster
-	 * to the luser
-	 */
-	if (pgame->loss) {
-		refresh ();
-		db_save_score (psave, pgame);
-	} else {
-		db_save_state (psave, pgame);
-		return;
-	}
-
-	/* Print score board when you lose a game */
-	struct db_results *res = db_get_scores (psave, 10);
-	while (res) {
-		char *date = ctime (&res->date);
-		static unsigned char count = 0;
-
-		count ++;
-		mvprintw (count+2, 4, "%2d.\t%-16s%-5d\t%-5d\t%.*s", count,
-			res->id, res->level, res->score, strlen (date)-1, date);
-		res = res->entries.tqe_next;
-	}
-	refresh ();
-
-	db_clean_scores ();
-	free (psave->file_loc);
-
-	while (getch() != KEY_F(1));
 }
 
 void

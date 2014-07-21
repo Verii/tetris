@@ -15,19 +15,14 @@
 #include "debug.h"
 #include "screen.h"
 
-#ifndef LOG_FILE
-#define LOG_FILE "/logs"
-#endif
-
 static FILE *err_tofile;
 static struct block_game game;
-static char log_file[128];
-static pthread_t screen_loop;
 
 static void
 redirect_stderr (void)
 {
 	struct stat sb;
+	char log_file[128];
 
 	snprintf (log_file, sizeof log_file, "%s/.local/share/tetris",
 			getenv("HOME"));
@@ -41,7 +36,7 @@ redirect_stderr (void)
 	}
 
 	/* add name of log file to string */
-	strcat (log_file, LOG_FILE);
+	strcat (log_file, "/logs");
 
 	printf ("Redirecting stderr to %s.\n", log_file);
 	err_tofile = freopen (log_file, "w", stderr);
@@ -52,11 +47,11 @@ usage (void)
 {
 	extern const char *__progname;
 	fprintf (stderr, "Copyright (C) 2014 James Smith <james@theta.pw>\n"
-		"See the license.txt file included with the release\n\n"
+		"See the LICENSE file included with the release\n\n"
 		"%s-" VERSION " usage:\n\t"
-		"[-h] this help\n", __progname);
-
-	exit (EXIT_FAILURE);
+		"[-h] this help\n\t"
+		"[-s] show highscores\n"
+		, __progname);
 }
 
 /* We can exit() at any point and still safely cleanup */
@@ -73,11 +68,24 @@ cleanup (void)
 int
 main (int argc, char **argv)
 {
-	setlocale (LC_ALL, "");
-	if (argc > 1 && argv[1][0] == '-' && argv[1][1] == 'h')
-		usage ();
-
+	int ch, scores_flag = 0;
 	srand (time (NULL));
+	setlocale (LC_ALL, "");
+
+	while ((ch = getopt (argc, argv, "hs")) != -1) {
+		switch (ch) {
+		case 's':
+			scores_flag = 1;
+			break;
+		case 'h':
+		default:
+			usage();
+			exit (EXIT_FAILURE);
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
 	redirect_stderr ();
 
 	/* Create game context */
@@ -90,18 +98,27 @@ main (int argc, char **argv)
 
 	/* create ncurses display */
 	screen_init ();
-
 	atexit (cleanup);
 
 	struct db_info save;
 	screen_draw_menu (&game, &save);
 
+	/* Show highscores and quit. */
+	if (scores_flag) {
+		screen_draw_over (&game, &save);
+		return (EXIT_SUCCESS);
+	}
+
+	/* draw game here so it's faster to the user */
 	screen_draw_game (&game);
 
+	pthread_t screen_loop;
 	pthread_create (&screen_loop, NULL, screen_main, &game);
 
-	/* when blocks_loop returns, kill the input thread and cleanup */
+	/* main loop */
 	blocks_loop (&game);
+
+	/* when blocks_loop returns, kill the input thread and cleanup */
 	pthread_cancel (screen_loop);
 
 	/* Print scores, tell user they're a loser, etc. */

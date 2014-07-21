@@ -4,41 +4,9 @@
 #include <sqlite3.h>
 
 #include "db.h"
+#include "db_statements.h"
 #include "debug.h"
 #include "blocks.h"
-
-/* Scores: name, level, score, date */
-const char create_scores[] =
-	"CREATE TABLE Scores(name TEXT,level INT,score INT,date INT);";
-
-const char insert_scores[] =
-	"INSERT INTO Scores VALUES(\"%s\",%d,%d,%lu);";
-
-const char select_scores[] =
-	"SELECT * FROM Scores ORDER BY score DESC;";
-
-/* State: name, score, lines, level, diff, date, width, height, spaces */
-const char create_state[] =
-	"CREATE TABLE State(name TEXT,score INT,lines INT,level INT,"
-	"diff INT,date INT,width INT,height INT,spaces BLOB);";
-
-const char insert_state[] =
-	"INSERT INTO State VALUES(\"%s\",%d,%d,%d,%d,%lu,%d,%d,?);";
-
-const char select_state[] =
-	"SELECT * FROM State ORDER BY date DESC;";
-
-/* Find the entry we just pulled from the database.
- * There's probably a simpler way than using two SELECT calls, but I'm a total
- * SQL noob, so ... */
-const char select_state_rowid[] =
-	"SELECT ROWID,date FROM State ORDER BY date DESC;";
-
-/* Remove the entry pulled from the database. This lets us have multiple saves
- * in the database concurently.
- */
-const char delete_state_rowid[] =
-	"DELETE FROM State WHERE ROWID = ?;";
 
 static int
 db_open (struct db_info *entry)
@@ -60,7 +28,8 @@ db_open (struct db_info *entry)
 static void
 db_close (struct db_info *entry)
 {
-	sqlite3_close_v2 (entry->db);
+	log_info ("Closing database %s", entry->file_loc);
+	sqlite3_close (entry->db);
 }
 
 int
@@ -68,7 +37,7 @@ db_save_score (struct db_info *entry, const struct block_game *pgame)
 {
 	sqlite3_stmt *stmt;
 
-	if (!entry->id || pgame->score == 0)
+	if (!pgame->id || pgame->score == 0)
 		return 0;
 
 	log_info ("Trying to insert scores to database");
@@ -84,7 +53,7 @@ db_save_score (struct db_info *entry, const struct block_game *pgame)
 
 	char *insert;
 	int ret = asprintf (&insert, insert_scores,
-		entry->id, pgame->level, pgame->score, (uint64_t)time(NULL));
+		pgame->id, pgame->level, pgame->score, (uint64_t)time(NULL));
 
 	if (ret < 0) {
 		log_err ("Out of memory");
@@ -121,7 +90,7 @@ db_save_state (struct db_info *entry, const struct block_game *pgame)
 
 	char *insert;
 	int ret = asprintf (&insert, insert_state,
-		entry->id, pgame->score, pgame->lines_destroyed,
+		pgame->id, pgame->score, pgame->lines_destroyed,
 		pgame->level, pgame->mod, (uint64_t) time (NULL),
 		pgame->width, pgame->height);
 
@@ -177,8 +146,8 @@ db_resume_state (struct db_info *entry, struct block_game *pgame)
 			sizeof select_state, &stmt, NULL);
 
 	if (sqlite3_step (stmt) == SQLITE_ROW) {
-		strncpy (entry->id, (const char *)
-			sqlite3_column_text (stmt, 0), sizeof entry->id);
+		strncpy (pgame->id, (const char *)
+			sqlite3_column_text (stmt, 0), sizeof pgame->id);
 
 		pgame->score = sqlite3_column_int (stmt, 1);
 		pgame->lines_destroyed = sqlite3_column_int (stmt, 2);
