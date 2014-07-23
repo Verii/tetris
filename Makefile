@@ -1,8 +1,6 @@
 BIN = blocks
-VERSION = v0.19
-SRC = src/main.c src/blocks.c src/screen.c src/debug.c src/db.c
-
-OBJS = ${SRC:.c=.o}
+VERSION = v0.20
+SRC = src/main.c src/blocks.c src/menu.c src/debug.c src/db.c
 
 INCS = -I./include
 CPPFLAGS = -D_GNU_SOURCE -DVERSION=\"${VERSION}\" ${INCS}

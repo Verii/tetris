@@ -91,7 +91,7 @@ db_save_state (struct db_info *entry, const struct block_game *pgame)
 	char *insert;
 	int ret = asprintf (&insert, insert_state,
 		pgame->id, pgame->score, pgame->lines_destroyed,
-		pgame->level, pgame->mod, (uint64_t) time (NULL),
+		pgame->level, pgame->diff, (uint64_t) time (NULL),
 		pgame->width, pgame->height);
 
 	if (ret < 0) {
@@ -152,7 +152,7 @@ db_resume_state (struct db_info *entry, struct block_game *pgame)
 		pgame->score = sqlite3_column_int (stmt, 1);
 		pgame->lines_destroyed = sqlite3_column_int (stmt, 2);
 		pgame->level = sqlite3_column_int (stmt, 3);
-		pgame->mod = sqlite3_column_int (stmt, 4);
+		pgame->diff = sqlite3_column_int (stmt, 4);
 
 		pgame->width = sqlite3_column_int (stmt, 6);
 		pgame->height = sqlite3_column_int (stmt, 7);
@@ -175,7 +175,7 @@ db_resume_state (struct db_info *entry, struct block_game *pgame)
 	sqlite3_finalize (stmt);
 
 	log_info ("Level = %d, Score = %d, Difficulty = %d, (%d, %d)",
-		pgame->level, pgame->score, pgame->mod,
+		pgame->level, pgame->score, pgame->diff,
 		pgame->width, pgame->height);
 
 	int rowid;

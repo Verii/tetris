@@ -16,6 +16,30 @@
 #define BLOCKS_ROWS 26			/* 2 hidden rows above game */
 #define BLOCKS_COLUMNS 12
 
+/* Allow other files to access game */
+extern struct block_game *pgame;
+
+struct block_game;
+struct block;
+
+struct block_game {
+	/* These variables are written to the database
+	 * when restoring/saving the game state
+	 */
+	char id[16];
+	uint8_t diff;
+	uint8_t width, height, level;
+	uint16_t lines_destroyed;	/* temp. don't print to screen */
+	uint16_t spaces[BLOCKS_ROWS];	/* array of shorts, one per row.*/
+	uint32_t score;
+
+	uint8_t *colors[BLOCKS_ROWS];	/* 1-to-1 with board */
+	uint32_t nsec;			/* game tick delay in milliseconds */
+	bool loss, pause, quit;		/* how/when we quit */
+	pthread_mutex_t	lock;
+	struct block *cur, *next, *save;
+};
+
 /* Only the currently falling block, the next block, and the save block are
  * stored in this structure. Once a block hits another piece, we forget about
  * it; It becomes part of the game board.
@@ -28,54 +52,14 @@ struct block {
 	} p[4];				/* store the actual location */
 };
 
-/* Game difficulty */
-enum block_diff {
-	DIFF_EASY,
-	DIFF_NORMAL,
-	DIFF_HARD,
-};
-
-struct block_game {
-	/* These variables are written to the database
-	 * when restoring/saving the game state
-	 */
-	char id[16];
-	uint8_t width, height, level;
-	uint16_t lines_destroyed;	/* temp. don't print to screen */
-	uint16_t spaces[BLOCKS_ROWS];	/* array of shorts, one per row.*/
-	uint32_t score;
-	enum block_diff mod;
-
-	uint8_t *colors[BLOCKS_ROWS];	/* 1-to-1 with board */
-	uint32_t nsec;			/* game tick delay in milliseconds */
-	bool loss, pause, quit;		/* how/when we quit */
-	pthread_mutex_t	lock;
-	struct block *cur, *next, *save;
-};
-
-enum block_cmd {
-	MOVE_LEFT,
-	MOVE_RIGHT,
-	MOVE_DOWN,			/* Move down one block */
-	MOVE_DROP,			/* Drop block to bottom of board */
-	ROT_LEFT,
-	ROT_RIGHT,
-	SAVE_PIECE,
-};
-
 /* Does a block exist at the specified (y, x) coordinate? */
 #define blocks_at_yx(p, y, x) (p->spaces[y] & (1 << x))
 
-/* Create game state */
-int blocks_init (struct block_game *);
+void draw_highscores (void);
 
-/* Send commands to game */
-int blocks_move (struct block_game *, enum block_cmd);
-
-/* Main loop, doesn't return until game is over */
-int blocks_loop (struct block_game *);
-
-/* Free memory */
-int blocks_cleanup (struct block_game *);
+/* Main loop of the game, self-contained, it will create the game, listen for
+ * commands, draw the board, and cleanup when the game is over.
+ */
+int blocks_main (void);
 
 #endif /* BLOCKS_H_ */
