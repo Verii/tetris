@@ -69,6 +69,48 @@ draw_menu (void)
 	refresh ();
 }
 
+void
+draw_highscores (void)
+{
+	log_info ("Highscores");
+
+	/* DB access is probably the slowest operation in this program.
+	 * Especially when the DB starts to get large with many saves and many
+	 * high scores.
+	 *
+	 * refresh() the screen before we access the DB to make it feel faster
+	 * to the luser
+	 */
+	clear ();
+	attrset (COLOR_PAIR(1));
+	box (stdscr, 0, 0);
+
+	mvprintw (1, 1, "Local Leaderboard");
+	mvprintw (2, 3, "Rank\tName\t\tLevel\tScore\tDate");
+	mvprintw (LINES-2, 1, "Press any key to continue.");
+	refresh ();
+
+	/* Get 10 highscores from DB */
+	struct db_results *res = db_get_scores (10);
+	while (res) {
+		/* convert DB unix time to string */
+		char *date = ctime (&res->date);
+		static uint8_t count = 1;
+
+		mvprintw (count+2, 4, "%2d.\t%-16s%-5d\t%-5d\t%.*s", count,
+			res->id, res->level, res->score, strlen (date)-1, date);
+
+		++count;
+		res = res->entries.tqe_next;
+	}
+	refresh (); // display scores
+
+	db_clean_scores ();
+	free (psave->file_loc);
+
+	getch ();
+}
+
 static void
 get_string (int y, int x, char *str, int len)
 {

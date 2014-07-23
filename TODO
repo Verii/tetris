@@ -1,9 +1,4 @@
-If ~/.local/share/ does not exist in the user's home directory, the game will segfault.
-Fix this.
-
-Main menu
-
-Smarter screen updates
+If ~/.local/share does not exist the game will segfault.
 
 Networking
 
