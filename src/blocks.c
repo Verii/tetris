@@ -13,7 +13,7 @@
 #include "db.h"
 
 /* pointer to main game state */
-struct block_game *pgame;
+struct block_game game, *pgame = &game;
 
 /* three blocks, adjust game pointers to modify */
 static struct block blocks[3];
@@ -356,21 +356,25 @@ extern const char *colors;
 static void
 draw_control (void)
 {
+	wattrset (control, COLOR_PAIR(3) | A_BOLD);
+	mvwprintw (control, 1, 1, "%s", pgame->id);
+
 	wattrset (control, COLOR_PAIR(1));
 	mvwprintw (control, 0, 0, "Tetris-" VERSION);
-	mvwprintw (control, 2, 1, "Level %d", pgame->level);
-	mvwprintw (control, 3, 1, "Score %d", pgame->score);
+	mvwprintw (control, 2, 1, "Level: %d", pgame->level);
+	mvwprintw (control, 3, 1, "Score: %d", pgame->score);
+	mvwprintw (control, 4, 1, "Difficulty: %d", pgame->diff);
 
-	mvwprintw (control, 5, 1, "Next   Save");
-	mvwprintw (control, 6, 2, "           ");
+	mvwprintw (control, 6, 1, "Next   Save");
 	mvwprintw (control, 7, 2, "           ");
+	mvwprintw (control, 8, 2, "           ");
 
-	mvwprintw (control,  9, 1, "Controls");
-	mvwprintw (control, 10, 2, "Pause [F1]");
-	mvwprintw (control, 11, 2, "Quit [F3]");
-	mvwprintw (control, 13, 2, "Move [asd]");
-	mvwprintw (control, 14, 2, "Rotate [qe]");
-	mvwprintw (control, 15, 2, "Save [space]");
+	mvwprintw (control, 10, 1, "Controls");
+	mvwprintw (control, 12, 2, "Pause [F1]");
+	mvwprintw (control, 13, 2, "Quit [F3]");
+	mvwprintw (control, 14, 2, "Move [asd]");
+	mvwprintw (control, 15, 2, "Rotate [qe]");
+	mvwprintw (control, 16, 2, "Save [space]");
 
 	for (size_t i = 0; i < LEN(pgame->next->p); i++) {
 		char y, x;
@@ -400,10 +404,9 @@ static void
 draw_board (void)
 {
 	wattrset (board, A_BOLD | COLOR_PAIR(5));
+
 	mvwvline (board, 0, 0, '*', pgame->height-1);
-
 	mvwvline (board, 0, pgame->width+1, '*', pgame->height-1);
-
 	mvwhline (board, pgame->height-2, 0, '*', pgame->width+2);
 
 	/* Draw the game board, minus the two hidden rows above the game */
@@ -483,26 +486,21 @@ draw_highscores (void)
 	getch ();
 }
 
-static int
+int
 blocks_init (void)
 {
-	if (pgame == NULL) {
-		pgame = malloc (sizeof *pgame);
-	}
-
 	log_info ("Initializing game data");
 	memset (pgame, 0, sizeof *pgame);
 
 	pthread_mutex_init (&pgame->lock, NULL);
 
-	/* Default dimensions, modified in screen_draw_menu()
+	/* Default dimensions.
 	 * We assume the board is the max size (12x24). If the user wants a
 	 * smaller board, we only use the smaller pieces
 	 */
 	pgame->width = BLOCKS_COLUMNS;
 	pgame->height = BLOCKS_ROWS;
 
-	/* Default difficulty, modified in screen_draw_menu() */
 	pgame->diff = DIFF_NORMAL;
 
 	pgame->level = 1;
@@ -537,9 +535,6 @@ blocks_init (void)
 static int
 blocks_cleanup (void)
 {
-	if (!pgame)
-		return -1;
-
 	log_info ("Cleaning game data");
 	pthread_mutex_destroy (&pgame->lock);
 
@@ -547,20 +542,18 @@ blocks_cleanup (void)
 	for (int i = 0; i < BLOCKS_ROWS; i++)
 		free (pgame->colors[i]);
 
-	free (pgame);
-
 	return 1;
 }
 
 void *
 blocks_input (void *not_used)
 {
-	int ch;
 	(void) not_used;
 
-	if (!pgame || !pgame->cur)
+	if (!pgame->cur)
 		return NULL;
 
+	int ch;
 	while ((ch = getch())) {
 
 		/* prevent modification of the game from blocks_main
@@ -615,6 +608,8 @@ blocks_input (void *not_used)
 		}
 
 		write_piece (pgame->cur);
+
+		draw_control ();
 		draw_board ();
 
 		pthread_mutex_unlock (&pgame->lock);
@@ -628,10 +623,7 @@ blocks_main (void)
 {
 	pthread_t input;
 
-	blocks_init ();
-
-	/* XXX get db save */
-
+	clear ();
 	draw_control ();
 	draw_board ();
 
@@ -644,9 +636,8 @@ blocks_main (void)
 	ts.tv_sec = 0;
 	ts.tv_nsec = 0;
 
-	/* When we read in from the database, it sets the current level
-	 * for the game. Update the tick delay so we resume at proper
-	 * difficulty
+	/* The database sets the current level for the game.
+	 * Update the tick delay so we resume at proper difficulty
 	 */
 	update_tick_speed (pgame);
 
@@ -669,11 +660,11 @@ blocks_main (void)
 		if (hit == 0) {
 			destroy_lines ();
 			update_cur_next ();
-			draw_control ();
 		} else if (hit < 0) {
 			exit (2);
 		}
 
+		draw_control ();
 		draw_board ();
 
 		pthread_mutex_unlock (&pgame->lock);
@@ -688,8 +679,6 @@ blocks_main (void)
 	pthread_cancel (input);
 
 	blocks_cleanup ();
-
-	draw_highscores ();
 
 	return 1;
 }

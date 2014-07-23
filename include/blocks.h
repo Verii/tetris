@@ -57,6 +57,9 @@ struct block {
 
 void draw_highscores (void);
 
+/* Set block_game defaults */
+int blocks_init (void);
+
 /* Main loop of the game, self-contained, it will create the game, listen for
  * commands, draw the board, and cleanup when the game is over.
  */

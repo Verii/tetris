@@ -72,15 +72,17 @@ main (int argc, char **argv)
 	redirect_stderr ();
 
 	curses_init ();
+	blocks_init ();
 
-	do  {
-		draw_menu ();
+	draw_menu ();
 
-		ch = getch ();
+	ch = 0;
+	do {
 		switch (ch) {
 		case '1':
-			log_err ("Blocks initializing");
 			blocks_main ();
+			/* reset to defaults if we quit */
+			blocks_init ();
 			break;
 		case '2':
 			break;
@@ -88,11 +90,17 @@ main (int argc, char **argv)
 			draw_highscores ();
 			break;
 		case '4':
+			draw_settings ();
+			break;
+		case '5':
 			goto done;
+			/* Not reached */
 			break;
 		default:
 			continue;
 		}
+
+		draw_menu ();
 
 	} while ((ch = getch()));
 

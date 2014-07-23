@@ -8,15 +8,17 @@
 #include "debug.h"
 #include "blocks.h"
 
+struct db_info save, *psave = &save;
+
 static int
-db_open (struct db_info *entry)
+db_open ()
 {
-	if (!entry || !entry->file_loc)
+	if (!psave->file_loc)
 		return -1;
 
-	log_info ("Opening database %s", entry->file_loc);
+	log_info ("Opening database %s", psave->file_loc);
 
-	int status = sqlite3_open (entry->file_loc, &entry->db);
+	int status = sqlite3_open (psave->file_loc, &psave->db);
 	if (status != SQLITE_OK) {
 		log_err ("DB cannot be opened. Error occured (%d)", status);
 		return -1;
@@ -26,14 +28,14 @@ db_open (struct db_info *entry)
 }
 
 static void
-db_close (struct db_info *entry)
+db_close ()
 {
-	log_info ("Closing database %s", entry->file_loc);
-	sqlite3_close (entry->db);
+	log_info ("Closing database %s", psave->file_loc);
+	sqlite3_close (psave->db);
 }
 
 int
-db_save_score (struct db_info *entry, const struct block_game *pgame)
+db_save_score (const struct block_game *pgame)
 {
 	sqlite3_stmt *stmt;
 
@@ -42,11 +44,11 @@ db_save_score (struct db_info *entry, const struct block_game *pgame)
 
 	log_info ("Trying to insert scores to database");
 
-	if (db_open (entry) < 0)
+	if (db_open () < 0)
 		return -1;
 
 	/* Make sure the db has the proper tables */
-	sqlite3_prepare_v2 (entry->db, create_scores,
+	sqlite3_prepare_v2 (psave->db, create_scores,
 			sizeof create_scores, &stmt, NULL);
 	sqlite3_step (stmt);
 	sqlite3_finalize (stmt);
@@ -58,30 +60,30 @@ db_save_score (struct db_info *entry, const struct block_game *pgame)
 	if (ret < 0) {
 		log_err ("Out of memory");
 	} else {
-		sqlite3_prepare_v2 (entry->db, insert, strlen(insert),
+		sqlite3_prepare_v2 (psave->db, insert, strlen(insert),
 			&stmt, NULL);
 		free (insert);
 		sqlite3_step (stmt);
 		sqlite3_finalize (stmt);
 	}
 
-	db_close (entry);
+	db_close ();
 
 	return 1;
 }
 
 int
-db_save_state (struct db_info *entry, const struct block_game *pgame)
+db_save_state (const struct block_game *pgame)
 {
 	sqlite3_stmt *stmt;
 
 	log_info ("Trying to save state to database");
 
-	if (db_open (entry) < 0)
+	if (db_open () < 0)
 		return 0;
 
 	/* Create table if it doesn't exist */
-	sqlite3_prepare_v2 (entry->db, create_state,
+	sqlite3_prepare_v2 (psave->db, create_state,
 			sizeof create_state, &stmt, NULL);
 	sqlite3_step (stmt);
 	sqlite3_finalize (stmt);
@@ -110,7 +112,7 @@ db_save_state (struct db_info *entry, const struct block_game *pgame)
 		}
 
 		memcpy (data, &pgame->spaces[2], data_len);
-		sqlite3_prepare_v2 (entry->db, insert, strlen (insert),
+		sqlite3_prepare_v2 (psave->db, insert, strlen (insert),
 				&stmt, NULL);
 		free (insert);
 
@@ -120,29 +122,29 @@ db_save_state (struct db_info *entry, const struct block_game *pgame)
 		sqlite3_finalize (stmt);
 	}
 
-	db_close (entry);
+	db_close ();
 	return 1;
 
 mem_err:
-	db_close (entry);
+	db_close ();
 	return 0;
 }
 
 /* Queries database for newest game state information and copies it to pgame.
  */
 int
-db_resume_state (struct db_info *entry, struct block_game *pgame)
+db_resume_state (struct block_game *pgame)
 {
 	int ret;
 	sqlite3_stmt *stmt;
 
 	log_info ("Trying to restore saved game");
 
-	if (db_open (entry) < 0)
+	if (db_open () < 0)
 		return -1;
 
 	/* Look for newest entry in table */
-	sqlite3_prepare_v2 (entry->db, select_state,
+	sqlite3_prepare_v2 (psave->db, select_state,
 			sizeof select_state, &stmt, NULL);
 
 	if (sqlite3_step (stmt) == SQLITE_ROW) {
@@ -179,7 +181,7 @@ db_resume_state (struct db_info *entry, struct block_game *pgame)
 		pgame->width, pgame->height);
 
 	int rowid;
-	sqlite3_prepare_v2 (entry->db, select_state_rowid,
+	sqlite3_prepare_v2 (psave->db, select_state_rowid,
 			sizeof select_state_rowid, &stmt, NULL);
 
 	if (sqlite3_step (stmt) == SQLITE_ROW) {
@@ -187,7 +189,7 @@ db_resume_state (struct db_info *entry, struct block_game *pgame)
 
 		/* delete from table */
 		sqlite3_stmt *delete;
-		sqlite3_prepare_v2 (entry->db, delete_state_rowid,
+		sqlite3_prepare_v2 (psave->db, delete_state_rowid,
 			sizeof delete_state_rowid, &delete, NULL);
 
 		sqlite3_bind_int (delete, 1, rowid);
@@ -197,7 +199,7 @@ db_resume_state (struct db_info *entry, struct block_game *pgame)
 
 	sqlite3_finalize (stmt);
 
-	db_close (entry);
+	db_close ();
 	return ret;
 }
 
@@ -208,16 +210,16 @@ db_resume_state (struct db_info *entry, struct block_game *pgame)
  * NOTE Be sure to call db_clean_scores after this to free memory.
  */
 struct db_results *
-db_get_scores (struct db_info *entry, int results)
+db_get_scores (int results)
 {
 	sqlite3_stmt *stmt;
 
 	debug ("Getting (%d) hs from db", results);
 
-	if (db_open (entry) < 0)
+	if (db_open () < 0)
 		return NULL;
 
-	sqlite3_prepare_v2 (entry->db, select_scores,
+	sqlite3_prepare_v2 (psave->db, select_scores,
 			sizeof select_scores, &stmt, NULL);
 	TAILQ_INIT (&results_head);
 
@@ -247,7 +249,7 @@ db_get_scores (struct db_info *entry, int results)
 	}
 
 	sqlite3_finalize (stmt);
-	db_close (entry);
+	db_close ();
 
 	return results_head.tqh_first;
 }

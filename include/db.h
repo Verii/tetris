@@ -13,6 +13,8 @@ struct db_info {
 	char *file_loc;		/* database location on filesystem */
 };
 
+extern struct db_info *psave;
+
 /* Linked list returned to user by db_get_scores() call */
 TAILQ_HEAD (db_results_head, db_results) results_head;
 struct db_results {
@@ -28,17 +30,20 @@ struct db_results {
  */
 
 /* Saves game state to disk. Can be restored at a later time */
-int db_save_state (struct db_info *, const struct block_game *);
-int db_resume_state (struct db_info *, struct block_game *);
+int db_save_state (const struct block_game *);
+int db_resume_state (struct block_game *);
 
 /* Save game score to disk when the player loses a game */
-int db_save_score (struct db_info *, const struct block_game *);
+int db_save_score (const struct block_game *);
 
 /* Returns a linked list to (n) highscores in the database */
-struct db_results *db_get_scores (struct db_info *, int n);
+struct db_results *db_get_scores (int n);
 
 /* Cleanup memory */
 #define db_clean_scores() while (results_head.tqh_first) { \
-	TAILQ_REMOVE (&results_head, results_head.tqh_first, entries);}
+		struct db_results *tmp = results_head.tqh_first; \
+		TAILQ_REMOVE (&results_head, tmp, entries); \
+		free (tmp); \
+	}
 
 #endif /* DB_H_ */

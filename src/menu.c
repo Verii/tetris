@@ -50,16 +50,88 @@ curses_kill (void)
 void
 draw_menu (void)
 {
+	log_info ("Drawing main menu");
 	clear ();
 
-	mvprintw (3, 10, "Tetris-" VERSION);
+	attrset (COLOR_PAIR(1));
 
-	mvprintw (5, 12, "1. Singleplayer");
-	mvprintw (6, 12, "2. Multiplayer");
-	mvprintw (7, 12, "3. Highscores");
-	mvprintw (8, 12, "4. Quit");
+	box (stdscr, 0, 0);
+	attrset (COLOR_PAIR(7));
+
+	mvprintw (1, 1, "Tetris-" VERSION);
+
+	mvprintw (3, 3, "1. Single Player");
+	mvprintw (4, 3, "2. Multi Player [TODO]");
+	mvprintw (5, 3, "3. High Scores [TODO]");
+	mvprintw (6, 3, "4. Settings");
+	mvprintw (7, 3, "5. Quit");
 
 	refresh ();
+}
+
+static void
+get_string (int y, int x, char *str, int len)
+{
+	echo ();
+	curs_set (1);
+
+	attrset (COLOR_PAIR(7) | A_BOLD);
+	mvgetnstr (y, x, str, len);
+
+	curs_set (0);
+	noecho ();
+}
+
+static void
+get_int (int y, int x, uint8_t *val)
+{
+	char *endptr, number[16];
+
+	echo ();
+	curs_set (1);
+
+	attrset (COLOR_PAIR(7) | A_BOLD);
+	mvgetnstr (y, x, number, sizeof number);
+
+	*val = strtol (number, &endptr, 10);
+
+	curs_set (0);
+	noecho ();
+}
+
+void
+draw_settings (void)
+{
+	clear ();
+
+	attrset (COLOR_PAIR(1));
+	box (stdscr, 0, 0);
+
+	attrset (COLOR_PAIR(7));
+
+	mvprintw (1, 1, "Tetris-" VERSION);
+	mvprintw (3, 2, "Settings");
+
+	mvprintw (5, 3, "1. Player Name: ");
+	mvprintw (6, 3, "2. Difficulty: ");
+	mvprintw (7, 3, "3. Size: [TODO]");
+	mvprintw (8, 3, "4. Back");
+
+	refresh ();
+
+	int ch;
+	while ((ch = getch()) != '4') {
+		switch (ch) {
+		case '1':
+			get_string (5, 3 + strlen ("1. Player Name: "),
+				pgame->id, sizeof pgame->id);
+			break;
+		case '2':
+			get_int (6, 3 + strlen ("2. Difficulty: "),
+				&pgame->diff);
+			break;
+		}
+	}
 }
 
 /* Game over screen */
@@ -71,7 +143,7 @@ draw_over (struct db_info *psave)
 
 	if (pgame->quit) {
 		/* Don't print high scores if the user quits */
-		db_save_state (psave, pgame);
+		db_save_state (pgame);
 		return;
 	}
 
@@ -96,10 +168,10 @@ draw_over (struct db_info *psave)
 
 	/* Save the game scores if we lost */
 	if (pgame->loss)
-		db_save_score (psave, pgame);
+		db_save_score (pgame);
 
 	/* Get 10 highscores from DB */
-	struct db_results *res = db_get_scores (psave, 10);
+	struct db_results *res = db_get_scores (10);
 
 	while (res) {
 		/* convert DB unix time to string */
