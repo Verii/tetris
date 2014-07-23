@@ -354,16 +354,17 @@ extern const char *colors;
 #define BLOCK_CHAR "x"
 
 static void
-draw_control (void)
+draw_game (void)
 {
+	/* draw control screen */
 	wattrset (control, COLOR_PAIR(3) | A_BOLD);
 	mvwprintw (control, 1, 1, "%s", pgame->id);
 
 	wattrset (control, COLOR_PAIR(1));
 	mvwprintw (control, 0, 0, "Tetris-" VERSION);
-	mvwprintw (control, 2, 1, "Level: %d", pgame->level);
-	mvwprintw (control, 3, 1, "Score: %d", pgame->score);
-	mvwprintw (control, 4, 1, "Difficulty: %d", pgame->diff);
+	mvwprintw (control, 2, 1, "Level %d", pgame->level);
+	mvwprintw (control, 3, 1, "Score %d", pgame->score);
+	mvwprintw (control, 4, 1, "Difficulty %d", pgame->diff);
 
 	mvwprintw (control, 6, 1, "Next   Save");
 	mvwprintw (control, 7, 2, "           ");
@@ -383,7 +384,7 @@ draw_control (void)
 
 		wattrset (control, COLOR_PAIR((pgame->next->color
 				%LEN(colors)) +1) | A_BOLD);
-		mvwprintw (control, y+7, x+3, BLOCK_CHAR);
+		mvwprintw (control, y+8, x+3, BLOCK_CHAR);
 
 	}
 
@@ -394,15 +395,12 @@ draw_control (void)
 
 		wattrset (control, COLOR_PAIR((pgame->save->color
 				%LEN(colors)) +1) | A_BOLD);
-		mvwprintw (control, y+7, x+9, BLOCK_CHAR);
+		mvwprintw (control, y+8, x+9, BLOCK_CHAR);
 	}
 
 	wrefresh (control);
-}
 
-static void
-draw_board (void)
-{
+	/* game board */
 	wattrset (board, A_BOLD | COLOR_PAIR(5));
 
 	mvwvline (board, 0, 0, '*', pgame->height-1);
@@ -463,25 +461,23 @@ draw_highscores (void)
 	mvprintw (LINES-2, 1, "Press any key to continue.");
 	refresh ();
 
-#if 0
 	/* Get 10 highscores from DB */
-	struct db_results *res = db_get_scores (psave, 10);
-
+	struct db_results *res = db_get_scores (10);
 	while (res) {
 		/* convert DB unix time to string */
 		char *date = ctime (&res->date);
-		static uint8_t count = 0;
-		count ++;
+		static uint8_t count = 1;
 
 		mvprintw (count+2, 4, "%2d.\t%-16s%-5d\t%-5d\t%.*s", count,
 			res->id, res->level, res->score, strlen (date)-1, date);
+
+		++count;
 		res = res->entries.tqe_next;
 	}
 	refresh (); // display scores
 
 	db_clean_scores ();
 	free (psave->file_loc);
-#endif
 
 	getch ();
 }
@@ -609,8 +605,7 @@ blocks_input (void *not_used)
 
 		write_piece (pgame->cur);
 
-		draw_control ();
-		draw_board ();
+		draw_game ();
 
 		pthread_mutex_unlock (&pgame->lock);
 	}
@@ -623,9 +618,10 @@ blocks_main (void)
 {
 	pthread_t input;
 
-	clear ();
-	draw_control ();
-	draw_board ();
+	wclear (control);
+	wclear (board);
+
+	draw_game ();
 
 	if (!pgame)
 		return -1;
@@ -664,8 +660,7 @@ blocks_main (void)
 			exit (2);
 		}
 
-		draw_control ();
-		draw_board ();
+		draw_game ();
 
 		pthread_mutex_unlock (&pgame->lock);
 	}
