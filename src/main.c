@@ -17,26 +17,34 @@
 static FILE *err_tofile;
 
 static void
+touch_dir (void)
+{
+	/* TODO make this more robust and safer ... */
+	char dir[256];
+
+	snprintf (dir, sizeof dir, "%s/.local", getenv("HOME"));
+	mkdir (dir, 0644);
+
+	strncat (dir, "/share", sizeof dir - strlen (dir));
+	mkdir (dir, 0644);
+
+	strncat (dir, "/tetris", sizeof dir - strlen (dir));
+	mkdir (dir, 0644);
+}
+
+static void
 redirect_stderr (void)
 {
-	struct stat sb;
-	char log_file[128];
+	char log_file[256];
+	size_t len = snprintf (log_file, sizeof log_file,
+		"%s/.local/share/tetris/logs", getenv("HOME"));
 
-	snprintf (log_file, sizeof log_file, "%s/.local/share/tetris",
-			getenv("HOME"));
+	if (len >= sizeof log_file)
+		return;
 
-	errno = 0;
-	stat (log_file, &sb);
+	touch_dir ();
 
-	/* segfaults if ~/.local/share doesn not exist */
-	if (errno == ENOENT) {
-		mkdir (log_file, 0777);
-	}
-
-	/* add name of log file to string */
-	strcat (log_file, "/logs");
-
-	printf ("Redirecting stderr to %s.\n", log_file);
+	fprintf (stderr, "Redirecting stderr to %s\n", log_file);
 	err_tofile = freopen (log_file, "w", stderr);
 }
 
@@ -45,7 +53,7 @@ usage (void)
 {
 	extern const char *__progname;
 	fprintf (stderr, "Copyright (C) 2014 James Smith <james@theta.pw>\n"
-		"See the LICENSE file included with the release\n\n"
+		"See the LICENSE file included with the release.\n\n"
 		"%s-" VERSION " usage:\n\t"
 		"[-h] this help\n"
 		, __progname);
@@ -76,13 +84,11 @@ main (int argc, char **argv)
 
 	draw_menu ();
 
-	ch = 0;
-	do {
+	while ((ch = getch())) {
+
 		switch (ch) {
 		case '1':
 			blocks_main ();
-			/* reset to defaults if we quit */
-			blocks_init ();
 			break;
 		case '2':
 			break;
@@ -101,8 +107,7 @@ main (int argc, char **argv)
 		}
 
 		draw_menu ();
-
-	} while ((ch = getch()));
+	}
 
 done:
 	curses_kill ();

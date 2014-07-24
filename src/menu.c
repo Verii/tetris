@@ -50,7 +50,7 @@ curses_kill (void)
 void
 draw_menu (void)
 {
-	log_info ("Drawing main menu");
+	debug ("Drawing main menu");
 	clear ();
 
 	attrset (COLOR_PAIR(1));
@@ -72,7 +72,7 @@ draw_menu (void)
 void
 draw_highscores (void)
 {
-	log_info ("Highscores");
+	log_info ("Drawing Highscores");
 
 	/* DB access is probably the slowest operation in this program.
 	 * Especially when the DB starts to get large with many saves and many
@@ -144,13 +144,13 @@ get_int (int y, int x, uint8_t *val)
 void
 draw_settings (void)
 {
-	clear ();
+	debug ("Drawing settings");
 
+	clear ();
 	attrset (COLOR_PAIR(1));
 	box (stdscr, 0, 0);
 
 	attrset (COLOR_PAIR(7));
-
 	mvprintw (1, 1, "Tetris-" VERSION);
 	mvprintw (3, 2, "Settings");
 
