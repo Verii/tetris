@@ -343,7 +343,7 @@ destroy_lines ()
 		pgame->level++;
 		pgame->lines_destroyed = 0;
 
-		update_tick_speed (pgame);
+		update_tick_speed ();
 	}
 
 	/* If you destroy more than one line at a time then you can get a
@@ -581,7 +581,7 @@ blocks_main (void)
 	/* The database sets the current level for the game.
 	 * Update the tick delay so we resume at proper difficulty
 	 */
-	update_tick_speed (pgame);
+	update_tick_speed ();
 
 	for (;;) {
 		ts.tv_nsec = pgame->nsec;

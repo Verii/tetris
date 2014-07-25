@@ -14,8 +14,6 @@
 #include "debug.h"
 #include "menu.h"
 
-static FILE *err_tofile;
-
 static void
 touch_dir (void)
 {
@@ -25,15 +23,15 @@ touch_dir (void)
 	snprintf (dir, sizeof dir, "%s/.local", getenv("HOME"));
 	mkdir (dir, 0644);
 
-	strncat (dir, "/share", sizeof dir - strlen (dir));
+	strncat (dir, "/share", sizeof dir - strlen (dir) -1);
 	mkdir (dir, 0644);
 
-	strncat (dir, "/tetris", sizeof dir - strlen (dir));
+	strncat (dir, "/tetris", sizeof dir - strlen (dir) -1);
 	mkdir (dir, 0644);
 }
 
 static void
-redirect_stderr (void)
+redirect_stderr (FILE **err_tofile)
 {
 	char log_file[256];
 	size_t len = snprintf (log_file, sizeof log_file,
@@ -45,7 +43,7 @@ redirect_stderr (void)
 	touch_dir ();
 
 	fprintf (stderr, "Redirecting stderr to %s\n", log_file);
-	err_tofile = freopen (log_file, "w", stderr);
+	*err_tofile = freopen (log_file, "w", stderr);
 }
 
 static void
@@ -62,6 +60,7 @@ usage (void)
 int
 main (int argc, char **argv)
 {
+	FILE *err_tofile;
 	int ch;
 	srand (time (NULL));
 	setlocale (LC_ALL, "");
@@ -77,7 +76,7 @@ main (int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	redirect_stderr ();
+	redirect_stderr (&err_tofile);
 
 	curses_init ();
 	blocks_init ();
