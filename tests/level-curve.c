@@ -3,21 +3,22 @@
 
 #define PI 3.141592653589
 
-/* Get your calculator ready!
- * As player level increases, the speed of the game ticks will increase,
+/* As player level increases, the speed of the game ticks will increase,
  * thus reducing the delay between block updates.
  *
- * At level 10, playing on Normal, the game will update every 1/2 second.
- *
- * The difficulty can be adjusted by changing the constant in the function.
+ * The difficulty can be adjusted by changing the coefficient in the function.
  * ---
  * The range of f(x) = arctan(x) is [0, PI/2).
- * Bring that down to [0, 1) with constants, then bring it back up to a
- * whole number in { 1, 2, 3} (the difficulty).
+ * Bring range down to [0, 1) with coefficients.
+ * Increase range to a whole number in [0, (difficult+1)).
+ * We then add 1, to bring the range of the function to [1, (difficulty+2)).
  *
- * Dividing the level by 10 reduces the step in the function.
- * Finally, add one to increase the modifier >= 1 so that we don't
- * decrease the speed on the lower levels.
+ * Easy:	the game ticks approach 1/2 second as level approaches inf.
+ * Normal:	the game ticks approach 1/3 second " .
+ * Hard:	the game ticks approach 1/4 second " .
+ *
+ * Dividing the level by 5 reduces the step in the function,
+ * for a slower increase in speed.
  */
 int main (void)
 {
@@ -26,20 +27,25 @@ int main (void)
 
 	struct difficulty {
 		char *name;
-		int mod;
+		int diff;
 	} levels[] = {
-		{ "Easy", 1 },
-		{ "Normal", 2 },
-		{ "Hard", 3 },
+		{ "Easy", 0 },
+		{ "Normal", 1 },
+		{ "Hard", 2 },
 	};
+
 	for (i = 0; i < 3; i++) {
 		printf ("\n%s: Difficulty = %d\n",
-				levels[i].name, levels[i].mod);
+				levels[i].name, levels[i].diff);
 
-		for (j = 0; j < 10; j += 3) {
-			diff = (atan(j/(double)10) * levels[i].mod * 2/PI) +1;
-			printf ("level: %d => %g%% speed\n", j, diff*100);
+		for (j = 0; j < 20; j += 5) {
+			diff = 1;
+			diff += (2/PI * atan(j/5.0)) * (levels[i].diff+1);
+
+			printf ("level: %d => %g%% speed\t", j, diff*100);
+			printf ("(tick = %g seconds)\n", 1/diff);
 		}
 	}
+
 	return 0;
 }

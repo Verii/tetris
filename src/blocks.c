@@ -69,7 +69,11 @@ random_block (struct block *block)
 	block->row_off = 1;
 	block->color++;
 
-	/* The piece at (0, 0) is the pivot when we rotate */
+	/* Each block contains four pieces.
+	 * Each piece has a coordinate between [-1, 2] on each axes.
+	 * The piece at (0, 0) is the pivot when we rotate.
+	 */
+
 	switch (block->type) {
 	case SQUARE_BLOCK:
 		block->p[0].x = -1;	block->p[0].y = -1;
@@ -117,21 +121,20 @@ random_block (struct block *block)
 	}
 }
 
-/* Current block hit the bottom of the game; remove it.
- * Swap the "next block" with "current block", and randomize next block.
+/*
+ * Overwrite current block with next block. We then randomize the next block.
  */
 static inline void
 update_cur_next ()
 {
 	struct block *old = pgame->cur;
-
 	pgame->cur = pgame->next;
 	pgame->next = old;
 
 	random_block (pgame->next);
 }
 
-/* writes the piece to the board, checking bounds and collisions */
+/* Checks bounds on each piece in the block before writing it to the board */
 static void
 write_block (struct block *block)
 {
@@ -149,7 +152,6 @@ write_block (struct block *block)
 			return;
 	}
 
-	/* pgame->spaces is an array of bit fields, 1 per row */
 	for (size_t i = 0; i < LEN(pgame->cur->p); i++) {
 
 		/* Set the bit where the block exists */
@@ -159,7 +161,7 @@ write_block (struct block *block)
 }
 
 /*
- * rotate pieces in blocks by either 90^ or -90^ around (0, 0) pivot
+ * rotate pieces in blocks by either 90^ or -90^ around origin
  */
 static int
 rotate_block (struct block *block, enum block_cmd cmd)
@@ -193,7 +195,7 @@ rotate_block (struct block *block, enum block_cmd cmd)
 
 		int8_t new_x, new_y;
 		new_x = block->p[i].y * (-mod);
-		new_y = block->p[i].x * mod;
+		new_y = block->p[i].x * ( mod);
 
 		block->p[i].x = new_x;
 		block->p[i].y = new_y;
@@ -261,10 +263,11 @@ drop_block (struct block *block)
 static void
 update_tick_speed ()
 {
-	/* See tests/level-curve.c */
-	double speed;
-	speed = atan (pgame->level/(double)5) * (pgame->diff+1) +1;
-	pgame->nsec = (int) ((double)1E9/speed);
+	/* tests/level-curve.c */
+	double speed = 1;
+	speed += atan(pgame->level/5.0) * 2/PI * (pgame->diff+1);
+
+	pgame->nsec = (1E9/speed) -1;
 }
 
 static int
@@ -330,26 +333,30 @@ static void
 draw_game (void)
 {
 	/* draw control screen */
-	wattrset (control, COLOR_PAIR(3) | A_BOLD);
-	mvwprintw (control, 1, 1, "%s", pgame->id);
+	wattrset (control, COLOR_PAIR(2));
+	mvwprintw (control, 0, 0, "Tetris-" VERSION);
+
+	wattrset (control, COLOR_PAIR(3));
+	mvwprintw (control, 2, 1, "%s", pgame->id);
 
 	wattrset (control, COLOR_PAIR(1));
-	mvwprintw (control, 0, 0, "Tetris-" VERSION);
-	mvwprintw (control, 2, 1, "Level %d", pgame->level);
-	mvwprintw (control, 3, 1, "Score %d", pgame->score);
-	mvwprintw (control, 4, 1, "Difficulty %d", pgame->diff);
+	mvwprintw (control, 3, 1, "Difficulty %d", pgame->diff);
+	mvwprintw (control, 4, 1, "Level %d", pgame->level);
+	mvwprintw (control, 5, 1, "Score %d", pgame->score);
 
-	mvwprintw (control, 6, 1, "Next  Keep");
-	mvwprintw (control, 7, 2, "          ");
+	mvwprintw (control, 7, 1, "Next  Keep");
 	mvwprintw (control, 8, 2, "          ");
+	mvwprintw (control, 9, 2, "          ");
 
-	mvwprintw (control, 10, 1, "Controls");
-	mvwprintw (control, 11, 2, "Quit [F3]");
-	mvwprintw (control, 12, 2, "Pause [p]");
+	mvwprintw (control, 11, 1, "Controls");
+
 	mvwprintw (control, 13, 2, "Move [wasd]");
 	mvwprintw (control, 14, 2, "Rotate [qe]");
 	mvwprintw (control, 15, 2, "Keep [space]");
+	mvwprintw (control, 16, 2, "Pause [p]");
+	mvwprintw (control, 17, 2, "Quit [F3]");
 
+	/* Draw current game pieces */
 	for (size_t i = 0; i < LEN(pgame->next->p); i++) {
 		char y, x;
 		y = pgame->next->p[i].y;
@@ -357,7 +364,7 @@ draw_game (void)
 
 		wattrset (control, COLOR_PAIR((pgame->next->color
 				%LEN(colors)) +1) | A_BOLD);
-		mvwprintw (control, y+8, x+3, BLOCK_CHAR);
+		mvwprintw (control, y+9, x+3, BLOCK_CHAR);
 
 	}
 
@@ -368,7 +375,7 @@ draw_game (void)
 
 		wattrset (control, COLOR_PAIR((pgame->save->color
 				%LEN(colors)) +1) | A_BOLD);
-		mvwprintw (control, y+8, x+9, BLOCK_CHAR);
+		mvwprintw (control, y+9, x+9, BLOCK_CHAR);
 	}
 
 	wrefresh (control);
@@ -450,6 +457,8 @@ blocks_init (void)
 	pgame->height = (pgame->width *2) +2;
 	pgame->diff = DIFF_NORMAL;
 	pgame->level = 1;
+
+	strncpy(pgame->id, "No Name", sizeof pgame->id);
 
 	pgame->nsec = 1E9 -1; // nanosleep() fails if nsec is >= 1E9
 
