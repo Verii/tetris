@@ -252,8 +252,8 @@ db_get_states (void)
 		np->save.height= sqlite3_column_int (stmt, 7);
 
 		const char *blob = sqlite3_column_blob (stmt, 8);
-		memcpy (&np->spaces[2], &blob[0],
-			(BLOCKS_ROWS-2) * sizeof(*np->spaces));
+		memcpy (&np->save.spaces[2], &blob[0],
+			(BLOCKS_ROWS-2) * sizeof(*np->save.spaces));
 
 		TAILQ_INSERT_TAIL (&save_head, np, entries);
 	}

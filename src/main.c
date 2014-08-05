@@ -16,75 +16,75 @@
 #include "menu.h"
 
 static void
-database_init (void)
+database_init(void)
 {
 	char file[256];
 
 	/* use default database location */
-	snprintf (file, sizeof file, "%s/.local/share/tetris/saves",
+	snprintf(file, sizeof file, "%s/.local/share/tetris/saves",
 			getenv("HOME"));
 
-	db_init (file);
+	db_init(file);
 }
 
 static void
-touch_dir (void)
+touch_dir(void)
 {
 	/* TODO make this more robust and safer ... */
 	char dir[256];
 
-	snprintf (dir, sizeof dir, "%s/.local", getenv("HOME"));
-	mkdir (dir, 0644);
+	snprintf(dir, sizeof dir, "%s/.local", getenv("HOME"));
+	mkdir(dir, 0644);
 
-	strncat (dir, "/share", sizeof dir - strlen (dir) -1);
-	mkdir (dir, 0644);
+	strncat(dir, "/share", sizeof dir - strlen (dir) -1);
+	mkdir(dir, 0644);
 
-	strncat (dir, "/tetris", sizeof dir - strlen (dir) -1);
-	mkdir (dir, 0644);
+	strncat(dir, "/tetris", sizeof dir - strlen (dir) -1);
+	mkdir(dir, 0644);
 }
 
 static void
-redirect_stderr (FILE **err_tofile)
+redirect_stderr(FILE **err_tofile)
 {
 	char log_file[256];
-	size_t len = snprintf (log_file, sizeof log_file,
+	size_t len = snprintf(log_file, sizeof log_file,
 		"%s/.local/share/tetris/logs", getenv("HOME"));
 
 	if (len >= sizeof log_file)
 		return;
 
-	touch_dir ();
+	touch_dir();
 
-	fprintf (stderr, "Redirecting stderr to %s\n", log_file);
-	*err_tofile = freopen (log_file, "w", stderr);
+	fprintf(stderr, "Redirecting stderr to %s\n", log_file);
+	*err_tofile = freopen(log_file, "w", stderr);
 }
 
 static void
-usage (void)
+usage(void)
 {
 	extern const char *__progname;
-	fprintf (stderr, "Copyright (C) 2014 James Smith <james@theta.pw>\n"
+	fprintf(stderr, "Copyright (C) 2014 James Smith <james@theta.pw>\n"
 		"See the LICENSE file included with the release.\n\n"
 		"%s-" VERSION " usage:\n\t"
 		"[-h] this help\n"
 		, __progname);
-	exit (EXIT_FAILURE);
+	exit(EXIT_FAILURE);
 }
 
 int
-main (int argc, char **argv)
+main(int argc, char **argv)
 {
 	FILE *err_tofile;
 	int ch;
 
-	srand (time (NULL));
-	setlocale (LC_ALL, "");
+	srand(time (NULL));
+	setlocale(LC_ALL, "");
 
-	while ((ch = getopt (argc, argv, "h")) != -1) {
+	while ((ch = getopt(argc, argv, "h")) != -1) {
 		switch (ch) {
 		case 'h':
 		default:
-			usage ();
+			usage();
 			/* not reached */
 			break;
 		}
@@ -92,38 +92,37 @@ main (int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	redirect_stderr (&err_tofile);
+	redirect_stderr(&err_tofile);
 
 	/* wrapper to initialize the default db file location */
-	database_init ();
-	curses_init ();
+	database_init();
+	curses_init();
+	blocks_init();
 
-	draw_menu ();
+	do {
+		draw_menu();
 
-	while ((ch = getch())) {
-
-		switch (ch) {
+		switch (getch()) {
 		case '1':
-			blocks_init ();
-			blocks_main ();
-			blocks_clean ();
+			blocks_main();
+			/* Reset game to default state after quiting */
+			blocks_init();
 			break;
 		case '2':
-			blocks_init ();
-
 			/* populate game with values from save */
-			draw_resume ();
+			draw_resume();
+			blocks_main();
 
-			blocks_main ();
-			blocks_clean ();
+			/* Reset game to default state after quiting */
+			blocks_init();
 			break;
 		case '3':
 			break;
 		case '4':
-			draw_highscores ();
+			draw_highscores();
 			break;
 		case '5':
-			draw_settings ();
+			draw_settings();
 			break;
 		case '6':
 			goto done;
@@ -133,16 +132,15 @@ main (int argc, char **argv)
 			continue;
 		}
 
-		draw_menu ();
-	}
+	} while (1);
 
 done:
-	curses_clean ();
-	db_clean ();
+	curses_clean();
+	blocks_clean();
+	db_clean();
 
-	fclose (err_tofile);
+	fclose(err_tofile);
+	printf("Thanks for playing Tetris-" VERSION "!\n");
 
-	printf ("Thanks for playing Tetris-" VERSION "!\n");
-
-	return (EXIT_SUCCESS);
+	return EXIT_SUCCESS;
 }
