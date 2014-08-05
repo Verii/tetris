@@ -8,6 +8,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "db.h"
 #include "blocks.h"
 #include "debug.h"
 
@@ -61,7 +62,7 @@ random_block (struct block *block)
 	if (!block)
 		return;
 
-	block->type = rand() %NUM_BLOCKS;
+	block->type = (uint8_t) rand () % NUM_BLOCKS;
 
 	/* Try to center the block on the board */
 	block->col_off = pgame->width/2;
@@ -130,24 +131,6 @@ update_cur_next ()
 	random_block (pgame->next);
 }
 
-/* removes the block from the board */
-static void
-unwrite_block (struct block *block)
-{
-	if (!block)
-		return;
-
-	for (size_t i = 0; i < LEN(block->p); i++) {
-		int y, x;
-		y = block->row_off + block->p[i].y;
-		x = block->col_off + block->p[i].x;
-
-		/* Remove the bit where the block exists */
-		pgame->spaces[y] &= ~(1 << x);
-		pgame->colors[y][x] = 0;
-	}
-}
-
 /* writes the piece to the board, checking bounds and collisions */
 static void
 write_block (struct block *block)
@@ -201,11 +184,9 @@ rotate_block (struct block *block, enum block_cmd cmd)
 		/* Check out of bounds on each block */
 		if (bounds_x < 0 || bounds_x >= pgame->width ||
 		    bounds_y < 0 || bounds_y >= pgame->height ||
-		    blocks_at_yx(pgame, bounds_y, bounds_x))
+		    blocks_at_yx (bounds_y, bounds_x))
 			return -1;
 	}
-
-	unwrite_block (block);
 
 	/* No collisions, so update the block position. */
 	for (size_t i = 0; i < LEN(block->p); i++) {
@@ -217,8 +198,6 @@ rotate_block (struct block *block, enum block_cmd cmd)
 		block->p[i].x = new_x;
 		block->p[i].y = new_y;
 	}
-
-	write_block (block);
 
 	return 1;
 }
@@ -246,15 +225,11 @@ translate_block (struct block *block, enum block_cmd cmd)
 		/* Check out of bounds before we write it */
 		if (bounds_x < 0 || bounds_x >= pgame->width ||
 		    bounds_y < 0 || bounds_y >= pgame->height ||
-		    blocks_at_yx(pgame, bounds_y, bounds_x))
+		    blocks_at_yx (bounds_y, bounds_x))
 			return -1;
 	}
 
-	unwrite_block (block);
-
 	block->col_off += dir;
-
-	write_block (block);
 
 	return 1;
 }
@@ -268,20 +243,17 @@ drop_block (struct block *block)
 
 	for (uint8_t i = 0; i < LEN(block->p); i++) {
 
-		uint8_t bounds_y, bounds_x;
+		int8_t bounds_y, bounds_x;
 		bounds_y = block->p[i].y + block->row_off +1;
 		bounds_x = block->p[i].x + block->col_off;
 
 		if (bounds_y >= pgame->height ||
-		    blocks_at_yx (pgame, bounds_y, bounds_x))
+		    blocks_at_yx (bounds_y, bounds_x)) {
 			return 0;
+		}
 	}
 
-	unwrite_block (block);
-
 	block->row_off++;
-
-	write_block (block);
 
 	return 1;
 }
@@ -295,7 +267,7 @@ update_tick_speed ()
 	pgame->nsec = (int) ((double)1E9/speed);
 }
 
-static void
+static int
 destroy_lines ()
 {
 	uint8_t destroyed = 0;
@@ -303,20 +275,20 @@ destroy_lines ()
 	/* If at any time the first two rows contain a block piece we lose. */
 	for (int8_t i = 0; i < 2; i++) {
 		for (int8_t j = 0; j < pgame->width; j++) {
-			if (blocks_at_yx(pgame, i, j)) {
-				pgame->loss = true;
+			if (blocks_at_yx(i, j)) {
+				pgame->lose = true;
 			}
 		}
 	}
 
-	/* Still continue, even if we've lost to tally points */
+	/* Continue, even if we've lost, to tally points */
 
 	/* Check each row for a full line of blocks */
 	for (int8_t i = pgame->height-1; i >= 2; i--) {
 
 		int8_t j = 0;
 		for (; j < pgame->width; j++)
-			if (blocks_at_yx(pgame, i, j) == 0)
+			if (blocks_at_yx (i, j) == 0)
 				break;
 
 		if (j != pgame->width)
@@ -350,6 +322,8 @@ destroy_lines ()
 	 * points boost. We add points *after* leveling up.
 	 */
 	pgame->score += destroyed * (pgame->level * (pgame->diff+1));
+
+	return destroyed;
 }
 
 static void
@@ -365,16 +339,16 @@ draw_game (void)
 	mvwprintw (control, 3, 1, "Score %d", pgame->score);
 	mvwprintw (control, 4, 1, "Difficulty %d", pgame->diff);
 
-	mvwprintw (control, 6, 1, "Next   Save");
-	mvwprintw (control, 7, 2, "           ");
-	mvwprintw (control, 8, 2, "           ");
+	mvwprintw (control, 6, 1, "Next  Keep");
+	mvwprintw (control, 7, 2, "          ");
+	mvwprintw (control, 8, 2, "          ");
 
 	mvwprintw (control, 10, 1, "Controls");
-	mvwprintw (control, 12, 2, "Pause [F1]");
-	mvwprintw (control, 13, 2, "Quit [F3]");
-	mvwprintw (control, 14, 2, "Move [asd]");
-	mvwprintw (control, 15, 2, "Rotate [qe]");
-	mvwprintw (control, 16, 2, "Save [space]");
+	mvwprintw (control, 11, 2, "Quit [F3]");
+	mvwprintw (control, 12, 2, "Pause [p]");
+	mvwprintw (control, 13, 2, "Move [wasd]");
+	mvwprintw (control, 14, 2, "Rotate [qe]");
+	mvwprintw (control, 15, 2, "Keep [space]");
 
 	for (size_t i = 0; i < LEN(pgame->next->p); i++) {
 		char y, x;
@@ -407,11 +381,11 @@ draw_game (void)
 	mvwhline (board, pgame->height-2, 0, '*', pgame->width+2);
 
 	/* Draw the game board, minus the two hidden rows above the game */
-	for (int i = 2; i < pgame->height; i++) {
+	for (uint8_t i = 2; i < pgame->height; i++) {
 		wmove (board, i-2, 1);
 
-		for (int j = 0; j < pgame->width; j++) {
-			if (blocks_at_yx (pgame, i, j)) {
+		for (uint8_t j = 0; j < pgame->width; j++) {
+			if (blocks_at_yx (i, j)) {
 				wattrset (board, COLOR_PAIR((pgame->colors[i][j]
 						%LEN(colors)) +1) | A_BOLD);
 				wprintw (board, BLOCK_CHAR);
@@ -422,18 +396,42 @@ draw_game (void)
 		}
 	}
 
+	/* Draw the current block where it will land */
+	struct block ghost;
+	memcpy (&ghost, pgame->cur, sizeof *pgame->cur);
+	while (drop_block (&ghost) == 1);
+
+	wattrset (board, COLOR_PAIR(2) | A_DIM);
+	for (size_t i = 0; i < LEN(ghost.p); i++) {
+		int y, x;
+		y = ghost.p[i].y + ghost.row_off;
+		x = ghost.p[i].x + ghost.col_off;
+
+		mvwprintw (board, y-2, x+1, BLOCK_CHAR);
+	}
+
+	/* Draw the current block as it's falling */
+	wattrset (board, COLOR_PAIR(pgame->cur->color %LEN(colors) +1)|A_BOLD);
+	for (size_t i = 0; i < LEN(pgame->cur->p); i++) {
+		int y, x;
+		y = pgame->cur->p[i].y + pgame->cur->row_off;
+		x = pgame->cur->p[i].x + pgame->cur->col_off;
+
+		mvwprintw (board, y-2, x+1, BLOCK_CHAR);
+	}
+
 	/* Overlay the PAUSED text */
 	wattrset (board, COLOR_PAIR(1) | A_BOLD);
 	if (pgame->pause) {
-		char y_off, x_off;
+		int y, x;
 
 		/* Center the text horizontally, place the text slightly above
 		 * the middle vertically.
 		 */
-		x_off = (pgame->width  -6)/2 +1;
-		y_off = (pgame->height -2)/2 -2;
+		x = (pgame->width  -6)/2 +1;
+		y = (pgame->height -2)/2 -2;
 
-		mvwprintw (board, y_off, x_off, "PAUSED");
+		mvwprintw (board, y, x, "PAUSED");
 	}
 
 	wrefresh (board);
@@ -447,19 +445,13 @@ blocks_init (void)
 
 	pthread_mutex_init (&pgame->lock, NULL);
 
-	/* Default dimensions.
-	 * We assume the board is the max size (12x24). If the user wants a
-	 * smaller board then we only use the smaller pieces
-	 */
-	pgame->width = BLOCKS_COLUMNS;
-	pgame->height = BLOCKS_ROWS;
-
+	/* Default values  */
+	pgame->width = 10;
+	pgame->height = (pgame->width *2) +2;
 	pgame->diff = DIFF_NORMAL;
-
 	pgame->level = 1;
 
-	/* nanosleep() fails if nsec is >= 1E9 */
-	pgame->nsec = 1E9 -1;
+	pgame->nsec = 1E9 -1; // nanosleep() fails if nsec is >= 1E9
 
 	/* randomize the initial blocks */
 	for (size_t i = 0; i < LEN(blocks); i++) {
@@ -487,8 +479,8 @@ blocks_init (void)
 	return 1;
 }
 
-static int
-blocks_cleanup (void)
+int
+blocks_clean (void)
 {
 	log_info ("Cleaning game data");
 	pthread_mutex_destroy (&pgame->lock);
@@ -529,30 +521,28 @@ blocks_input (void *not_used)
 			while (drop_block (pgame->cur) == 1);
 			break;
 		case 'Q':
-			rotate_block (pgame->cur, MOVE_COUNTER_CLOCKWISE);
+			rotate_block (pgame->cur,
+				MOVE_COUNTER_CLOCKWISE);
 			break;
 		case 'E':
-			rotate_block (pgame->cur, MOVE_CLOCKWISE);
+			rotate_block (pgame->cur,
+				MOVE_CLOCKWISE);
 			break;
 		case ' ':
 			/* Swap next and save pieces */
 			if (pgame->save == NULL) {
 				pgame->save = &blocks[2];
 			}
-
 			struct block *tmp = pgame->save;
 			pgame->save = pgame->next;
 			pgame->next = tmp;
-
 			break;
-		case KEY_F(1):
+		case 'P':
 			pgame->pause = !pgame->pause;
 			break;
 		case KEY_F(3):
 			pgame->pause = false;
 			pgame->quit = true;
-			break;
-		default:
 			break;
 		}
 
@@ -590,13 +580,17 @@ blocks_main (void)
 		if (pgame->pause)
 			continue;
 
-		if (pgame->loss || pgame->quit)
+		if (pgame->lose || pgame->quit)
 			break;
 
 		pthread_mutex_lock (&pgame->lock);
 
 		if (drop_block (pgame->cur) == 0) {
-			destroy_lines ();
+			write_block (pgame->cur);
+			/* save the game when we remove a line */
+			if (destroy_lines ())
+				db_save_state ();
+
 			update_cur_next ();
 		}
 
@@ -605,15 +599,12 @@ blocks_main (void)
 		pthread_mutex_unlock (&pgame->lock);
 	}
 
-	/* Remove the current piece from the board.
-	 * Otherwise it would save the location of a block in mid-air.
-	 * We can't restore from blocks like that, so just remove it.
-	 */
-	unwrite_block (pgame->cur);
-
 	pthread_cancel (input);
 
-	blocks_cleanup ();
+	if (pgame->lose)
+		db_save_score ();
+	else
+		db_save_state ();
 
 	return 1;
 }

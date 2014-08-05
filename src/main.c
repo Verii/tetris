@@ -10,9 +10,22 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include "db.h"
 #include "blocks.h"
 #include "debug.h"
 #include "menu.h"
+
+static void
+database_init (void)
+{
+	char file[256];
+
+	/* use default database location */
+	snprintf (file, sizeof file, "%s/.local/share/tetris/saves",
+			getenv("HOME"));
+
+	db_init (file);
+}
 
 static void
 touch_dir (void)
@@ -55,6 +68,7 @@ usage (void)
 		"%s-" VERSION " usage:\n\t"
 		"[-h] this help\n"
 		, __progname);
+	exit (EXIT_FAILURE);
 }
 
 int
@@ -62,6 +76,7 @@ main (int argc, char **argv)
 {
 	FILE *err_tofile;
 	int ch;
+
 	srand (time (NULL));
 	setlocale (LC_ALL, "");
 
@@ -69,8 +84,9 @@ main (int argc, char **argv)
 		switch (ch) {
 		case 'h':
 		default:
-			usage();
-			exit (EXIT_FAILURE);
+			usage ();
+			/* not reached */
+			break;
 		}
 	}
 	argc -= optind;
@@ -78,8 +94,9 @@ main (int argc, char **argv)
 
 	redirect_stderr (&err_tofile);
 
+	/* wrapper to initialize the default db file location */
+	database_init ();
 	curses_init ();
-	blocks_init ();
 
 	draw_menu ();
 
@@ -87,17 +104,28 @@ main (int argc, char **argv)
 
 		switch (ch) {
 		case '1':
+			blocks_init ();
 			blocks_main ();
+			blocks_clean ();
 			break;
 		case '2':
+			blocks_init ();
+
+			/* populate game with values from save */
+			draw_resume ();
+
+			blocks_main ();
+			blocks_clean ();
 			break;
 		case '3':
-			draw_highscores ();
 			break;
 		case '4':
-			draw_settings ();
+			draw_highscores ();
 			break;
 		case '5':
+			draw_settings ();
+			break;
+		case '6':
 			goto done;
 			/* Not reached */
 			break;
@@ -109,10 +137,12 @@ main (int argc, char **argv)
 	}
 
 done:
-	curses_kill ();
+	curses_clean ();
+	db_clean ();
+
 	fclose (err_tofile);
 
-	printf ("Thanks for playing Blocks-" VERSION "!\n");
+	printf ("Thanks for playing Tetris-" VERSION "!\n");
 
 	return (EXIT_SUCCESS);
 }

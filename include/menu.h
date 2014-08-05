@@ -4,9 +4,11 @@
 #include <ncurses.h>
 
 void curses_init (void);
-void curses_kill (void);
+void curses_clean (void);
 
 void draw_menu (void);
 void draw_settings (void);
+void draw_highscores (void);
+void draw_resume (void);
 
 #endif /* MENU_H_ */

@@ -20,14 +20,14 @@ curses_init (void)
 	log_info ("Initializing ncurses context");
 	initscr ();
 
-	keypad (stdscr, true);
 	cbreak ();
 	noecho ();
 	nonl ();
 	curs_set (0);
+	keypad (stdscr, true);
 
 	board = newwin (BLOCKS_ROWS-1, BLOCKS_COLUMNS+2, 1, 17);
-	control = newwin (16, 16, 1, 1);
+	control = newwin (20, 16, 1, 1);
 
 	start_color ();
 	for (size_t i = 0; i < LEN(colors); i++)
@@ -39,14 +39,16 @@ curses_init (void)
 }
 
 void
-curses_kill (void)
+curses_clean (void)
 {
 	log_info ("Cleaning ncurses context");
 	clear ();
+
+	delwin (board);
+	delwin (control);
 	endwin ();
 }
 
-/* Ask user for difficulty and their name */
 void
 draw_menu (void)
 {
@@ -60,11 +62,12 @@ draw_menu (void)
 
 	mvprintw (1, 1, "Tetris-" VERSION);
 
-	mvprintw (3, 3, "1. Single Player");
-	mvprintw (4, 3, "2. Multi Player [TODO]");
-	mvprintw (5, 3, "3. High Scores [TODO]");
-	mvprintw (6, 3, "4. Settings");
-	mvprintw (7, 3, "5. Quit");
+	mvprintw (3, 3, "1. New Game");
+	mvprintw (4, 3, "2. Resume [TODO]");
+	mvprintw (5, 3, "3. Multi Player [TODO]");
+	mvprintw (6, 3, "4. High Scores");
+	mvprintw (7, 3, "5. Settings [TODO]");
+	mvprintw (8, 3, "6. Quit");
 
 	refresh ();
 }
@@ -74,41 +77,37 @@ draw_highscores (void)
 {
 	log_info ("Drawing Highscores");
 
-	/* DB access is probably the slowest operation in this program.
-	 * Especially when the DB starts to get large with many saves and many
-	 * high scores.
-	 *
-	 * refresh() the screen before we access the DB to make it feel faster
-	 * to the luser
-	 */
 	clear ();
 	attrset (COLOR_PAIR(1));
 	box (stdscr, 0, 0);
 
 	mvprintw (1, 1, "Local Leaderboard");
 	mvprintw (2, 3, "Rank\tName\t\tLevel\tScore\tDate");
-	mvprintw (LINES-2, 1, "Press any key to continue.");
-	refresh ();
 
 	/* Get 10 highscores from DB */
-	struct db_results *res = db_get_scores (10);
+	struct db_save *res = db_get_scores (10);
+	uint8_t count = 1;
+
 	while (res) {
 		/* convert DB unix time to string */
-		char *date = ctime (&res->date);
-		static uint8_t count = 1;
+		char date[256];
+		strftime (date, sizeof date, "%B %d %Y %H:%M",
+				localtime (&res->date));
 
-		mvprintw (count+2, 4, "%2d.\t%-16s%-5d\t%-5d\t%.*s", count,
-			res->id, res->level, res->score, strlen (date)-1, date);
+		mvprintw (count+2, 3, "%0.2d.\t%-*s%-5d\t%-5d\t%.*s", count,
+			sizeof res->save.id, res->save.id, res->save.level,
+			res->save.score, sizeof date, date);
 
 		++count;
 		res = res->entries.tqe_next;
 	}
+
+	mvprintw (LINES-2, 1, "Press any key to continue");
+
 	refresh (); // display scores
+	getch ();
 
 	db_clean_scores ();
-	free (psave->file_loc);
-
-	getch ();
 }
 
 static void
@@ -174,4 +173,39 @@ draw_settings (void)
 			break;
 		}
 	}
+}
+
+void
+draw_resume (void)
+{
+	log_info ("Drawing resume menu");
+
+	clear ();
+	attrset (COLOR_PAIR(1));
+	box (stdscr, 0, 0);
+
+	mvprintw (1, 1, "Local Leaderboard");
+	mvprintw (2, 3, "Rank\tName\t\tLevel\tScore\tDate");
+
+	/* Get 10 highscores from DB */
+	struct db_save *res = db_get_scores (10);
+	uint8_t count = 1;
+
+	while (res) {
+		/* convert DB unix time to string */
+		char date[256];
+		strftime (date, sizeof date, "%B %d %Y %H:%M",
+				localtime (&res->date));
+
+		mvprintw (count+2, 3, "%0.2d.\t%-*s%-5d\t%-5d\t%.*s", count,
+			sizeof res->save.id, res->save.id, res->save.level,
+			res->save.score, sizeof date, date);
+
+		++count;
+		res = res->entries.tqe_next;
+	}
+
+	refresh ();
+
+	db_clean_scores ();
 }

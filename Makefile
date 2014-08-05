@@ -1,15 +1,13 @@
-BIN = blocks
-VERSION = v0.20
+BIN = tetris
 SRC = src/main.c src/blocks.c src/menu.c src/debug.c src/db.c
 
-INCS = -I./include
-CPPFLAGS = -D_GNU_SOURCE -DVERSION=\"${VERSION}\" ${INCS}
+CPPFLAGS = -DDEBUG -D_POSIX_C_SOURCE=200112L -DVERSION=\"v0.20\" -I./include
 
-#DEBUG = -g -O0 -DDEBUG
-CFLAGS = -std=gnu99 -Wall -Wextra -Werror -Os ${DEBUG}
+#RELEASE = -UDEBUG -O3
+CFLAGS = -std=c99 -Wall -Wextra -Werror -O0 -g ${RELEASE}
 
-LIBS = -lm -lncurses -lpthread -lsqlite3
-LDFLAGS = -s ${LIBS}
+#LD_RELEASE = -s
+LDFLAGS = ${LD_RELEASE} -lm -lncurses -lpthread -lsqlite3
 
 CC = cc
 

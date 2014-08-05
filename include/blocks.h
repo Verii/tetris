@@ -19,23 +19,21 @@
 /* Allow other files to access game */
 extern struct block_game *pgame;
 
-struct block_game;
-struct block;
-
 struct block_game {
 	/* These variables are written to the database
 	 * when restoring/saving the game state
 	 */
 	char id[16];
-	uint8_t diff;
-	uint8_t width, height, level;
-	uint16_t lines_destroyed;	/* temp. don't print to screen */
+	uint8_t diff, width, height, level;
+	uint8_t lines_destroyed;	/* temp. don't print to screen */
 	uint16_t spaces[BLOCKS_ROWS];	/* array of shorts, one per row.*/
-	uint32_t score;
+	uint16_t score;
 
-	uint8_t *colors[BLOCKS_ROWS];	/* 1-to-1 with board */
+	uint8_t *colors[BLOCKS_ROWS];	/* 1-to-1 with spaces */
 	uint32_t nsec;			/* game tick delay in milliseconds */
-	bool loss, pause, quit;		/* how/when we quit */
+	bool pause;
+	bool lose, quit;		/* how/when we quit */
+	bool block_ghost;		/* draw the block where it will land */
 	pthread_mutex_t	lock;
 	struct block *cur, *next, *save;
 };
@@ -53,15 +51,16 @@ struct block {
 };
 
 /* Does a block exist at the specified (y, x) coordinate? */
-#define blocks_at_yx(p, y, x) (p->spaces[y] & (1 << x))
-
-void draw_highscores (void);
+#define blocks_at_yx(_y, _x) (pgame->spaces[_y] & (1 << _x))
 
 /* Set block_game defaults */
 int blocks_init (void);
 
-/* Main loop of the game, self-contained, it will create the game, listen for
- * commands, draw the board, and cleanup when the game is over.
+/* free memory and cleanup */
+int blocks_clean (void);
+
+/* Main loop of the game.
+ * Creates listener thread to accept commands from user
  */
 int blocks_main (void);
 
