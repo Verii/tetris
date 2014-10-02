@@ -13,24 +13,24 @@
  * Medium (10x20)
  * Large (12x24)
  */
-#define BLOCKS_ROWS 26			/* 2 hidden rows above game */
+#define BLOCKS_ROWS 26		/* 2 hidden rows above game */
 #define BLOCKS_COLUMNS 12
 
 /* Only the currently falling block, the next block, and the save block are
  * stored in this structure. Once a block hits another piece, we forget about
- * it; It becomes part of the game board.
+ * it; it becomes part of the game board.
  */
 struct block {
 	uint8_t col_off, row_off;	/* column/row offsets */
 	uint8_t type, color;
-	struct {			/* each piece stores a value between */
-		int8_t x, y;		/* -1 and +3, offsets are used to */
-	} p[4];				/* store the actual location */
+	struct {		/* pieces stores a value */
+		int8_t x, y;	/* between -1 and +2 */
+	} p[4];
 };
 
 /* Game difficulty */
 enum block_diff {
-	DIFF_EASY,
+	DIFF_EASY = 1,
 	DIFF_NORMAL,
 	DIFF_HARD,
 };
@@ -40,41 +40,41 @@ struct block_game {
 	 * when restoring/saving the game state
 	 */
 	uint8_t width, height, level;
-	uint16_t lines_destroyed;	/* temp. don't print to screen */
-	uint16_t spaces[BLOCKS_ROWS];	/* array of shorts, one per row.*/
+	uint16_t lines_destroyed;
+	uint16_t spaces[BLOCKS_ROWS];	/* array of shorts, one per row. */
 	uint32_t score;
-	enum block_diff mod;
+	enum block_diff diff;
 
 	uint8_t *colors[BLOCKS_ROWS];	/* 1-to-1 with board */
-	uint32_t nsec;			/* game tick delay in milliseconds */
-	bool loss, pause, quit;		/* how/when we quit */
-	pthread_mutex_t	lock;
+	uint32_t nsec;		/* game tick delay in milliseconds */
+	bool loss, pause, quit;	/* how/when we quit */
+	pthread_mutex_t lock;
 	struct block *cur, *next, *save;
 };
 
 enum block_cmd {
 	MOVE_LEFT,
 	MOVE_RIGHT,
-	MOVE_DOWN,			/* Move down one block */
-	MOVE_DROP,			/* Drop block to bottom of board */
+	MOVE_DOWN,		/* Move down one block */
+	MOVE_DROP,		/* Drop block to bottom of board */
 	ROT_LEFT,
 	ROT_RIGHT,
 	SAVE_PIECE,
 };
 
 /* Does a block exist at the specified (y, x) coordinate? */
-#define blocks_at_yx(p, y, x) (p->spaces[y] & (1 << x))
+#define blocks_at_yx(p, y, x) ((p)->spaces[(y)] & (1 << (x)))
 
 /* Create game state */
-int blocks_init (struct block_game *);
-
-/* Send commands to game */
-int blocks_move (struct block_game *, enum block_cmd);
-
-/* Main loop, doesn't return until game is over */
-int blocks_loop (struct block_game *);
+int blocks_init(struct block_game *);
 
 /* Free memory */
-int blocks_cleanup (struct block_game *);
+int blocks_cleanup(struct block_game *);
 
-#endif /* BLOCKS_H_ */
+/* Main loop, doesn't return until game is over */
+void *blocks_loop(void *);
+
+/* Input loop */
+void *blocks_input(void *);
+
+#endif				/* BLOCKS_H_ */

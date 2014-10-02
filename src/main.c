@@ -1,3 +1,13 @@
+/* Copyright (c) 2014 James Smith <james@theta.pw>
+ * See the LICENSE file for your rights
+ */
+
+/* Non-standard BSD extensions */
+#include <bsd/string.h>
+
+#include <sys/stat.h>
+#include <sys/types.h>
+
 #include <errno.h>
 #include <locale.h>
 #include <pthread.h>
@@ -7,105 +17,145 @@
 #include <time.h>
 #include <unistd.h>
 
-#include <sys/stat.h>
-#include <sys/types.h>
-
 #include "blocks.h"
 #include "db.h"
 #include "debug.h"
 #include "screen.h"
 
-#ifndef LOG_FILE
-#define LOG_FILE "/logs"
-#endif
-
-static FILE *err_tofile;
+static struct db_info save;
 static struct block_game game;
-static char log_file[128];
-static pthread_t screen_loop;
 
-static void
-redirect_stderr (void)
+/* We can exit() at any point and still safely cleanup */
+static void cleanup(void)
+{
+	screen_cleanup();
+	blocks_cleanup(&game);
+
+	/* Game separator */
+	fprintf(stderr, "--\n");
+
+	fclose(stderr);
+	printf("Thanks for playing Blocks-%s!\n", VERSION);
+}
+
+static void usage(void)
+{
+	extern const char *__progname;
+	fprintf(stderr, "Copyright (C) 2014 James Smith <james@theta.pw>\n"
+		"See the license.txt file included with the release\n\n"
+		"%s-%s usage:\n\t" "[-h] this help\n", __progname, VERSION);
+
+	exit(EXIT_FAILURE);
+}
+
+static int try_mkdir(const char *path, mode_t mode)
 {
 	struct stat sb;
 
-	snprintf (log_file, sizeof log_file, "%s/.local/share/tetris",
-			getenv("HOME"));
-
 	errno = 0;
-	stat (log_file, &sb);
+	if (stat(path, &sb) == 0 && S_ISDIR(sb.st_mode) && (sb.st_mode & mode))
+		return 0;
 
-	/* segfaults if ~/.local/share doesn not exist */
+	/* Try to create directory if it doesn't exist */
 	if (errno == ENOENT) {
-		mkdir (log_file, 0777);
+		if (mkdir(path, mode) == -1) {
+			perror(path);
+			return -1;
+		}
 	}
 
-	/* add name of log file to string */
-	strcat (log_file, LOG_FILE);
+	/* Adjust permissions if dir exists but can't be read */
+	if ((sb.st_mode & mode) != mode) {
+		if (chmod(path, mode) == -1) {
+			perror(path);
+			return -1;
+		}
+	}
 
-	printf ("Redirecting stderr to %s.\n", log_file);
-	err_tofile = freopen (log_file, "w", stderr);
+	return 0;
 }
 
-static void
-usage (void)
+static void init(void)
 {
-	extern const char *__progname;
-	fprintf (stderr, "Copyright (C) 2014 James Smith <james@theta.pw>\n"
-		"See the license.txt file included with the release\n\n"
-		"%s-" VERSION " usage:\n\t"
-		"[-h] this help\n", __progname);
+	/* Most file systems limit the size of filenames to 255 octets */
+	char *home_env, game_dir[256];
+	mode_t mode = S_IRUSR | S_IWUSR | S_IXUSR;
 
-	exit (EXIT_FAILURE);
-}
+	/* Get user HOME environment variable. Fail if we can't trust the
+	 * environment, like if the setuid bit is set on the executable.
+	 */
+	if ((home_env = secure_getenv("HOME")) != NULL) {
+		strlcpy(game_dir, home_env, sizeof game_dir);
+	} else {
+		printf("Environment $HOME does not exist\n");
+		exit(EXIT_FAILURE);
+	}
 
-/* We can exit() at any point and still safely cleanup */
-static void
-cleanup (void)
-{
-	screen_cleanup ();
-	blocks_cleanup (&game);
+	/* create ~/.local */
+	strlcat(game_dir, "/.local", sizeof game_dir);
+	if (try_mkdir(game_dir, mode) != 0)
+		goto err_subdir;
 
-	fclose (err_tofile);
-	printf ("Thanks for playing Blocks-" VERSION "!\n");
-}
+	/* create ~/.local/share */
+	strlcat(game_dir, "/share", sizeof game_dir);
+	if (try_mkdir(game_dir, mode) != 0)
+		goto err_subdir;
 
-int
-main (int argc, char **argv)
-{
-	setlocale (LC_ALL, "");
-	if (argc > 1 && argv[1][0] == '-' && argv[1][1] == 'h')
-		usage ();
+	/* create ~/.local/share/tetris */
+	strlcat(game_dir, "/tetris", sizeof game_dir);
+	if (try_mkdir(game_dir, mode) != 0)
+		goto err_subdir;
 
-	srand (time (NULL));
-	redirect_stderr ();
+	/* open for writing in append mode ~/.local/share/tetris/logs */
+	strlcat(game_dir, "/logs", sizeof game_dir);
+	if (freopen(game_dir, "a", stderr) == NULL) {
+		printf("%s\n", game_dir);
+		exit(EXIT_FAILURE);
+	}
+
+	srand(time(NULL));
 
 	/* Create game context */
-	if (blocks_init (&game) > 0) {
-		printf ("Game successfully initialized\n");
+	if (blocks_init(&game) > 0) {
+		printf("Game successfully initialized\n");
 	} else {
-		printf ("Failed to initialize game\nExiting ..\n");
-		exit (2);
+		printf("Failed to initialize game\n");
+		exit(EXIT_FAILURE);
 	}
 
 	/* create ncurses display */
-	screen_init ();
+	screen_init();
 
-	atexit (cleanup);
+	return;
 
-	struct db_info save;
-	screen_draw_menu (&game, &save);
+ err_subdir:
+	printf("Unable to create sub directories. Cannot continue\n");
+	exit(EXIT_FAILURE);
+}
 
-	screen_draw_game (&game);
+int main(int argc, char **argv)
+{
+	setlocale(LC_ALL, "");
+	if (argc > 1 && argv[1][0] == '-' && argv[1][1] == 'h')
+		usage();
 
-	pthread_create (&screen_loop, NULL, screen_main, &game);
+	init();
+	atexit(cleanup);
+
+	/* TODO: Get user information */
+	screen_draw_menu(&game, &save);
+	screen_draw_game(&game);
+
+	pthread_t input_loop, update_loop;
+	pthread_create(&update_loop, NULL, blocks_loop, &game);
+	pthread_create(&input_loop, NULL, blocks_input, &game);
 
 	/* when blocks_loop returns, kill the input thread and cleanup */
-	blocks_loop (&game);
-	pthread_cancel (screen_loop);
+	pthread_join(update_loop, NULL);
+	pthread_cancel(input_loop);
 
 	/* Print scores, tell user they're a loser, etc. */
-	screen_draw_over (&game, &save);
+	screen_draw_over(&game, &save);
 
-	return (EXIT_SUCCESS);
+	return 0;
 }
