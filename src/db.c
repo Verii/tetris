@@ -105,8 +105,6 @@ int db_save_state(struct db_info *entry, const struct block_game *pgame)
 	sqlite3_stmt *stmt;
 	int ret = 0;
 
-	debug("Trying to save state to database");
-
 	if (db_open(entry) < 0)
 		return 0;
 
