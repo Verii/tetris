@@ -129,7 +129,7 @@ int db_save_state(struct db_info *entry, const struct block_game *pgame)
 		data_len = (BLOCKS_ROWS - 2) * sizeof(*pgame->spaces);
 		data = malloc(data_len);
 
-		if (data == NULL) {
+		if (!data) {
 			/* Non-fatal, we just don't save to database */
 			log_err("Unable to acquire memory, %d bytes.", data_len);
 			goto error;
@@ -148,7 +148,8 @@ int db_save_state(struct db_info *entry, const struct block_game *pgame)
 	}
 
  error:
-	free(insert);
+	if (len > 0)
+		free(insert);
 	db_close(entry);
 	return ret;
 }
@@ -229,7 +230,7 @@ int db_resume_state(struct db_info *entry, struct block_game *pgame)
  * This list can be iterated over to extract the fields:
  * name, level, score, date.
  *
- * NOTE Be sure to call db_clean_scores(macro) after this to free memory.
+ * NOTE Be sure to call db_clean_scores after this to free memory.
  */
 struct db_results *db_get_scores(struct db_info *entry, size_t results)
 {
