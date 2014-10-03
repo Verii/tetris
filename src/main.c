@@ -53,7 +53,8 @@ static int try_mkdir(const char *path, mode_t mode)
 	struct stat sb;
 
 	errno = 0;
-	if (stat(path, &sb) == 0 && S_ISDIR(sb.st_mode) && (sb.st_mode & mode))
+	if (stat(path, &sb) == 0 && S_ISDIR(sb.st_mode) &&
+		(sb.st_mode & mode) == mode)
 		return 0;
 
 	/* Try to create directory if it doesn't exist */
