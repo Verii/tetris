@@ -194,7 +194,8 @@ static int destroy_lines(struct block_game *pgame)
 	if (!pgame)
 		return -1;
 
-	uint32_t full_row = ~(UINT32_MAX << pgame->width);
+	uint32_t full_row = (1 << pgame->width) -1;
+
 	unsigned int destroyed = 0;
 
 	/* The first two rows are 'above' the game, that's where the new blocks
