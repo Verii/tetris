@@ -167,9 +167,10 @@ static int rotate_block(struct block_game *pgame, struct block *block,
 		bounds_x = block->p[i].y * (-mod) + block->col_off;
 		bounds_y = block->p[i].x * (mod) + block->row_off;
 
-		/* Check for out of bounds on each block */
+		/* Check for out of bounds on each piece */
 		if (bounds_x < 0 || bounds_x >= pgame->width ||
 		    bounds_y < 0 || bounds_y >= pgame->height ||
+		    /* Also check if a piece already exists here */
 		    blocks_at_yx(pgame, bounds_y, bounds_x))
 			return -1;
 	}
@@ -258,17 +259,13 @@ static int destroy_lines(struct block_game *pgame)
 		if (pgame->spaces[i] != full_row)
 			continue;
 
-		/* bit field: setting to 0 removes line */
-		pgame->spaces[i] = 0;
-
-		destroyed++;
-
 		/* Move lines above destroyed line down */
 		for (size_t k = i; k > 0; k--)
 			pgame->spaces[k] = pgame->spaces[k - 1];
 
 		/* Lines are moved down, so we recheck this row. */
 		i++;
+		destroyed++;
 	}
 
 	pgame->lines_destroyed += destroyed;
@@ -332,7 +329,7 @@ static int drop_block(struct block_game *pgame, struct block *block)
 	if (!pgame || !block)
 		return -1;
 
-	for (unsigned int i = 0; i < 4; i++) {
+	for (unsigned int i = 0; i < LEN(block->p); i++) {
 		unsigned int bounds_y, bounds_x;
 		bounds_y = block->p[i].y + block->row_off + 1;
 		bounds_x = block->p[i].x + block->col_off;
