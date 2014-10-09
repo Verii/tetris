@@ -217,7 +217,7 @@ int db_resume_state(struct db_info *entry, struct block_game *pgame)
 
 	sqlite3_finalize(stmt);
 
-	log_info("Level = %d, Score = %d, Difficulty = %d, dim: (%d, %d)",
+	debug("Level = %d, Score = %d, Difficulty = %d, dim: (%d, %d)",
 		 pgame->level, pgame->score, pgame->diff,
 		 pgame->width, pgame->height);
 

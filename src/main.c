@@ -145,6 +145,7 @@ static void init(void)
 	/* Create game context */
 	if (blocks_init(&game) > 0) {
 		printf("Game successfully initialized\n");
+		printf("Appending logs to file: %s.\n", game_dir);
 	} else {
 		printf("Failed to initialize game\n");
 		exit(EXIT_FAILURE);
