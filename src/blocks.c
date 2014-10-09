@@ -64,52 +64,67 @@ static void create_block(struct block_game *pgame, struct block *block)
 	block->row_off = 1;
 	block->color++;
 
+	int index;
+#define PIECE_XY(X, Y) do { \
+				block->p[index].x = (X); \
+				block->p[index].y = (Y); \
+				index++; \
+			     } while(0)
+
 	/* The piece at (0, 0) is the pivot when we rotate */
 	switch (block->type) {
 	case SQUARE_BLOCK:
-		block->p[0].x = -1; block->p[0].y = -1;
-		block->p[1].x = 0; block->p[1].y = -1;
-		block->p[2].x = -1; block->p[2].y = 0;
-		block->p[3].x = 0; block->p[3].y = 0;
+		index = 0;
+		PIECE_XY(-1, -1);
+		PIECE_XY(0, -1);
+		PIECE_XY(-1, 0);
+		PIECE_XY(0, 0);
 		break;
 	case LINE_BLOCK:
 		block->col_off--;	/* center */
-		block->p[0].x = -1; block->p[0].y = 0;
-		block->p[1].x = 0; block->p[1].y = 0;
-		block->p[2].x = 1; block->p[2].y = 0;
-		block->p[3].x = 2; block->p[3].y = 0;
+		index = 0;
+		PIECE_XY(-1, 0);
+		PIECE_XY(0, 0);
+		PIECE_XY(1, 0);
+		PIECE_XY(2, 0);
 		break;
 	case T_BLOCK:
-		block->p[0].x = 0; block->p[0].y = -1;
-		block->p[1].x = -1; block->p[1].y = 0;
-		block->p[2].x = 0; block->p[2].y = 0;
-		block->p[3].x = 1; block->p[3].y = 0;
+		index = 0;
+		PIECE_XY(0, -1);
+		PIECE_XY(-1, 0);
+		PIECE_XY(0, 0);
+		PIECE_XY(1, 0);
 		break;
 	case L_BLOCK:
-		block->p[0].x = 1; block->p[0].y = -1;
-		block->p[1].x = -1; block->p[1].y = 0;
-		block->p[2].x = 0; block->p[2].y = 0;
-		block->p[3].x = 1; block->p[3].y = 0;
+		index = 0;
+		PIECE_XY(1, -1);
+		PIECE_XY(-1, 0);
+		PIECE_XY(0, 0);
+		PIECE_XY(1, 0);
 		break;
 	case L_REV_BLOCK:
-		block->p[0].x = -1; block->p[0].y = -1;
-		block->p[1].x = -1; block->p[1].y = 0;
-		block->p[2].x = 0; block->p[2].y = 0;
-		block->p[3].x = 1; block->p[3].y = 0;
+		index = 0;
+		PIECE_XY(-1, -1);
+		PIECE_XY(-1, 0);
+		PIECE_XY(0, 0);
+		PIECE_XY(1, 0);
 		break;
 	case Z_BLOCK:
-		block->p[0].x = -1; block->p[0].y = -1;
-		block->p[1].x = 0; block->p[1].y = -1;
-		block->p[2].x = 0; block->p[2].y = 0;
-		block->p[3].x = 1; block->p[3].y = 0;
+		index = 0;
+		PIECE_XY(-1, -1);
+		PIECE_XY(0, -1);
+		PIECE_XY(0, 0);
+		PIECE_XY(1, 0);
 		break;
 	case Z_REV_BLOCK:
-		block->p[0].x = 0; block->p[0].y = -1;
-		block->p[1].x = 1; block->p[1].y = -1;
-		block->p[2].x = -1; block->p[2].y = 0;
-		block->p[3].x = 0; block->p[3].y = 0;
+		index = 0;
+		PIECE_XY(0, -1);
+		PIECE_XY(1, -1);
+		PIECE_XY(-1, 0);
+		PIECE_XY(0, 0);
 		break;
 	}
+#undef PIECE_XY
 }
 
 /* Current block hit the bottom of the game, remove it.
