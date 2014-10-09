@@ -125,6 +125,10 @@ static int rotate_block(struct block_game *pgame, struct block *block,
 		mod = -1;
 
 	/* Check each piece for a collision before we write any changes */
+	/* META GCC complains about checks betwen signed and
+	 * unsigned types. sizeof 'returns' type size_t(unsigned int). So just
+	 * use size_t in most loops for consistency.
+	 */
 	for (size_t i = 0; i < LEN(block->p); i++) {
 		int bounds_x, bounds_y;
 		bounds_x = block->p[i].y * (-mod) + block->col_off;
