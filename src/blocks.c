@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <ctype.h>
 #include <math.h>
 #include <ncurses.h>
@@ -194,9 +195,13 @@ static int destroy_lines(struct block_game *pgame)
 	if (!pgame)
 		return -1;
 
-	uint32_t full_row = (1 << pgame->width) -1;
+	/* Fill in all bits below bit pgame->width. Row populations are stored
+	 * in a bit field, so we can check for a full row by comparing it to
+	 * this value.
+	 */
+	const uint32_t full_row = (1 << pgame->width) -1;
 
-	unsigned int destroyed = 0;
+	uint8_t destroyed = 0;
 
 	/* The first two rows are 'above' the game, that's where the new blocks
 	 * come into existence. We lose if there's ever a block there. */
@@ -209,7 +214,11 @@ static int destroy_lines(struct block_game *pgame)
 	 * row. Ignore the top two rows, which we checked above.
 	 */
 	for (size_t i = pgame->height - 1; i >= 2; i--) {
-		if (full_row != pgame->spaces[i])
+
+		/* The game does not function if for some reason this fails */
+		assert(pgame->spaces[i] <= full_row);
+
+		if (pgame->spaces[i] != full_row)
 			continue;
 
 		/* bit field: setting to 0 removes line */
