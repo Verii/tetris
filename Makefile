@@ -1,27 +1,32 @@
 BIN = blocks
-VERSION = v0.19.1
+VERSION = v0.19.2
 SRC = src/main.c src/blocks.c src/screen.c src/debug.c src/db.c
-
 OBJS = ${SRC:.c=.o}
 
-INCS = -I./include
-CPPFLAGS = -D_GNU_SOURCE -DVERSION=\"${VERSION}\" ${INCS}
+SRCDIR = /usr/local/bin
 
-#DEBUG = -g -Og -DDEBUG
-CFLAGS = -std=gnu99 -Wall -Wextra -Werror -Os ${DEBUG}
+CPPFLAGS = -D_GNU_SOURCE -DVERSION=\"${VERSION}\" -DNDEBUG -I./include
 
-LIBS = -lm -lbsd -lncurses -lpthread -lsqlite3
-LDFLAGS = -s ${LIBS}
+DEBUG = -g -Og -DDEBUG
+CFLAGS = -std=gnu99 -Wall -Wextra -Werror -Os
 
-CC = cc
+LDFLAGS = -lm -lbsd -lncurses -lpthread -lsqlite3
 
-## Compilation is fast enough that we don't build .o files
-## Building takes <1 second on my laptop.
+.PREFIX:
+.PREFIX: .c .o
+
+## Build with debugging flags when told to produce .o files.
+.c.o:
+	${CC} -c $< -o $@ ${CPPFLAGS} ${CFLAGS} ${DEBUG}
+
 all:
 	${CC} -o ${BIN} ${CPPFLAGS} ${CFLAGS} ${SRC} ${LDFLAGS}
 
-strip: all
-	strip -s ${BIN}
+debug: ${OBJS}
+	${CC} $^ ${LDFLAGS} -o blocks-$@
+
+install:
+	install -sp -o root -g root --mode=755 -t ${SRCDIR} ${BIN}
 
 clean:
-	-rm -f ${BIN}
+	-rm -f ${BIN} ${OBJS}
