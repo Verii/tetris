@@ -52,7 +52,7 @@ enum {
 /*
  * randomizes block and sets the initial positions of the pieces
  */
-static void create_block(struct block_game *pgame, struct block *block)
+static void randomize_block(struct block_game *pgame, struct block *block)
 {
 	if (!pgame || !block)
 		return;
@@ -140,7 +140,7 @@ static inline void update_cur_next(struct block_game *pgame)
 	pgame->cur = pgame->next;
 	pgame->next = old;
 
-	create_block(pgame, pgame->next);
+	randomize_block(pgame, pgame->next);
 }
 
 /* rotate pieces in blocks by either 90^ or -90^ around (0, 0) pivot */
@@ -370,7 +370,7 @@ int blocks_init(struct block_game *pgame)
 
 	/* randomize the initial blocks */
 	for (size_t i = 0; i < LEN(blocks); i++) {
-		create_block(pgame, &blocks[i]);
+		randomize_block(pgame, &blocks[i]);
 		/* Start with random color, so cur and next don't follow each
 		 * other.
 		 */
