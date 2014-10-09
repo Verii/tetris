@@ -172,7 +172,7 @@ static int rotate_block(struct block_game *pgame, struct block *block,
 		    bounds_y < 0 || bounds_y >= pgame->height ||
 		    /* Also check if a piece already exists here */
 		    blocks_at_yx(pgame, bounds_y, bounds_x))
-			return -1;
+			return 0;
 	}
 
 	/* No collisions, so update the block position. */
@@ -209,7 +209,7 @@ static int translate_block(struct block_game *pgame, struct block *block,
 		if (bounds_x < 0 || bounds_x >= pgame->width ||
 		    bounds_y < 0 || bounds_y >= pgame->height ||
 		    blocks_at_yx(pgame, bounds_y, bounds_x))
-			return -1;
+			return 0;
 	}
 
 	block->col_off += dir;
