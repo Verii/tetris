@@ -57,14 +57,14 @@ struct block_game {
 	/* These variables are written to the database
 	 * when restoring/saving the game state
 	 */
-	uint8_t width, height, level;
-	uint16_t lines_destroyed;
+	uint8_t width, height;
+	uint16_t level, lines_destroyed;
 	uint16_t spaces[BLOCKS_ROWS];	/* array of shorts, one per row. */
 	uint32_t score;
 	enum block_diff diff;
 
 	uint8_t *colors[BLOCKS_ROWS];	/* 1-to-1 with board */
-	uint32_t nsec;		/* game tick delay in milliseconds */
+	uint32_t nsec;		/* game tick delay in nanoseconds */
 	bool loss, pause, quit;	/* how/when we quit */
 	pthread_mutex_t lock;
 	struct block *cur, *next, *save;
