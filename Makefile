@@ -3,7 +3,7 @@ VERSION = v0.19.3
 SRC = src/main.c src/blocks.c src/screen.c src/debug.c src/db.c
 OBJS = ${SRC:.c=.o}
 
-DSTDIR = /usr/local/bin
+DESTDIR = /usr/local/bin
 
 CPPFLAGS = -D_GNU_SOURCE -DVERSION=\"${VERSION}\" -DNDEBUG -I./include
 
@@ -23,10 +23,10 @@ all:
 	${CC} -o ${BIN} ${CPPFLAGS} ${CFLAGS} ${SRC} ${LDFLAGS}
 
 debug: ${OBJS}
-	${CC} $^ ${LDFLAGS} -o blocks-$@
+	${CC} $^ ${LDFLAGS} -o ${BIN}-$@
 
 install: all
-	install -sp -o root -g root --mode=755 -t ${DSTDIR} ${BIN}
+	install -sp -o root -g root --mode=755 -t ${DESTDIR} ${BIN}
 
 clean:
 	-rm -f ${BIN} ${BIN}-debug ${OBJS}

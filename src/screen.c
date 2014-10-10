@@ -87,7 +87,7 @@ void screen_draw_menu(struct block_game *pgame, struct db_info *psave)
 	 * with our saves
 	 */
 	snprintf(psave->file_loc, buf_len,
-#if defined(DEBUG)
+#if defined(DEBUG) || !defined(NDEBUG)
 		":memory:");
 #else
 		"%s/.local/share/tetris/saves", getenv("HOME"));
@@ -130,7 +130,6 @@ static inline void screen_draw_control(struct block_game *pgame)
 		wattrset(control, COLOR_PAIR((pgame->next->color
 					      % LEN(colors)) + 1) | A_BOLD);
 		mvwprintw(control, y + 7, x + 3, BLOCK_CHAR);
-
 	}
 
 	for (size_t i = 0; pgame->save && i < LEN(pgame->save->p); i++) {
