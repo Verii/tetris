@@ -114,29 +114,31 @@ static void init(void)
 	if ((home_env = secure_getenv("HOME")) != NULL) {
 		strlcpy(game_dir, home_env, sizeof game_dir);
 	} else {
-		printf("Environment $HOME does not exist\n");
+		fprintf(stderr, "Environment variable $HOME does not exist, "
+				"or it is not what you think it is.\n");
 		exit(EXIT_FAILURE);
 	}
 
-	/* create ~/.local */
-	strlcat(game_dir, "/.local", sizeof game_dir);
-	if (try_mkdir(game_dir, mode) != 0)
-		goto err_subdir;
+	struct {
+		char *dir;
+	} dirs[] = {
+		{ "/.local" },
+		{ "/share" },
+		{ "/tetris" },
+		{ NULL },
+	};
 
-	/* create ~/.local/share */
-	strlcat(game_dir, "/share", sizeof game_dir);
-	if (try_mkdir(game_dir, mode) != 0)
-		goto err_subdir;
-
-	/* create ~/.local/share/tetris */
-	strlcat(game_dir, "/tetris", sizeof game_dir);
-	if (try_mkdir(game_dir, mode) != 0)
-		goto err_subdir;
+	int i;
+	for (i = 0; dirs[i].dir; i++) {
+		strlcat(game_dir, dirs[i].dir, sizeof game_dir);
+		if (try_mkdir(game_dir, mode) != 0)
+			goto err_subdir;
+	}
 
 	/* open for writing in append mode ~/.local/share/tetris/logs */
 	strlcat(game_dir, "/logs", sizeof game_dir);
 	if (freopen(game_dir, "a", stderr) == NULL) {
-		printf("%s\n", game_dir);
+		fprintf(stderr, "Could not open: %s\n", game_dir);
 		exit(EXIT_FAILURE);
 	}
 
@@ -157,7 +159,7 @@ static void init(void)
 	return;
 
  err_subdir:
-	printf("Unable to create sub directories. Cannot continue\n");
+	fprintf(stderr, "Unable to create sub directories. Cannot continue\n");
 	exit(EXIT_FAILURE);
 }
 
