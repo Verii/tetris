@@ -119,18 +119,16 @@ static void init(void)
 		exit(EXIT_FAILURE);
 	}
 
-	struct {
-		char *dir;
-	} dirs[] = {
-		{ "/.local" },
-		{ "/share" },
-		{ "/tetris" },
-		{ NULL },
+	char *dirs[] = {
+		"/.local",
+		"/share",
+		"/tetris",
+		NULL,
 	};
 
 	int i;
-	for (i = 0; dirs[i].dir; i++) {
-		strlcat(game_dir, dirs[i].dir, sizeof game_dir);
+	for (i = 0; dirs[i]; i++) {
+		strlcat(game_dir, dirs[i], sizeof game_dir);
 		if (try_mkdir(game_dir, mode) < 0)
 			goto err_subdir;
 	}
