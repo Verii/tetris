@@ -81,7 +81,7 @@ static int try_mkdir(const char *path, mode_t mode)
 	errno = 0;
 	if (stat(path, &sb) == 0 && S_ISDIR(sb.st_mode) &&
 		(sb.st_mode & mode) == mode)
-		return 0;
+		return 1;
 
 	/* Try to create directory if it doesn't exist */
 	if (errno == ENOENT) {
@@ -99,7 +99,7 @@ static int try_mkdir(const char *path, mode_t mode)
 		}
 	}
 
-	return 0;
+	return 1;
 }
 
 static void init(void)
@@ -131,7 +131,7 @@ static void init(void)
 	int i;
 	for (i = 0; dirs[i].dir; i++) {
 		strlcat(game_dir, dirs[i].dir, sizeof game_dir);
-		if (try_mkdir(game_dir, mode) != 0)
+		if (try_mkdir(game_dir, mode) < 0)
 			goto err_subdir;
 	}
 
@@ -169,13 +169,13 @@ int main(int argc, char **argv)
 	if (argc > 1 && argv[1][0] == '-' && argv[1][1] == 'h')
 		usage();
 
-	if (isatty(fileno(stdin)) == 0)
+	/* Quit if we're not attached to a tty */
+	if (!isatty(fileno(stdin)))
 		exit(EXIT_FAILURE);
 
 	init();
 	atexit(cleanup);
 
-	/* TODO: Get user information */
 	screen_draw_menu(&game, &save);
 	screen_draw_game(&game);
 
