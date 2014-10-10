@@ -70,20 +70,31 @@ void screen_cleanup(void)
 /* Ask user for difficulty and their name */
 void screen_draw_menu(struct block_game *pgame, struct db_info *psave)
 {
-//      WINDOW *menu;
+	const size_t buf_len = 256;
+
 	memset(psave, 0, sizeof *psave);
 
 	/* TODO place holder name, get from user later */
 	strlcpy(psave->id, "Lorem Ipsum", sizeof psave->id);
 
-	int ret = asprintf(&psave->file_loc, "%s/.local/share/tetris/saves",
-			   getenv("HOME"));
-	if (ret < 0) {
+	psave->file_loc = calloc(1, buf_len);
+	if (psave->file_loc == NULL) {
 		log_err("Out of memory");
-		exit(2);
+		exit(EXIT_FAILURE);
 	}
 
-	/* TODO set the board game to 'medium' size, get from user later */
+	/* Create an in-memory DB when debugging so we don't mess
+	 * with our saves
+	 */
+	snprintf(psave->file_loc, buf_len,
+#if defined(DEBUG)
+		":memory:");
+#else
+		"%s/.local/share/tetris/saves", getenv("HOME"));
+#endif
+
+	/* Set the board to 'medium' size */
+	/* TODO get dimensions from user later */
 	pgame->width = 10;
 	pgame->height = (pgame->width * 2) + 2;
 
