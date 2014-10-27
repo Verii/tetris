@@ -28,6 +28,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "bag.h"
 #include "blocks.h"
 #include "debug.h"
 #include "screen.h"
@@ -49,7 +50,10 @@ static void randomize_block(struct blocks_game *pgame, struct blocks *block)
 	if (!pgame || !block)
 		return;
 
-	block->type = rand() % NUM_BLOCKS;
+	if (bag_is_empty())
+		bag_random_generator();
+
+	block->type = bag_next_piece();
 
 	/* Try to center the block on the board */
 	block->col_off = pgame->width / 2;
@@ -105,6 +109,9 @@ static void randomize_block(struct blocks_game *pgame, struct blocks *block)
 		PIECE_XY(-1,  0);
 		PIECE_XY( 0,  0);
 		break;
+	default:
+		log_err("Piece not found: %d\n", block->type);
+		exit(EXIT_FAILURE);
 	}
 }
 
@@ -436,9 +443,7 @@ void *blocks_loop(void *vp)
 
 	while (1) {
 		ts.tv_nsec = pgame->nsec;
-		/*@ignore@*/
 		nanosleep(&ts, NULL);
-		/*@end@*/
 
 		if (pgame->pause)
 			continue;
