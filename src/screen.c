@@ -112,7 +112,7 @@ static inline void screen_draw_control(struct blocks_game *pgame)
 	mvwprintw(control, 2, 1, "Level %d", pgame->level);
 	mvwprintw(control, 3, 1, "Score %d", pgame->score);
 
-	mvwprintw(control, 5, 1, "Next   Save");
+	mvwprintw(control, 5, 1, "Next   Hold");
 	mvwprintw(control, 6, 2, "           ");
 	mvwprintw(control, 7, 2, "           ");
 
@@ -133,12 +133,12 @@ static inline void screen_draw_control(struct blocks_game *pgame)
 		mvwprintw(control, y + 7, x + 3, BLOCK_CHAR);
 	}
 
-	for (size_t i = 0; pgame->save && i < LEN(pgame->save->p); i++) {
+	for (size_t i = 0; pgame->hold && i < LEN(pgame->hold->p); i++) {
 		char y, x;
-		y = pgame->save->p[i].y;
-		x = pgame->save->p[i].x;
+		y = pgame->hold->p[i].y;
+		x = pgame->hold->p[i].x;
 
-		wattrset(control, COLOR_PAIR((pgame->save->color
+		wattrset(control, COLOR_PAIR((pgame->hold->color
 					      % LEN(colors)) + 1) | A_BOLD);
 		mvwprintw(control, y + 7, x + 9, BLOCK_CHAR);
 	}
@@ -219,7 +219,7 @@ void screen_draw_over(struct blocks_game *pgame, struct db_info *psave)
 	mvprintw(2, 3, "Rank\tName\t\tLevel\tScore\tDate");
 	mvprintw(LINES - 2, 1, "Press F1 to quit.");
 
-	if (pgame->loss) {
+	if (pgame->lose) {
 		db_save_score(psave, pgame);
 	} else {
 		db_save_state(psave, pgame);

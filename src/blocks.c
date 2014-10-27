@@ -36,7 +36,7 @@
 /* three blocks,
  * current falling block,
  * next block to fall,
- * save block
+ * hold block
  */
 static struct blocks blocks[3];
 
@@ -45,7 +45,7 @@ static struct blocks blocks[3];
  */
 static void randomize_block(struct blocks_game *pgame, struct blocks *block)
 {
-	int index = 0; // used in macro def. PIECE_XY() */
+	int index = 0; /* used in macro def. PIECE_XY() */
 
 	if (!pgame || !block)
 		return;
@@ -58,6 +58,9 @@ static void randomize_block(struct blocks_game *pgame, struct blocks *block)
 	/* Try to center the block on the board */
 	block->col_off = pgame->width / 2;
 	block->row_off = 1;
+
+	block->soft_drop = 0;
+	block->hard_drop = 0;
 
 	/* Get a consistent color for each block. We don't know what it is.
 	 * screen.c decides in what order colors are defined */
@@ -150,7 +153,7 @@ static int rotate_block(struct blocks_game *pgame, struct blocks *block,
 		mod = -1;
 
 	/* Check each piece for a collision before we write any changes */
-	/* META GCC complains about checks betwen signed and
+	/* META: GCC complains about checks betwen signed and
 	 * unsigned types. sizeof 'returns' type size_t(unsigned int). So just
 	 * use size_t in most loops for consistency.
 	 */
@@ -213,14 +216,14 @@ static int translate_block(struct blocks_game *pgame, struct blocks *block,
 
 static inline void update_tick_speed(struct blocks_game *pgame)
 {
-	double speed = 1.2;
+	double speed = 1.0f;
 
 	if (!pgame)
 		return;
 
 	/* See tests/level-curve.c */
-	speed += atan((double)pgame->level / 5.0) * 2 / PI * pgame->diff;
-	pgame->nsec = (uint32_t) (1E9 / speed) - 1;
+	speed += atan((double)pgame->level / 5.0) * 2 / PI * 3;
+	pgame->nsec = (uint32_t) ((double)1E9 / speed) - 1;
 }
 
 static int destroy_lines(struct blocks_game *pgame)
@@ -228,6 +231,14 @@ static int destroy_lines(struct blocks_game *pgame)
 	uint32_t full_row;
 	uint8_t destroyed;
 	size_t i, j;
+
+	/* point modifier, difficult clears earn more over time.
+	 * a tetris (4 line clears) counts for 1 difficult move.
+	 *
+	 * difficult values >0 boost points by 3/2
+	 */
+	static size_t difficult = 0;
+	uint32_t point_mod = 0;
 
 	if (!pgame)
 		return -1;
@@ -243,7 +254,7 @@ static int destroy_lines(struct blocks_game *pgame)
 	 * come into existence. We lose if there's ever a block there. */
 	for (i = 0; i < 2; i++)
 		if (pgame->spaces[i])
-			pgame->loss = true;
+			pgame->lose = true;
 
 	/* Check each row for a full line,
 	 * we check in reverse to ease moving the rows down when we find a full
@@ -273,8 +284,29 @@ static int destroy_lines(struct blocks_game *pgame)
 		update_tick_speed(pgame);
 	}
 
-	/* Destroying >1 rows yields more points if you hit a level boundary */
-	pgame->score += destroyed * pgame->level * pgame->diff;
+	switch (destroyed) {
+		case 1:
+			difficult = 0;
+			point_mod = 100;
+			break;
+		case 2:
+			difficult = 0;
+			point_mod = 300;
+			break;
+		case 3:
+			difficult = 0;
+			point_mod = 500;
+			break;
+		case 4:
+			if (++difficult > 1)
+				point_mod = 1200;
+			else
+				point_mod = 800;
+			break;
+	}
+
+	pgame->score += point_mod * pgame->level + pgame->cur->soft_drop
+			+ (pgame->cur->hard_drop * 2);
 
 	return destroyed;
 }
@@ -365,11 +397,9 @@ int blocks_init(struct blocks_game *pgame)
 	pgame->width = BLOCKS_MAX_COLUMNS;
 	pgame->height = BLOCKS_MAX_ROWS;
 
-	/* Default difficulty: modified in screen_draw_menu() */
-	pgame->diff = DIFF_NORMAL;
-
 	pgame->level = 1;
-	pgame->nsec = (uint32_t) 1E9 - 1;
+	pgame->nsec = 1E9 - 1;
+	pgame->pause_ticks = 1E3;
 
 	/* randomize the initial blocks */
 	for (i = 0; i < LEN(blocks); i++) {
@@ -382,7 +412,7 @@ int blocks_init(struct blocks_game *pgame)
 
 	pgame->cur = &blocks[0];
 	pgame->next = &blocks[1];
-	pgame->save = NULL;
+	pgame->hold = NULL;
 
 	/* Allocate the maximum size necessary to accomodate the
 	 * largest board size */
@@ -445,10 +475,15 @@ void *blocks_loop(void *vp)
 		ts.tv_nsec = pgame->nsec;
 		nanosleep(&ts, NULL);
 
-		if (pgame->pause)
+		if (pgame->pause && pgame->pause_ticks) {
+			pgame->pause_ticks--;
 			continue;
+		}
 
-		if (pgame->loss || pgame->quit)
+		/* Unpause the game if we're out of pause ticks */
+		pgame->pause = (pgame->pause && pgame->pause_ticks);
+
+		if (pgame->lose || pgame->quit)
 			break;
 
 		pthread_mutex_lock(&pgame->lock);
@@ -458,8 +493,8 @@ void *blocks_loop(void *vp)
 		write_piece(pgame, pgame->cur);
 
 		if (hit == 0) {
-			update_cur_next(pgame);
 			destroy_lines(pgame);
+			update_cur_next(pgame);
 		} else if (hit < 0) {
 			exit(EXIT_FAILURE);
 		}
@@ -488,8 +523,8 @@ void *blocks_input(void *vp)
 		return NULL;
 
 	while ((ch = getch())) {
-		/* prevent modification of the game from blocks_loop in the other
-		 * thread */
+		/* prevent modification of the game from blocks_loop in the
+		 * other thread */
 		pthread_mutex_lock(&pgame->lock);
 
 		switch (ch) {
@@ -514,26 +549,35 @@ void *blocks_input(void *vp)
 			translate_block(pgame, pgame->cur, MOVE_RIGHT);
 			break;
 		case 'S':
-			drop_block(pgame, pgame->cur);
+			if (drop_block(pgame, pgame->cur))
+				pgame->cur->soft_drop++;
 			break;
 		case 'W':
 			/* drop the block to the bottom of the game */
-			while (drop_block(pgame, pgame->cur)) ;
+			while (drop_block(pgame, pgame->cur))
+				pgame->cur->hard_drop++;
+			//pgame->lock_delay = 0;
 			break;
 		case 'Q':
-			rotate_block(pgame, pgame->cur, ROT_LEFT);
+			if (!rotate_block(pgame, pgame->cur, ROT_LEFT)) {
+//				try_wall_kick(pgame, pgame->cur, ROT_LEFT);
+				;
+			}
 			break;
 		case 'E':
-			rotate_block(pgame, pgame->cur, ROT_RIGHT);
+			if (!rotate_block(pgame, pgame->cur, ROT_RIGHT)) {
+//				try_wall_kick(pgame, pgame->cur, ROT_RIGHT);
+				;
+			}
 			break;
 		case ' ':{
-				if (pgame->save == NULL) {
-					pgame->save = &blocks[2];
+				if (pgame->hold == NULL) {
+					pgame->hold = &blocks[2];
 				}
 
-				tmp = pgame->save;
+				tmp = pgame->hold;
 
-				pgame->save = pgame->next;
+				pgame->hold = pgame->next;
 				pgame->next = tmp;
 				break;
 			}

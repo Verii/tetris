@@ -30,14 +30,8 @@
 #define PIECE_XY(X, Y) \
 	block->p[index].x = (X); block->p[index].y = (Y); index++;
 
-enum blocks_board_dimensions {
-	SMALL,	/* 8 x 16 */
-	MEDIUM,	/* 10 x 20 */
-	LARGE,	/* 12 x 24 */
-};
-
-#define BLOCKS_MAX_COLUMNS	12
-#define BLOCKS_MAX_ROWS		26
+#define BLOCKS_MAX_COLUMNS	10
+#define BLOCKS_MAX_ROWS		22
 
 enum blocks_block_types {
 	SQUARE_BLOCK = 0,
@@ -49,13 +43,6 @@ enum blocks_block_types {
 	Z_REV_BLOCK,
 };
 #define NUM_BLOCKS 7
-
-/* Game difficulty */
-enum blocks_game_diff {
-	DIFF_EASY = 1,
-	DIFF_NORMAL,
-	DIFF_HARD,
-};
 
 enum blocks_input_cmd {
 	MOVE_LEFT,
@@ -72,6 +59,7 @@ enum blocks_input_cmd {
  * it; it becomes part of the game board.
  */
 struct blocks {
+	uint8_t soft_drop, hard_drop;	/* number of blocks dropped */
 	uint8_t col_off, row_off;	/* column/row offsets */
 	uint8_t color;
 	enum blocks_block_types type;
@@ -88,13 +76,14 @@ struct blocks_game {
 	uint16_t level, lines_destroyed;
 	uint16_t spaces[BLOCKS_MAX_ROWS]; /* array of shorts, one per row. */
 	uint32_t score;
-	enum blocks_game_diff diff;
 
 	uint8_t *colors[BLOCKS_MAX_ROWS];	/* 1-to-1 with board */
 	uint32_t nsec;		/* game tick delay in nanoseconds */
-	bool loss, pause, quit;	/* how/when we quit */
+	uint32_t pause_ticks;	/* total pause ticks per game */
+	bool pause;
+	bool lose, quit;	/* how we quit */
 	pthread_mutex_t lock;
-	struct blocks *cur, *next, *save;
+	struct blocks *cur, *next, *hold;
 };
 
 /* Does a block exist at the specified (y, x) coordinate? */
