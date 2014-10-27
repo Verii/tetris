@@ -121,7 +121,7 @@ static inline void screen_draw_control(struct blocks_game *pgame)
 	mvwprintw(control, 11, 2, "Quit [F3]");
 	mvwprintw(control, 13, 2, "Move [asd]");
 	mvwprintw(control, 14, 2, "Rotate [qe]");
-	mvwprintw(control, 15, 2, "Save [space]");
+	mvwprintw(control, 15, 2, "Hold [space]");
 
 	for (size_t i = 0; i < LEN(pgame->next->p); i++) {
 		char y, x;
