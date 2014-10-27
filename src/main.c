@@ -37,7 +37,7 @@
 #include "screen.h"
 
 static struct db_info save;
-static struct block_game game;
+static struct blocks_game game;
 
 /* We can exit() at any point and still safely cleanup */
 static void cleanup(void)

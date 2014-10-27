@@ -8,7 +8,7 @@ DESTDIR = /usr/local/bin
 CPPFLAGS = -D_GNU_SOURCE -DVERSION=\"${VERSION}\" -DNDEBUG -I./include
 
 DEBUG = -g -Og -DDEBUG
-CFLAGS = -std=gnu99 -Wall -Wextra -Werror -Os
+CFLAGS = -std=c99 -Wall -Wextra -Werror -Os
 
 LDFLAGS = -lm -lbsd -lncurses -lpthread -lsqlite3
 

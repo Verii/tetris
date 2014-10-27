@@ -47,19 +47,20 @@ struct db_results {
  */
 
 /* Saves game state to disk. Can be restored at a later time */
-int db_save_state(struct db_info *, const struct block_game *);
-int db_resume_state(struct db_info *, struct block_game *);
+int db_save_state(struct db_info *, const struct blocks_game *);
+int db_resume_state(struct db_info *, struct blocks_game *);
 
 /* Save game score to disk when the player loses a game */
-int db_save_score(struct db_info *, const struct block_game *);
+int db_save_score(struct db_info *, const struct blocks_game *);
 
 /* Returns a linked list to (n) highscores in the database */
 struct db_results *db_get_scores(struct db_info *, size_t);
 
 /* Cleanup memory */
 #define db_clean_scores() while (results_head.tqh_first) { \
-	struct db_results *tmp = results_head.tqh_first; \
-	TAILQ_REMOVE (&results_head, tmp, entries); \
-	free(tmp); }
+		struct db_results *tmp_ = results_head.tqh_first; \
+		TAILQ_REMOVE (&results_head, tmp_, entries); \
+		free(tmp_); \
+	}
 
 #endif				/* DB_H_ */

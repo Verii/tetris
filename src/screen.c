@@ -46,7 +46,7 @@ void screen_init(void)
 	keypad(stdscr, TRUE);
 	curs_set(0);
 
-	board = newwin(BLOCKS_ROWS - 1, BLOCKS_COLUMNS + 2, 1, 18);
+	board = newwin(BLOCKS_MAX_ROWS - 1, BLOCKS_MAX_COLUMNS + 2, 1, 18);
 	control = newwin(16, 16, 1, 1);
 
 	start_color();
@@ -68,7 +68,7 @@ void screen_cleanup(void)
 }
 
 /* Ask user for difficulty and their name */
-void screen_draw_menu(struct block_game *pgame, struct db_info *psave)
+void screen_draw_menu(struct blocks_game *pgame, struct db_info *psave)
 {
 	const size_t buf_len = 256;
 
@@ -88,10 +88,11 @@ void screen_draw_menu(struct block_game *pgame, struct db_info *psave)
 	 */
 	snprintf(psave->file_loc, buf_len,
 #if defined(DEBUG) || !defined(NDEBUG)
-		":memory:");
+		":memory:"
 #else
-		"%s/.local/share/tetris/saves", getenv("HOME"));
+		"%s/.local/share/tetris/saves", getenv("HOME")
 #endif
+		);
 
 	/* Set the board to 'medium' size */
 	/* TODO get dimensions from user later */
@@ -104,7 +105,7 @@ void screen_draw_menu(struct block_game *pgame, struct db_info *psave)
 	}
 }
 
-static inline void screen_draw_control(struct block_game *pgame)
+static inline void screen_draw_control(struct blocks_game *pgame)
 {
 	wattrset(control, COLOR_PAIR(1));
 	mvwprintw(control, 0, 0, "Tetris-" VERSION);
@@ -145,7 +146,7 @@ static inline void screen_draw_control(struct block_game *pgame)
 	wrefresh(control);
 }
 
-static inline void screen_draw_board(struct block_game *pgame)
+static inline void screen_draw_board(struct blocks_game *pgame)
 {
 	wattrset(board, A_BOLD | COLOR_PAIR(5));
 	mvwvline(board, 0, 0, '*', pgame->height - 1);
@@ -157,17 +158,25 @@ static inline void screen_draw_board(struct block_game *pgame)
 	/* Draw the game board, minus the two hidden rows above the game */
 	for (int i = 2; i < pgame->height; i++) {
 		wmove(board, i - 2, 1);
+		wattrset(board, COLOR_PAIR(1));
+
+		/* Draw the dots of the board. Every other column */
+		for (int j = 0; j < pgame->width/2; j++)
+			wprintw(board, " .");
+
+		/* Be sure we have atleast one block in a row before we check
+		 * each column individually
+		 */
+		if (pgame->spaces[i] == 0)
+			continue;
 
 		for (int j = 0; j < pgame->width; j++) {
-			if (blocks_at_yx(pgame, i, j)) {
-				wattrset(board, COLOR_PAIR((pgame->colors[i][j]
-							    % LEN(colors)) +
-							   1) | A_BOLD);
-				wprintw(board, BLOCK_CHAR);
-			} else {
-				wattrset(board, COLOR_PAIR(1));
-				wprintw(board, (j % 2) ? "." : " ");
-			}
+			if (!blocks_at_yx(pgame, i, j))
+				continue;
+
+			wattrset(board, COLOR_PAIR((pgame->colors[i][j]
+				    % LEN(colors)) + 1) | A_BOLD);
+			mvwprintw(board, i-2, j+1, BLOCK_CHAR);
 		}
 	}
 
@@ -188,14 +197,14 @@ static inline void screen_draw_board(struct block_game *pgame)
 	wrefresh(board);
 }
 
-void screen_draw_game(struct block_game *pgame)
+void screen_draw_game(struct blocks_game *pgame)
 {
 	screen_draw_control(pgame);
 	screen_draw_board(pgame);
 }
 
 /* Game over screen */
-void screen_draw_over(struct block_game *pgame, struct db_info *psave)
+void screen_draw_over(struct blocks_game *pgame, struct db_info *psave)
 {
 	if (!pgame || !psave)
 		return;
