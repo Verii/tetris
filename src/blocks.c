@@ -16,7 +16,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include <assert.h>
 #include <ctype.h>
 #include <math.h>
 #include <ncurses.h>
@@ -62,19 +61,22 @@ static void randomize_block(struct blocks_game *pgame, struct blocks *block)
 	block->soft_drop = 0;
 	block->hard_drop = 0;
 
+	block->t_spin = 0;
+	block->lock_delay = 0;
+
 	/* Get a consistent color for each block. We don't know what it is.
 	 * screen.c decides in what order colors are defined */
 	block->color = block->type;
 
 	/* The piece at (0, 0) is the pivot when we rotate */
 	switch (block->type) {
-	case SQUARE_BLOCK:
+	case O_BLOCK:
 		PIECE_XY(-1, -1);
 		PIECE_XY( 0, -1);
 		PIECE_XY(-1,  0);
 		PIECE_XY( 0,  0);
 		break;
-	case LINE_BLOCK:
+	case I_BLOCK:
 		block->col_off--;	/* center */
 
 		PIECE_XY(-1,  0);
@@ -94,7 +96,7 @@ static void randomize_block(struct blocks_game *pgame, struct blocks *block)
 		PIECE_XY( 0,  0);
 		PIECE_XY( 1,  0);
 		break;
-	case L_REV_BLOCK:
+	case J_BLOCK:
 		PIECE_XY(-1, -1);
 		PIECE_XY(-1,  0);
 		PIECE_XY( 0,  0);
@@ -106,7 +108,7 @@ static void randomize_block(struct blocks_game *pgame, struct blocks *block)
 		PIECE_XY( 0,  0);
 		PIECE_XY( 1,  0);
 		break;
-	case Z_REV_BLOCK:
+	case S_BLOCK:
 		PIECE_XY( 0, -1);
 		PIECE_XY( 1, -1);
 		PIECE_XY(-1,  0);
@@ -136,6 +138,27 @@ static inline void update_cur_next(struct blocks_game *pgame)
 	randomize_block(pgame, pgame->next);
 }
 
+static int try_wall_kick(struct blocks_game *pgame, struct blocks *block,
+			enum blocks_input_cmd cmd)
+{
+	/* Try to move left and rotate again. */
+	if (translate_block(pgame, block, MOVE_LEFT) == 1) {
+		if (rotate_block(pgame, block, cmd) == 1)
+			return 1;
+	}
+
+	/* undo translation */
+	translate_block(pgame, block, MOVE_RIGHT);
+
+	/* Try to move right and rotate again. */
+	if (translate_block(pgame, block, MOVE_RIGHT) == 1) {
+		if (rotate_block(pgame, block, cmd) == 1)
+			return 1;
+	}
+
+	return 0;
+}
+
 /* rotate pieces in blocks by either 90^ or -90^ around (0, 0) pivot */
 static int rotate_block(struct blocks_game *pgame, struct blocks *block,
 			enum blocks_input_cmd cmd)
@@ -146,7 +169,7 @@ static int rotate_block(struct blocks_game *pgame, struct blocks *block,
 	if (!pgame || !block)
 		return -1;
 
-	if (block->type == SQUARE_BLOCK)
+	if (block->type == O_BLOCK)
 		return 1;
 
 	if (cmd == ROT_LEFT)
@@ -229,7 +252,7 @@ static inline void update_tick_speed(struct blocks_game *pgame)
 static int destroy_lines(struct blocks_game *pgame)
 {
 	uint32_t full_row;
-	uint8_t destroyed;
+	uint8_t destroyed = 0;
 	size_t i, j;
 
 	/* point modifier, difficult clears earn more over time.
@@ -248,7 +271,6 @@ static int destroy_lines(struct blocks_game *pgame)
 	 * this value.
 	 */
 	full_row = (1 << pgame->width) -1;
-	destroyed = 0;
 
 	/* The first two rows are 'above' the game, that's where the new blocks
 	 * come into existence. We lose if there's ever a block there. */
@@ -261,9 +283,6 @@ static int destroy_lines(struct blocks_game *pgame)
 	 * row. Ignore the top two rows, which we checked above.
 	 */
 	for (i = pgame->height - 1; i >= 2; i--) {
-
-		/* The game does not function if for some reason this fails */
-		assert(pgame->spaces[i] <= full_row);
 
 		if (pgame->spaces[i] != full_row)
 			continue;
@@ -284,27 +303,37 @@ static int destroy_lines(struct blocks_game *pgame)
 		update_tick_speed(pgame);
 	}
 
+	/* We lose our difficulty multipliers on easy moves */
+	if (destroyed != 4 && !pgame->cur->t_spin)
+		difficult = 0;
+
+	if (pgame->cur->t_spin)
+		difficult++;
+
+	if (destroyed == 4)
+		difficult++;
+
+	/* Number of lines destroyed in move */
 	switch (destroyed) {
 		case 1:
-			difficult = 0;
 			point_mod = 100;
 			break;
 		case 2:
-			difficult = 0;
 			point_mod = 300;
 			break;
 		case 3:
-			difficult = 0;
 			point_mod = 500;
 			break;
 		case 4:
-			if (++difficult > 1)
-				point_mod = 1200;
-			else
-				point_mod = 800;
+			point_mod = (difficult ? 1200 : 800);
 			break;
 	}
 
+	/* One point per soft drop, 2 points per hard drop.
+	 * plus point_mod depends on #lines destroyed * level.
+	 *
+	 * todo: add point bonuses for T-Spins. Detection is the hardest part.
+	 */
 	pgame->score += point_mod * pgame->level + pgame->cur->soft_drop
 			+ (pgame->cur->hard_drop * 2);
 
@@ -390,10 +419,7 @@ int blocks_init(struct blocks_game *pgame)
 
 	pthread_mutex_init(&pgame->lock, NULL);
 
-	/* Default dimensions, modified in screen_draw_menu()
-	 * We assume the board is the max size (12x24). If the user wants a
-	 * smaller board, we use only the smaller pieces.
-	 */
+	/* Default dimensions */
 	pgame->width = BLOCKS_MAX_COLUMNS;
 	pgame->height = BLOCKS_MAX_ROWS;
 
@@ -436,6 +462,13 @@ int blocks_cleanup(struct blocks_game *pgame)
 		return -1;
 
 	log_info("Cleaning game data");
+
+	/* mutex_destroy() is undefined if mutex is locked.
+	 * So try to lock it then unlock it before we destroy it
+	 */
+	pthread_mutex_trylock(&pgame->lock);
+	pthread_mutex_unlock(&pgame->lock);
+
 	pthread_mutex_destroy(&pgame->lock);
 
 	/* Free all the memory allocated */
@@ -472,21 +505,20 @@ void *blocks_loop(void *vp)
 	update_tick_speed(pgame);
 
 	while (1) {
-		ts.tv_nsec = pgame->nsec;
 		nanosleep(&ts, NULL);
+
+		if (pgame->lose || pgame->quit)
+			break;
 
 		if (pgame->pause && pgame->pause_ticks) {
 			pgame->pause_ticks--;
 			continue;
 		}
 
+		pthread_mutex_lock(&pgame->lock);
+
 		/* Unpause the game if we're out of pause ticks */
 		pgame->pause = (pgame->pause && pgame->pause_ticks);
-
-		if (pgame->lose || pgame->quit)
-			break;
-
-		pthread_mutex_lock(&pgame->lock);
 
 		unwrite_piece(pgame, pgame->cur);
 		hit = drop_block(pgame, pgame->cur);
@@ -495,6 +527,8 @@ void *blocks_loop(void *vp)
 		if (hit == 0) {
 			destroy_lines(pgame);
 			update_cur_next(pgame);
+
+			ts.tv_nsec = pgame->nsec;
 		} else if (hit < 0) {
 			exit(EXIT_FAILURE);
 		}
@@ -551,23 +585,23 @@ void *blocks_input(void *vp)
 		case 'S':
 			if (drop_block(pgame, pgame->cur))
 				pgame->cur->soft_drop++;
+			else
+				pgame->cur->lock_delay = 1E9 -1;
 			break;
 		case 'W':
 			/* drop the block to the bottom of the game */
 			while (drop_block(pgame, pgame->cur))
 				pgame->cur->hard_drop++;
-			//pgame->lock_delay = 0;
+			pgame->cur->lock_delay = 1E9 -1;
 			break;
 		case 'Q':
 			if (!rotate_block(pgame, pgame->cur, ROT_LEFT)) {
-//				try_wall_kick(pgame, pgame->cur, ROT_LEFT);
-				;
+				try_wall_kick(pgame, pgame->cur, ROT_LEFT);
 			}
 			break;
 		case 'E':
 			if (!rotate_block(pgame, pgame->cur, ROT_RIGHT)) {
-//				try_wall_kick(pgame, pgame->cur, ROT_RIGHT);
-				;
+				try_wall_kick(pgame, pgame->cur, ROT_RIGHT);
 			}
 			break;
 		case ' ':{

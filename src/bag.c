@@ -32,24 +32,24 @@ static int bag_bag7[] = { DIRTY_BIT, DIRTY_BIT, DIRTY_BIT,
  */
 void bag_random_generator(void) {
 	uint8_t rng_block, avail_blocks[] = {
-		SQUARE_BLOCK,
-		LINE_BLOCK,
+		O_BLOCK,
+		I_BLOCK,
 		T_BLOCK,
 		L_BLOCK,
-		L_REV_BLOCK,
+		J_BLOCK,
 		Z_BLOCK,
-		Z_REV_BLOCK,
+		S_BLOCK,
 	};
 
 	debug("Creating new bag");
 
 	/*
-	 * First piece is never the SQUARE, S, or Z blocks.
+	 * First piece is never the O, S, or Z blocks.
 	 */
 retry:
 	rng_block = rand() % NUM_BLOCKS;
-	if (rng_block == SQUARE_BLOCK ||
-	    rng_block == Z_REV_BLOCK ||
+	if (rng_block == O_BLOCK ||
+	    rng_block == S_BLOCK ||
 	    rng_block == Z_BLOCK)
 		goto retry;
 

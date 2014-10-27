@@ -34,24 +34,24 @@
 #define BLOCKS_MAX_ROWS		22
 
 enum blocks_block_types {
-	SQUARE_BLOCK = 0,
-	LINE_BLOCK,
+	O_BLOCK = 0,			/* square */
+	I_BLOCK,			/* line */
 	T_BLOCK,
 	L_BLOCK,
-	L_REV_BLOCK,
+	J_BLOCK,
 	Z_BLOCK,
-	Z_REV_BLOCK,
+	S_BLOCK,
 };
 #define NUM_BLOCKS 7
 
 enum blocks_input_cmd {
 	MOVE_LEFT,
 	MOVE_RIGHT,
-	MOVE_DOWN,		/* Move down one block */
-	MOVE_DROP,		/* Drop block to bottom of board */
+	MOVE_DOWN,			/* Move down one block */
+	MOVE_DROP,			/* Drop block to bottom of board */
 	ROT_LEFT,
 	ROT_RIGHT,
-	SAVE_PIECE,
+	HOLD_PIECE,
 };
 
 /* Only the currently falling block, the next block, and the save block are
@@ -59,12 +59,17 @@ enum blocks_input_cmd {
  * it; it becomes part of the game board.
  */
 struct blocks {
+	uint32_t lock_delay;		/* how long to wait (nsec) */
 	uint8_t soft_drop, hard_drop;	/* number of blocks dropped */
 	uint8_t col_off, row_off;	/* column/row offsets */
 	uint8_t color;
+
+	bool t_spin;			/* T-Spin . not implemented*/
+	bool hold;			/* can only hold once */
+
 	enum blocks_block_types type;
-	struct {		/* pieces stores a value */
-		int8_t x, y;	/* between -1 and +2 */
+	struct {			/* pieces stores a value */
+		int8_t x, y;		/* between -1 and +2 */
 	} p[4];
 };
 
@@ -74,14 +79,14 @@ struct blocks_game {
 	 */
 	uint8_t width, height;
 	uint16_t level, lines_destroyed;
-	uint16_t spaces[BLOCKS_MAX_ROWS]; /* array of shorts, one per row. */
+	uint16_t spaces[BLOCKS_MAX_ROWS];	/* bit-field, one per row */
 	uint32_t score;
 
 	uint8_t *colors[BLOCKS_MAX_ROWS];	/* 1-to-1 with board */
-	uint32_t nsec;		/* game tick delay in nanoseconds */
-	uint32_t pause_ticks;	/* total pause ticks per game */
-	bool pause;
-	bool lose, quit;	/* how we quit */
+	uint32_t nsec;				/* tick delay in nanoseconds */
+	uint32_t pause_ticks;			/* total pause ticks per game */
+	bool pause;				/* game pause */
+	bool lose, quit;			/* how we quit */
 	pthread_mutex_t lock;
 	struct blocks *cur, *next, *hold;
 };
