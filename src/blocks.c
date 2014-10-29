@@ -138,27 +138,6 @@ static inline void update_cur_next(struct blocks_game *pgame)
 	randomize_block(pgame, pgame->next);
 }
 
-static int try_wall_kick(struct blocks_game *pgame, struct blocks *block,
-			enum blocks_input_cmd cmd)
-{
-	/* Try to move left and rotate again. */
-	if (translate_block(pgame, block, MOVE_LEFT) == 1) {
-		if (rotate_block(pgame, block, cmd) == 1)
-			return 1;
-	}
-
-	/* undo translation */
-	translate_block(pgame, block, MOVE_RIGHT);
-
-	/* Try to move right and rotate again. */
-	if (translate_block(pgame, block, MOVE_RIGHT) == 1) {
-		if (rotate_block(pgame, block, cmd) == 1)
-			return 1;
-	}
-
-	return 0;
-}
-
 /* rotate pieces in blocks by either 90^ or -90^ around (0, 0) pivot */
 static int rotate_block(struct blocks_game *pgame, struct blocks *block,
 			enum blocks_input_cmd cmd)
@@ -237,6 +216,27 @@ static int translate_block(struct blocks_game *pgame, struct blocks *block,
 	return 1;
 }
 
+static int try_wall_kick(struct blocks_game *pgame, struct blocks *block,
+			enum blocks_input_cmd cmd)
+{
+	/* Try to move left and rotate again. */
+	if (translate_block(pgame, block, MOVE_LEFT) == 1) {
+		if (rotate_block(pgame, block, cmd) == 1)
+			return 1;
+	}
+
+	/* undo translation */
+	translate_block(pgame, block, MOVE_RIGHT);
+
+	/* Try to move right and rotate again. */
+	if (translate_block(pgame, block, MOVE_RIGHT) == 1) {
+		if (rotate_block(pgame, block, cmd) == 1)
+			return 1;
+	}
+
+	return 0;
+}
+
 static inline void update_tick_speed(struct blocks_game *pgame)
 {
 	double speed = 1.0f;
@@ -304,7 +304,7 @@ static int destroy_lines(struct blocks_game *pgame)
 	}
 
 	/* We lose our difficulty multipliers on easy moves */
-	if (destroyed != 4 && !pgame->cur->t_spin)
+	if ((destroyed && destroyed != 4) && !pgame->cur->t_spin)
 		difficult = 0;
 
 	if (pgame->cur->t_spin)
@@ -325,7 +325,7 @@ static int destroy_lines(struct blocks_game *pgame)
 			point_mod = 500;
 			break;
 		case 4:
-			point_mod = (difficult ? 1200 : 800);
+			point_mod = (difficult > 1) ? 1200 : 800;
 			break;
 	}
 
@@ -440,8 +440,7 @@ int blocks_init(struct blocks_game *pgame)
 	pgame->next = &blocks[1];
 	pgame->hold = NULL;
 
-	/* Allocate the maximum size necessary to accomodate the
-	 * largest board size */
+	/* Allocate memory for colors */
 	for (i = 0; i < BLOCKS_MAX_ROWS; i++) {
 		pgame->colors[i] = calloc(BLOCKS_MAX_COLUMNS,
 					  sizeof(*pgame->colors[i]));
