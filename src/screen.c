@@ -27,9 +27,15 @@
 #include "debug.h"
 #include "screen.h"
 
+#define GAME_Y_OFF 2
+#define GAME_X_OFF 2
+
+#define TEXT_Y_OFF 2
+#define TEXT_X_OFF (BLOCKS_MAX_COLUMNS + GAME_X_OFF + 2)
+
 #define BLOCK_CHAR "x"
 
-static WINDOW *board, *control;
+static WINDOW *board;
 
 static const char colors[] = { COLOR_WHITE, COLOR_RED, COLOR_GREEN,
 	COLOR_YELLOW, COLOR_BLUE, COLOR_MAGENTA, COLOR_CYAN
@@ -46,15 +52,35 @@ void screen_init(void)
 	keypad(stdscr, TRUE);
 	curs_set(0);
 
-	board = newwin(BLOCKS_MAX_ROWS - 1, BLOCKS_MAX_COLUMNS + 2, 1, 18);
-	control = newwin(16, 16, 1, 1);
-
 	start_color();
 	for (size_t i = 0; i < LEN(colors); i++)
 		init_pair(i + 1, colors[i], COLOR_BLACK);
 
-	attrset(COLOR_PAIR(1));
-	box(stdscr, 0, 0);
+	board = newwin(0, 0, 0, 0);
+
+	wattrset(board, COLOR_PAIR(1));
+	box(board, 0, 0);
+
+	/* Draw static text */
+	mvwprintw(board, 1, 1, "Tetris-" VERSION);
+	mvwprintw(board, TEXT_Y_OFF +5, TEXT_X_OFF +1, "Hold   Next");
+	mvwprintw(board, TEXT_Y_OFF +9, TEXT_X_OFF +1, "Controls");
+	mvwprintw(board, TEXT_Y_OFF +10, TEXT_X_OFF +2, "Pause [F1]");
+	mvwprintw(board, TEXT_Y_OFF +11, TEXT_X_OFF +2, "Quit [F3]");
+	mvwprintw(board, TEXT_Y_OFF +13, TEXT_X_OFF +2, "Move [asd]");
+	mvwprintw(board, TEXT_Y_OFF +14, TEXT_X_OFF +2, "Rotate [qe]");
+	mvwprintw(board, TEXT_Y_OFF +15, TEXT_X_OFF +2, "Hold [[space]]");
+
+	/* Draw board outline */
+	wattrset(board, A_BOLD | COLOR_PAIR(5));
+
+	mvwvline(board, GAME_Y_OFF, GAME_X_OFF, '*', BLOCKS_MAX_ROWS -1);
+
+	mvwvline(board, GAME_Y_OFF, BLOCKS_MAX_COLUMNS +1 +GAME_X_OFF,
+			'*', BLOCKS_MAX_ROWS -1);
+	mvwhline(board, BLOCKS_MAX_ROWS -2 +GAME_Y_OFF, GAME_X_OFF,
+			'*', BLOCKS_MAX_COLUMNS +2);
+
 	refresh();
 }
 
@@ -62,7 +88,6 @@ void screen_cleanup(void)
 {
 	log_info("Cleaning ncurses context");
 	delwin(board);
-	delwin(control);
 	clear();
 	endwin();
 }
@@ -94,113 +119,62 @@ void screen_draw_menu(struct blocks_game *pgame, struct db_info *psave)
 #endif
 		);
 
-	/* Set the board to 'medium' size */
-	/* TODO get dimensions from user later */
-	pgame->width = 10;
-	pgame->height = (pgame->width * 2) + 2;
-
 	/* Start the game paused if we can resume from an old save */
 	if (db_resume_state(psave, pgame) > 0) {
 		pgame->pause = true;
 	}
 }
 
-static inline void screen_draw_control(struct blocks_game *pgame)
+void screen_draw_game(struct blocks_game *pgame)
 {
-	wattrset(control, COLOR_PAIR(1));
-	mvwprintw(control, 0, 0, "Tetris-" VERSION);
-	mvwprintw(control, 2, 1, "Level %d", pgame->level);
-	mvwprintw(control, 3, 1, "Score %d", pgame->score);
+	size_t i, j;
 
-	mvwprintw(control, 5, 1, "Next   Hold");
-	mvwprintw(control, 6, 2, "           ");
-	mvwprintw(control, 7, 2, "           ");
+	wattrset(board, COLOR_PAIR(1));
+	mvwprintw(board, TEXT_Y_OFF +2, TEXT_X_OFF +1,
+			"Level %d", pgame->level);
+	mvwprintw(board, TEXT_Y_OFF +3, TEXT_X_OFF +1,
+			"Score %d", pgame->score);
 
-	mvwprintw(control, 9, 1, "Controls");
-	mvwprintw(control, 10, 2, "Pause [F1]");
-	mvwprintw(control, 11, 2, "Quit [F3]");
-	mvwprintw(control, 13, 2, "Move [asd]");
-	mvwprintw(control, 14, 2, "Rotate [qe]");
-	mvwprintw(control, 15, 2, "Hold [space]");
+	/* Center the text horizontally, place the text slightly above
+	 * the middle vertically.
+	 */
+	if (pgame->pause) {
+		wattrset(board, COLOR_PAIR(1) | A_BOLD);
+		mvwprintw(board, (pgame->height -6) /2 +GAME_Y_OFF,
+				 (pgame->width -2) /2 -1 +GAME_X_OFF,
+				 "PAUSED");
 
-	for (size_t i = 0; i < LEN(pgame->next->p); i++) {
-		char y, x;
-		y = pgame->next->p[i].y;
-		x = pgame->next->p[i].x;
-
-		wattrset(control, COLOR_PAIR((pgame->next->color
-					      % LEN(colors)) + 1) | A_BOLD);
-		mvwprintw(control, y + 7, x + 3, BLOCK_CHAR);
+		goto refresh_board;
 	}
 
-	for (size_t i = 0; pgame->hold && i < LEN(pgame->hold->p); i++) {
-		char y, x;
-		y = pgame->hold->p[i].y;
-		x = pgame->hold->p[i].x;
+	/*************/
+	/* Draw game */
+	/*************/
 
-		wattrset(control, COLOR_PAIR((pgame->hold->color
-					      % LEN(colors)) + 1) | A_BOLD);
-		mvwprintw(control, y + 7, x + 9, BLOCK_CHAR);
-	}
+	/* pgame->blocks_head.lh_first
+	 * pgame->blocks_head.lh_first->entries.le_next
+	 */
 
-	wrefresh(control);
-}
-
-static inline void screen_draw_board(struct blocks_game *pgame)
-{
-	wattrset(board, A_BOLD | COLOR_PAIR(5));
-	mvwvline(board, 0, 0, '*', pgame->height - 1);
-
-	mvwvline(board, 0, pgame->width + 1, '*', pgame->height - 1);
-
-	mvwhline(board, pgame->height - 2, 0, '*', pgame->width + 2);
+	/* Draw the background of the board. Dot every other column */
+	for (i = 2; i < pgame->height; i++)
+		mvwprintw(board, i -2 +GAME_Y_OFF, 1 +GAME_X_OFF,
+				" . . . . .");
 
 	/* Draw the game board, minus the two hidden rows above the game */
-	for (int i = 2; i < pgame->height; i++) {
-		wmove(board, i - 2, 1);
-		wattrset(board, COLOR_PAIR(1));
-
-		/* Draw the dots of the board. Every other column */
-		for (int j = 0; j < pgame->width/2; j++)
-			wprintw(board, " .");
-
-		/* Be sure we have atleast one block in a row before we check
-		 * each column individually
-		 */
-		if (pgame->spaces[i] == 0)
-			continue;
-
-		for (int j = 0; j < pgame->width; j++) {
+	for (i = 2; i < pgame->height/* && pgame->spaces[i]*/; i++) {
+		for (j = 0; j < pgame->width; j++) {
 			if (!blocks_at_yx(pgame, i, j))
 				continue;
 
-			wattrset(board, COLOR_PAIR((pgame->colors[i][j]
-				    % LEN(colors)) + 1) | A_BOLD);
-			mvwprintw(board, i-2, j+1, BLOCK_CHAR);
+			wattrset(board, COLOR_PAIR((pgame->colors[i][j]) +1)
+					| A_BOLD);
+			mvwprintw(board, i -2 +GAME_Y_OFF, j +1 +GAME_X_OFF,
+					BLOCK_CHAR);
 		}
 	}
 
-	/* Overlay the PAUSED text */
-	wattrset(board, COLOR_PAIR(1) | A_BOLD);
-	if (pgame->pause) {
-		char y_off, x_off;
-
-		/* Center the text horizontally, place the text slightly above
-		 * the middle vertically.
-		 */
-		x_off = (pgame->width - 6) / 2 + 1;
-		y_off = (pgame->height - 2) / 2 - 2;
-
-		mvwprintw(board, y_off, x_off, "PAUSED");
-	}
-
+refresh_board:
 	wrefresh(board);
-}
-
-void screen_draw_game(struct blocks_game *pgame)
-{
-	screen_draw_control(pgame);
-	screen_draw_board(pgame);
 }
 
 /* Game over screen */

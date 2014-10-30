@@ -22,6 +22,7 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <sys/queue.h>
 
 #define PI 3.141592653589L
 #define LEN(x) ((sizeof(x))/(sizeof(*x)))
@@ -51,8 +52,10 @@ enum blocks_input_cmd {
 	MOVE_DROP,			/* Drop block to bottom of board */
 	ROT_LEFT,
 	ROT_RIGHT,
-	HOLD_PIECE,
+	HOLD,
 };
+
+#define NEXT_BLOCKS_LEN 5
 
 /* Only the currently falling block, the next block, and the save block are
  * stored in this structure. Once a block hits another piece, we forget about
@@ -71,6 +74,8 @@ struct blocks {
 	struct {			/* pieces stores a value */
 		int8_t x, y;		/* between -1 and +2 */
 	} p[4];
+
+	LIST_ENTRY(blocks) entries;
 };
 
 struct blocks_game {
@@ -88,8 +93,13 @@ struct blocks_game {
 	bool pause;				/* game pause */
 	bool lose, quit;			/* how we quit */
 	pthread_mutex_t lock;
-	struct blocks *cur, *next, *hold;
+
+	LIST_HEAD(blocks_head, blocks) blocks_head;
 };
+
+#define HOLD_BLOCK(name) ((name)->blocks_head.lh_first)
+#define CURRENT_BLOCK(name) ((name)->blocks_head.lh_first->entries.le_next)
+#define FIRST_NEXT_BLOCK(name) ((name)->blocks_head.lh_first->entries.le_next->entries.le_next)
 
 /* Does a block exist at the specified (y, x) coordinate? */
 #define blocks_at_yx(p, y, x) ((p)->spaces[(y)] & (1 << (x)))
