@@ -1,4 +1,0 @@
-The scores will be stored in an SQLite database. This is the 'heavyweight'
-solution, as scoreboards will require frequent searching and ammending.
-
-Game highscores will be stored locally in "~/.local/share/tetris/saves"
