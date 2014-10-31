@@ -124,13 +124,13 @@ static void update_cur_block()
 {
 	struct blocks *last, *np = CURRENT_BLOCK();
 
-	LIST_REMOVE(CURRENT_BLOCK(), entries);
+	LIST_REMOVE(np, entries);
 
 	randomize_block(np);
 
 	/* Find last block in list */
-	for (last = HOLD_BLOCK();
-	     last->entries.le_next;
+	for (last = FIRST_NEXT_BLOCK();
+	     last && last->entries.le_next;
 	     last = last->entries.le_next)
 		;
 
