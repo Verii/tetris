@@ -44,6 +44,12 @@ static void reset_block(struct blocks *block)
 	block->col_off = BLOCKS_MAX_COLUMNS / 2;
 	block->row_off = 1;
 
+	block->lock_delay = 0;
+	block->soft_drop = 0;
+	block->hard_drop = 0;
+	block->t_spin = false;
+	block->hold = false;
+
 	/* The piece at (0, 0) is the pivot when we rotate */
 	switch (block->type) {
 	case O_BLOCK:
@@ -98,12 +104,6 @@ static void reset_block(struct blocks *block)
  */
 static void randomize_block(struct blocks *block)
 {
-	/* struct blocks contains linked list pointers.
-	 * This completely clears those. So do those operations BEFORE
-	 * randomizing.
-	 */
-	memset(block, 0, sizeof *block);
-
 	/* Create a new bag if necessary, then pull the next piece from it */
 	if (bag_is_empty())
 		bag_random_generator();
