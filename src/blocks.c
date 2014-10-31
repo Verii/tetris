@@ -331,9 +331,12 @@ static int destroy_lines(void)
 			break;
 		case 4:
 			difficult++;
-			point_mod = (difficult > 1) ? 1200 : 800;
+			point_mod = 800;
 			break;
 	}
+
+	if (difficult > 1)
+		point_mod = (point_mod * 3) /2;
 
 	pgame->score += point_mod * pgame->level
 		+ CURRENT_BLOCK()->soft_drop
@@ -626,11 +629,11 @@ void *blocks_input(void *vp)
 		switch (ch) {
 		case KEY_F(1):
 			pgame->pause = !pgame->pause;
-			goto draw;
+			goto draw_game;
 		case KEY_F(3):
 			pgame->pause = false;
 			pgame->quit = true;
-			goto draw;
+			goto draw_game;
 		}
 
 		/* remove the current piece from the board */
@@ -698,7 +701,8 @@ void *blocks_input(void *vp)
 		/* then rewrite it */
 		write_cur_block();
 
- draw:
+		draw_game:
+
 		screen_draw_game();
 		pthread_mutex_unlock(&pgame->lock);
 	}
