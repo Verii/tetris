@@ -37,13 +37,12 @@
 #include "screen.h"
 
 static struct db_info save;
-static struct blocks_game game;
 
 /* We can exit() at any point and still safely cleanup */
 static void cleanup(void)
 {
 	screen_cleanup();
-	blocks_cleanup(&game);
+	blocks_cleanup();
 
 	/* Game separator */
 	fprintf(stderr, "--\n");
@@ -143,7 +142,7 @@ static void init(void)
 	srand(time(NULL));
 
 	/* Create game context */
-	if (blocks_init(&game) > 0) {
+	if (blocks_init() > 0) {
 		printf("Game successfully initialized\n");
 		printf("Appending logs to file: %s.\n", game_dir);
 	} else {
@@ -174,19 +173,20 @@ int main(int argc, char **argv)
 	init();
 	atexit(cleanup);
 
-	screen_draw_menu(&game, &save);
-	screen_draw_game(&game);
+	screen_draw_menu(&save);
+	screen_draw_game();
 
 	pthread_t input_loop, update_loop;
-	pthread_create(&update_loop, NULL, blocks_loop, &game);
-	pthread_create(&input_loop, NULL, blocks_input, &game);
+
+	pthread_create(&update_loop, NULL, blocks_loop, NULL);
+	pthread_create(&input_loop, NULL, blocks_input, NULL);
 
 	/* when blocks_loop returns, kill the input thread and cleanup */
 	pthread_join(update_loop, NULL);
 	pthread_cancel(input_loop);
 
 	/* Print scores, tell user they're a loser, etc. */
-	screen_draw_over(&game, &save);
+	screen_draw_over(&save);
 
 	return 0;
 }

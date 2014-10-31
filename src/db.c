@@ -36,13 +36,13 @@ const char insert_scores[] =
 const char select_scores[] =
 	"SELECT * FROM Scores ORDER BY score DESC;";
 
-/* State: name, score, lines, level, date, width, height, spaces */
+/* State: name, score, lines, level, date, spaces */
 const char create_state[] =
 	"CREATE TABLE State(name TEXT,score INT,lines INT,level INT,"
-	"date INT,width INT,height INT,spaces BLOB);";
+	"date INT,spaces BLOB);";
 
 const char insert_state[] =
-	"INSERT INTO State VALUES(\"%s\",%d,%d,%d,%lu,%d,%d,?);";
+	"INSERT INTO State VALUES(\"%s\",%d,%d,%d,%lu,?);";
 
 const char select_state[] =
 	"SELECT * FROM State ORDER BY date DESC;";
@@ -138,8 +138,7 @@ int db_save_state(struct db_info *entry, const struct blocks_game *pgame)
 
 	len = asprintf(&insert, insert_state,
 			   entry->id, pgame->score, pgame->lines_destroyed,
-			   pgame->level, (uint64_t) time(NULL),
-			   pgame->width, pgame->height);
+			   pgame->level, (uint64_t) time(NULL));
 
 	if (len < 0) {
 		log_err("Out of memory");
@@ -197,10 +196,7 @@ int db_resume_state(struct db_info *entry, struct blocks_game *pgame)
 		pgame->lines_destroyed = sqlite3_column_int(stmt, 2);
 		pgame->level = sqlite3_column_int(stmt, 3);
 
-		pgame->width = sqlite3_column_int(stmt, 5);
-		pgame->height = sqlite3_column_int(stmt, 6);
-
-		blob = sqlite3_column_blob(stmt, 7);
+		blob = sqlite3_column_blob(stmt, 5);
 		memcpy(&pgame->spaces[2], &blob[0],
 		       (BLOCKS_MAX_ROWS - 2) * sizeof(*pgame->spaces));
 
@@ -216,10 +212,6 @@ int db_resume_state(struct db_info *entry, struct blocks_game *pgame)
 	}
 
 	sqlite3_finalize(stmt);
-
-	debug("Level = %d, Score = %d, dim: (%d, %d)",
-		 pgame->level, pgame->score,
-		 pgame->width, pgame->height);
 
 	sqlite3_prepare_v2(entry->db, select_state_rowid,
 			   sizeof select_state_rowid, &stmt, NULL);

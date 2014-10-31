@@ -26,12 +26,12 @@ void screen_init(void);
 void screen_cleanup(void);
 
 /* Get user id, filename, etc */
-void screen_draw_menu(struct blocks_game *, struct db_info *);
+void screen_draw_menu(struct db_info *);
 
 /* Update screen */
-void screen_draw_game(struct blocks_game *);
+void screen_draw_game(void);
 
 /* Game over! prints high scores if the player lost */
-void screen_draw_over(struct blocks_game *, struct db_info *);
+void screen_draw_over(struct db_info *);
 
 #endif				/* SCREEN_H_ */

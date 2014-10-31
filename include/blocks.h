@@ -39,12 +39,12 @@
 	block->p[index].x = (X); block->p[index].y = (Y); index++;
 
 /* First, Second, and Third elements in the linked list */
-#define HOLD_BLOCK(name) ((name)->blocks_head.lh_first)
-#define CURRENT_BLOCK(name) (HOLD_BLOCK(name)->entries.le_next)
-#define FIRST_NEXT_BLOCK(name) (CURRENT_BLOCK(name)->entries.le_next)
+#define HOLD_BLOCK() (pgame->blocks_head.lh_first)
+#define CURRENT_BLOCK() (HOLD_BLOCK()->entries.le_next)
+#define FIRST_NEXT_BLOCK() (CURRENT_BLOCK()->entries.le_next)
 
 /* Does a block exist at the specified (y, x) coordinate? */
-#define blocks_at_yx(p, y, x) ((p)->spaces[(y)] & (1 << (x)))
+#define blocks_at_yx(y, x) (pgame->spaces[(y)] & (1 << (x)))
 
 
 enum blocks_block_types {
@@ -75,23 +75,20 @@ struct blocks {
 	uint32_t lock_delay;		/* how long to wait (nsec) */
 	uint8_t soft_drop, hard_drop;	/* number of blocks dropped */
 	uint8_t col_off, row_off;	/* column/row offsets */
-	uint8_t color;
 
 	bool t_spin;			/* T-Spin . not implemented*/
 	bool hold;			/* can only hold once */
 
 	enum blocks_block_types type;
-	struct {			/* pieces stores a value */
+
+	struct pieces {			/* pieces stores two values(x, y) */
 		int8_t x, y;		/* between -1 and +2 */
-	} p[4];
+	} p[4];				/* each block has 4 pieces */
 
 	LIST_ENTRY(blocks) entries;	/* LL entries */
 };
 
 struct blocks_game {
-
-	uint8_t width, height;		/* vestige of variable size boards */
-
 	/* These variables are read/written to the database
 	 * when restoring/saving the game state
 	 */

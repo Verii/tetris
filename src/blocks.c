@@ -32,30 +32,28 @@
 #include "debug.h"
 #include "screen.h"
 
+struct blocks_game *pgame;
+
 /*
  * randomizes block and sets the initial positions of the pieces
  */
-static void randomize_block(struct blocks_game *pgame, struct blocks *block)
+static void randomize_block(struct blocks *block)
 {
 	int index = 0; /* used in macro def. PIECE_XY() */
 
-	if (!pgame || !block)
-		return;
-
+	/* struct blocks contains linked list pointers.
+	 * This completely clears those. So do those operations BEFORE
+	 * randomizing.
+	 */
 	memset(block, 0, sizeof *block);
 
+	/* Create a new bag if necessary, then pull the next piece from it */
 	if (bag_is_empty())
 		bag_random_generator();
-
 	block->type = bag_next_piece();
 
-	/* Try to center the block on the board */
-	block->col_off = pgame->width / 2;
+	block->col_off = BLOCKS_MAX_COLUMNS / 2;
 	block->row_off = 1;
-
-	/* Get a consistent color for each block. We don't know what it is.
-	 * screen.c decides in what order colors are defined */
-	block->color = block->type;
 
 	/* The piece at (0, 0) is the pivot when we rotate */
 	switch (block->type) {
@@ -113,16 +111,16 @@ static void randomize_block(struct blocks_game *pgame, struct blocks *block)
  * into place. Then we randomize it(WHICH WIPES ALL DATA, INCLUDING PREVIOUS
  * POINTERS) and reinstall it at the end of the list.
  */
-static void update_cur_block(struct blocks_game *pgame)
+static void update_cur_block()
 {
-	struct blocks *last, *np = CURRENT_BLOCK(pgame);
+	struct blocks *last, *np = CURRENT_BLOCK();
 
-	LIST_REMOVE(CURRENT_BLOCK(pgame), entries);
+	LIST_REMOVE(CURRENT_BLOCK(), entries);
 
-	randomize_block(pgame, np);
+	randomize_block(np);
 
 	/* Find last block in list */
-	for (last = HOLD_BLOCK(pgame);
+	for (last = HOLD_BLOCK();
 	     last->entries.le_next;
 	     last = last->entries.le_next)
 		;
@@ -131,15 +129,14 @@ static void update_cur_block(struct blocks_game *pgame)
 }
 
 /* rotate pieces in blocks by either 90^ or -90^ around (0, 0) pivot */
-static int rotate_block(struct blocks_game *pgame, struct blocks *block,
-			enum blocks_input_cmd cmd)
+static int rotate_block(struct blocks *block, enum blocks_input_cmd cmd)
 {
 	int new_x, new_y;
 	int bounds_x, bounds_y;
 	int dir = 1;
 	size_t i;
 
-	if (!pgame || !block)
+	if (!block)
 		return -1;
 
 	/* Don't rotate O block */
@@ -155,10 +152,10 @@ static int rotate_block(struct blocks_game *pgame, struct blocks *block,
 		bounds_y = block->p[i].x * (dir) + block->row_off;
 
 		/* Check for out of bounds on each piece */
-		if (bounds_x < 0 || bounds_x >= pgame->width ||
-		    bounds_y < 0 || bounds_y >= pgame->height ||
+		if (bounds_x < 0 || bounds_x >= BLOCKS_MAX_COLUMNS ||
+		    bounds_y < 0 || bounds_y >= BLOCKS_MAX_ROWS ||
 		    /* Also check if a piece already exists here */
-		    blocks_at_yx(pgame, bounds_y, bounds_x))
+		    blocks_at_yx(bounds_y, bounds_x))
 			return 0;
 	}
 
@@ -175,14 +172,13 @@ static int rotate_block(struct blocks_game *pgame, struct blocks *block,
 }
 
 /* translate pieces in block horizontally. */
-static int translate_block(struct blocks_game *pgame, struct blocks *block,
-			   enum blocks_input_cmd cmd)
+static int translate_block(struct blocks *block, enum blocks_input_cmd cmd)
 {
 	int bounds_x, bounds_y;
 	int dir = 1;
 	size_t i;
 
-	if (!pgame || !block)
+	if (!block)
 		return -1;
 
 	if (cmd == MOVE_LEFT)
@@ -194,9 +190,9 @@ static int translate_block(struct blocks_game *pgame, struct blocks *block,
 		bounds_y = block->p[i].y + block->row_off;
 
 		/* Check out of bounds before we write it */
-		if (bounds_x < 0 || bounds_x >= pgame->width ||
-		    bounds_y < 0 || bounds_y >= pgame->height ||
-		    blocks_at_yx(pgame, bounds_y, bounds_x))
+		if (bounds_x < 0 || bounds_x >= BLOCKS_MAX_COLUMNS ||
+		    bounds_y < 0 || bounds_y >= BLOCKS_MAX_ROWS ||
+		    blocks_at_yx(bounds_y, bounds_x))
 			return 0;
 	}
 
@@ -209,21 +205,20 @@ static int translate_block(struct blocks_game *pgame, struct blocks *block,
  * Tetris Guidlines say wallkicks first try to move left, attempt rotation
  * again. Then if that fails, we try again but by moving to the right.
  */
-static int try_wall_kick(struct blocks_game *pgame, struct blocks *block,
-			enum blocks_input_cmd cmd)
+static int try_wall_kick(struct blocks *block, enum blocks_input_cmd cmd)
 {
 	/* Try to move left and rotate again. */
-	if (translate_block(pgame, block, MOVE_LEFT) == 1) {
-		if (rotate_block(pgame, block, cmd) == 1)
+	if (translate_block(block, MOVE_LEFT) == 1) {
+		if (rotate_block(block, cmd) == 1)
 			return 1;
 	}
 
 	/* undo previous translation */
-	translate_block(pgame, block, MOVE_RIGHT);
+	translate_block(block, MOVE_RIGHT);
 
 	/* Try to move right and rotate again. */
-	if (translate_block(pgame, block, MOVE_RIGHT) == 1) {
-		if (rotate_block(pgame, block, cmd) == 1)
+	if (translate_block(block, MOVE_RIGHT) == 1) {
+		if (rotate_block(block, cmd) == 1)
 			return 1;
 	}
 
@@ -235,12 +230,9 @@ static int try_wall_kick(struct blocks_game *pgame, struct blocks *block,
  * Algorithm will most likely change. It currently follows the arctan curve.
  * Not quite sure that I like it, though.
  */
-static void update_tick_speed(struct blocks_game *pgame)
+static void update_tick_speed(void)
 {
 	double speed = 1.0f;
-
-	if (!pgame)
-		return;
 
 	/* See tests/level-curve.c */
 	speed += atan((double)pgame->level / 5.0) * 2 / PI * 3;
@@ -259,7 +251,7 @@ static void update_tick_speed(struct blocks_game *pgame)
  * falling blocks, and counts as a multiplier for points(i.e. level 2 will
  * yield (points *2)). The level increments when we destroy (level *2) +2 lines.
  */
-static int destroy_lines(struct blocks_game *pgame)
+static int destroy_lines(void)
 {
 	uint32_t full_row;
 	uint8_t destroyed = 0;
@@ -273,14 +265,11 @@ static int destroy_lines(struct blocks_game *pgame)
 	static size_t difficult = 0;
 	uint32_t point_mod = 0;
 
-	if (!pgame)
-		return -1;
-
-	/* Fill in all bits below bit pgame->width. Row populations are stored
-	 * in a bit field, so we can check for a full row by comparing it to
-	 * this value.
+	/* Fill in all bits below bit BLOCKS_MAX_COLUMNS. Row populations are
+	 * stored in a bit field, so we can check for a full row by comparing
+	 * it to this value.
 	 */
-	full_row = (1 << pgame->width) -1;
+	full_row = (1 << BLOCKS_MAX_COLUMNS) -1;
 
 	/* The first two rows are 'above' the game, that's where the new blocks
 	 * come into existence. We lose if there's ever a block there. */
@@ -292,7 +281,7 @@ static int destroy_lines(struct blocks_game *pgame)
 	 * we check in reverse to ease moving the rows down when we find a full
 	 * row. Ignore the top two rows, which we checked above.
 	 */
-	for (i = pgame->height - 1; i >= 2; i--) {
+	for (i = BLOCKS_MAX_ROWS - 1; i >= 2; i--) {
 
 		if (pgame->spaces[i] != full_row)
 			continue;
@@ -310,14 +299,14 @@ static int destroy_lines(struct blocks_game *pgame)
 	if (pgame->lines_destroyed >= (pgame->level * 2 + 2)) {
 		pgame->lines_destroyed -= (pgame->level * 2 + 2);
 		pgame->level++;
-		update_tick_speed(pgame);
+		update_tick_speed();
 	}
 
 	/* We lose our difficulty multipliers on easy moves */
-	if ((destroyed && destroyed != 4) && !CURRENT_BLOCK(pgame)->t_spin)
+	if ((destroyed && destroyed != 4) && !CURRENT_BLOCK()->t_spin)
 		difficult = 0;
 
-	if (CURRENT_BLOCK(pgame)->t_spin)
+	if (CURRENT_BLOCK()->t_spin)
 		difficult++;
 
 	/* Number of lines destroyed in move */
@@ -338,8 +327,8 @@ static int destroy_lines(struct blocks_game *pgame)
 	}
 
 	pgame->score += point_mod * pgame->level
-		+ CURRENT_BLOCK(pgame)->soft_drop
-		+ (CURRENT_BLOCK(pgame)->hard_drop * 2);
+		+ CURRENT_BLOCK()->soft_drop
+		+ (CURRENT_BLOCK()->hard_drop * 2);
 
 	return destroyed;
 }
@@ -350,15 +339,15 @@ static int destroy_lines(struct blocks_game *pgame)
  * erasing the bits from the actual game board. This is used before operating
  * on a game piece(e.g. before rotation or translation).
  */
-static void unwrite_cur_block(struct blocks_game *pgame)
+static void unwrite_cur_block(void)
 {
 	struct blocks *block;
 	size_t i, x, y;
 
-	if (!pgame || !CURRENT_BLOCK(pgame))
+	if (!CURRENT_BLOCK())
 		return;
 
-	block = CURRENT_BLOCK(pgame);
+	block = CURRENT_BLOCK();
 
 	for (i = 0; i < LEN(block->p); i++) {
 		y = block->row_off + block->p[i].y;
@@ -373,23 +362,23 @@ static void unwrite_cur_block(struct blocks_game *pgame)
  * Inverse of the above. We write the pieces to the game board.
  * Used after operations on a block(e.g. rotation or translation).
  */
-static void write_cur_block(struct blocks_game *pgame)
+static void write_cur_block(void)
 {
 	struct blocks *block;
 	int px[4], py[4];
 	size_t i;
 
-	if (!pgame || !CURRENT_BLOCK(pgame))
+	if (!CURRENT_BLOCK())
 		return;
 
-	block = CURRENT_BLOCK(pgame);
+	block = CURRENT_BLOCK();
 
 	for (i = 0; i < LEN(block->p); i++) {
 		py[i] = block->row_off + block->p[i].y;
 		px[i] = block->col_off + block->p[i].x;
 
-		if (px[i] < 0 || px[i] >= pgame->width ||
-		    py[i] < 0 || py[i] >= pgame->height)
+		if (px[i] < 0 || px[i] >= BLOCKS_MAX_COLUMNS ||
+		    py[i] < 0 || py[i] >= BLOCKS_MAX_ROWS)
 			return;
 	}
 
@@ -397,7 +386,7 @@ static void write_cur_block(struct blocks_game *pgame)
 	for (i = 0; i < LEN(block->p); i++) {
 		/* Set the bit where the block exists */
 		pgame->spaces[py[i]] |= (1 << px[i]);
-		pgame->colors[py[i]][px[i]] = block->color;
+		pgame->colors[py[i]][px[i]] = block->type;
 	}
 }
 
@@ -406,7 +395,7 @@ static void write_cur_block(struct blocks_game *pgame)
  * This function is used during normal gravitational events, and during
  * user-input 'soft drop' events.
  */
-static int drop_block(struct blocks_game *pgame, struct blocks *block)
+static int drop_block(struct blocks *block)
 {
 	size_t i, bounds_x, bounds_y;
 
@@ -417,8 +406,8 @@ static int drop_block(struct blocks_game *pgame, struct blocks *block)
 		bounds_y = block->p[i].y + block->row_off + 1;
 		bounds_x = block->p[i].x + block->col_off;
 
-		if (bounds_y >= pgame->height ||
-		    blocks_at_yx(pgame, bounds_y, bounds_x))
+		if (bounds_y >= BLOCKS_MAX_ROWS ||
+		    blocks_at_yx(bounds_y, bounds_x))
 			return 0;
 	}
 
@@ -434,24 +423,22 @@ static int drop_block(struct blocks_game *pgame, struct blocks *block)
  * We also allocate memory for the board colors, and set some initial
  * variables.
  */
-int blocks_init(struct blocks_game *pgame)
+int blocks_init(void)
 {
 	size_t i;
 
-	if (!pgame)
-		return -1;
-
 	log_info("Initializing game data");
-	memset(pgame, 0, sizeof *pgame);
+	pgame = calloc(1, sizeof *pgame);
+	if (!pgame) {
+		log_err("Out of memory");
+		exit(EXIT_FAILURE);
+	}
 
 	pthread_mutex_init(&pgame->lock, NULL);
 
 	pgame->level = 1;
 	pgame->nsec = 1E9 - 1;
 	pgame->pause_ticks = 1000;
-
-	pgame->width = BLOCKS_MAX_COLUMNS;
-	pgame->height = BLOCKS_MAX_ROWS;
 
 	LIST_INIT(&pgame->blocks_head);
 
@@ -466,7 +453,7 @@ int blocks_init(struct blocks_game *pgame)
 			exit(EXIT_FAILURE);
 		}
 
-		randomize_block(pgame, np);
+		randomize_block(np);
 
 		debug("Randomized new block: %d", i);
 
@@ -477,7 +464,7 @@ int blocks_init(struct blocks_game *pgame)
 		}
 
 		/* Skip to end of list */
-		for (last = HOLD_BLOCK(pgame);
+		for (last = HOLD_BLOCK();
 		     last->entries.le_next;
 		     last = last->entries.le_next)
 			;
@@ -501,11 +488,8 @@ int blocks_init(struct blocks_game *pgame)
 /*
  * The inverse of the init() function. Free all allocated memory.
  */
-int blocks_cleanup(struct blocks_game *pgame)
+int blocks_cleanup()
 {
-	if (!pgame)
-		return -1;
-
 	log_info("Cleaning game data");
 
 	/* mutex_destroy() is undefined if mutex is locked.
@@ -517,14 +501,16 @@ int blocks_cleanup(struct blocks_game *pgame)
 	pthread_mutex_destroy(&pgame->lock);
 
 	/* Remove each piece in the linked list */
-	while (HOLD_BLOCK(pgame)) {
-		struct blocks *np = HOLD_BLOCK(pgame);
+	while (HOLD_BLOCK()) {
+		struct blocks *np = HOLD_BLOCK();
 		LIST_REMOVE(np, entries);
 		free(np);
 	}
 
 	for (int i = 0; i < BLOCKS_MAX_ROWS; i++)
 		free(pgame->colors[i]);
+
+	free(pgame);
 
 	return 1;
 }
@@ -543,21 +529,19 @@ int blocks_cleanup(struct blocks_game *pgame)
  */
 void *blocks_loop(void *vp)
 {
-	struct blocks_game *pgame = vp;
-	struct timespec ts;
+	(void) vp; /* unused*/
+
 	int hit;
+	struct timespec ts;
 
 	ts.tv_sec = 0;
 	ts.tv_nsec = 0;
-
-	if (!pgame)
-		return NULL;
 
 	/* When we read in from the database, it sets the current level
 	 * for the game. Update the tick delay so we resume at proper
 	 * difficulty.
 	 */
-	update_tick_speed(pgame);
+	update_tick_speed();
 
 	while (1) {
 		ts.tv_nsec = pgame->nsec;
@@ -571,23 +555,23 @@ void *blocks_loop(void *vp)
 			continue;
 		}
 
-		pthread_mutex_lock(&pgame->lock);
-
 		/* Unpause the game if we're out of pause ticks */
 		pgame->pause = (pgame->pause && pgame->pause_ticks);
 
-		unwrite_cur_block(pgame);
-		hit = drop_block(pgame, CURRENT_BLOCK(pgame));
-		write_cur_block(pgame);
+		pthread_mutex_lock(&pgame->lock);
+
+		unwrite_cur_block();
+		hit = drop_block(CURRENT_BLOCK());
+		write_cur_block();
 
 		if (hit == 0) {
-			destroy_lines(pgame);
-			update_cur_block(pgame);
+			destroy_lines();
+			update_cur_block();
 		} else if (hit < 0) {
 			exit(EXIT_FAILURE);
 		}
 
-		screen_draw_game(pgame);
+		screen_draw_game();
 
 		pthread_mutex_unlock(&pgame->lock);
 	}
@@ -596,7 +580,7 @@ void *blocks_loop(void *vp)
 	 * database it would otherwise save the location of a block in mid-air.
 	 * We can't restore from blocks like that, so just remove it.
 	 */
-	unwrite_cur_block(pgame);
+	unwrite_cur_block();
 
 	return NULL;
 }
@@ -618,10 +602,11 @@ void *blocks_loop(void *vp)
  */
 void *blocks_input(void *vp)
 {
-	struct blocks_game *pgame = vp;
+	(void) vp; /* unused */
+	
 	int ch;
 
-	if (!pgame || !CURRENT_BLOCK(pgame))
+	if (!CURRENT_BLOCK())
 		return NULL;
 
 	while ((ch = getch())) {
@@ -640,52 +625,50 @@ void *blocks_input(void *vp)
 		}
 
 		/* remove the current piece from the board */
-		unwrite_cur_block(pgame);
+		unwrite_cur_block();
 
 		/* modify it */
 		switch (toupper(ch)) {
 		case 'A':
-			translate_block(pgame, CURRENT_BLOCK(pgame), MOVE_LEFT);
+			translate_block(CURRENT_BLOCK(), MOVE_LEFT);
 			break;
 		case 'D':
-			translate_block(pgame, CURRENT_BLOCK(pgame), MOVE_RIGHT);
+			translate_block(CURRENT_BLOCK(), MOVE_RIGHT);
 			break;
 		case 'S':
-			if (drop_block(pgame, CURRENT_BLOCK(pgame)))
-				CURRENT_BLOCK(pgame)->soft_drop++;
+			if (drop_block(CURRENT_BLOCK()))
+				CURRENT_BLOCK()->soft_drop++;
 			else
-				CURRENT_BLOCK(pgame)->lock_delay = 1E9 -1;
+				CURRENT_BLOCK()->lock_delay = 1E9 -1;
 			break;
 		case 'W':
 			/* drop the block to the bottom of the game */
-			while (drop_block(pgame, CURRENT_BLOCK(pgame)))
-				CURRENT_BLOCK(pgame)->hard_drop++;
-			CURRENT_BLOCK(pgame)->lock_delay = 1E9 -1;
+			while (drop_block(CURRENT_BLOCK()))
+				CURRENT_BLOCK()->hard_drop++;
+
+			/* XXX */
+			CURRENT_BLOCK()->lock_delay = 1E9 -1;
 			break;
 		case 'Q':
-			if (!rotate_block(pgame,
-				CURRENT_BLOCK(pgame), ROT_LEFT))
+			if (!rotate_block(CURRENT_BLOCK(), ROT_LEFT))
 			{
-				try_wall_kick(pgame, CURRENT_BLOCK(pgame),
-						ROT_LEFT);
+				try_wall_kick(CURRENT_BLOCK(), ROT_LEFT);
 			}
 			break;
 		case 'E':
-			if (!rotate_block(pgame,
-				CURRENT_BLOCK(pgame), ROT_RIGHT))
+			if (!rotate_block(CURRENT_BLOCK(), ROT_RIGHT))
 			{
-				try_wall_kick(pgame, CURRENT_BLOCK(pgame),
-						ROT_RIGHT);
+				try_wall_kick(CURRENT_BLOCK(), ROT_RIGHT);
 			}
 			break;
 		case ' ': {
 			struct blocks *tmp;
 
 			/* We can hold each block exactly once */
-			if (CURRENT_BLOCK(pgame)->hold == true)
+			if (CURRENT_BLOCK()->hold == true)
 				break;
 
-			tmp = CURRENT_BLOCK(pgame);
+			tmp = CURRENT_BLOCK();
 
 			/* Effectively swap the first and second elements in
 			 * the linked list. The "Current Block" is element 2.
@@ -696,19 +679,19 @@ void *blocks_input(void *vp)
 			LIST_REMOVE(tmp, entries);
 			LIST_INSERT_HEAD(&pgame->blocks_head, tmp, entries);
 
-			HOLD_BLOCK(pgame)->hold = true;
-			HOLD_BLOCK(pgame)->col_off = pgame->width /2;
-			HOLD_BLOCK(pgame)->row_off = 1;
+			HOLD_BLOCK()->hold = true;
+			HOLD_BLOCK()->col_off = BLOCKS_MAX_COLUMNS /2;
+			HOLD_BLOCK()->row_off = 1;
 
 			break;
 			}
 		}
 
 		/* then rewrite it */
-		write_cur_block(pgame);
+		write_cur_block();
 
  draw:
-		screen_draw_game(pgame);
+		screen_draw_game();
 		pthread_mutex_unlock(&pgame->lock);
 	}
 

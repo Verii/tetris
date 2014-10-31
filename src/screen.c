@@ -93,7 +93,7 @@ void screen_cleanup(void)
 }
 
 /* Ask user for difficulty and their name */
-void screen_draw_menu(struct blocks_game *pgame, struct db_info *psave)
+void screen_draw_menu(struct db_info *psave)
 {
 	const size_t buf_len = 256;
 
@@ -125,7 +125,7 @@ void screen_draw_menu(struct blocks_game *pgame, struct db_info *psave)
 	}
 }
 
-void screen_draw_game(struct blocks_game *pgame)
+void screen_draw_game(void)
 {
 	size_t i, j;
 
@@ -140,8 +140,8 @@ void screen_draw_game(struct blocks_game *pgame)
 	 */
 	if (pgame->pause) {
 		wattrset(board, COLOR_PAIR(1) | A_BOLD);
-		mvwprintw(board, (pgame->height -6) /2 +GAME_Y_OFF,
-				 (pgame->width -2) /2 -1 +GAME_X_OFF,
+		mvwprintw(board, (BLOCKS_MAX_ROWS -6) /2 +GAME_Y_OFF,
+				 (BLOCKS_MAX_COLUMNS -2) /2 -1 +GAME_X_OFF,
 				 "PAUSED");
 
 		goto refresh_board;
@@ -156,14 +156,14 @@ void screen_draw_game(struct blocks_game *pgame)
 	 */
 
 	/* Draw the background of the board. Dot every other column */
-	for (i = 2; i < pgame->height; i++)
+	for (i = 2; i < BLOCKS_MAX_ROWS; i++)
 		mvwprintw(board, i -2 +GAME_Y_OFF, 1 +GAME_X_OFF,
 				" . . . . .");
 
 	/* Draw the game board, minus the two hidden rows above the game */
-	for (i = 2; i < pgame->height; i++) {
-		for (j = 0; j < pgame->width && pgame->spaces[i]; j++) {
-			if (!blocks_at_yx(pgame, i, j))
+	for (i = 2; i < BLOCKS_MAX_ROWS; i++) {
+		for (j = 0; j < BLOCKS_MAX_COLUMNS && pgame->spaces[i]; j++) {
+			if (!blocks_at_yx(i, j))
 				continue;
 
 			wattrset(board, COLOR_PAIR((pgame->colors[i][j]) +1)
@@ -178,9 +178,9 @@ refresh_board:
 }
 
 /* Game over screen */
-void screen_draw_over(struct blocks_game *pgame, struct db_info *psave)
+void screen_draw_over(struct db_info *psave)
 {
-	if (!pgame || !psave)
+	if (!psave)
 		return;
 
 	log_info("Game over");
