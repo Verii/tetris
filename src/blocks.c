@@ -35,22 +35,11 @@
 struct blocks_game *pgame;
 
 /*
- * randomizes block and sets the initial positions of the pieces
+ * Resets the block to its default positional state
  */
-static void randomize_block(struct blocks *block)
+static void reset_block(struct blocks *block)
 {
 	int index = 0; /* used in macro def. PIECE_XY() */
-
-	/* struct blocks contains linked list pointers.
-	 * This completely clears those. So do those operations BEFORE
-	 * randomizing.
-	 */
-	memset(block, 0, sizeof *block);
-
-	/* Create a new bag if necessary, then pull the next piece from it */
-	if (bag_is_empty())
-		bag_random_generator();
-	block->type = bag_next_piece();
 
 	block->col_off = BLOCKS_MAX_COLUMNS / 2;
 	block->row_off = 1;
@@ -102,6 +91,26 @@ static void randomize_block(struct blocks *block)
 		PIECE_XY( 0,  0);
 		break;
 	}
+}
+
+/*
+ * randomizes block and sets the initial positions of the pieces
+ */
+static void randomize_block(struct blocks *block)
+{
+	/* struct blocks contains linked list pointers.
+	 * This completely clears those. So do those operations BEFORE
+	 * randomizing.
+	 */
+	memset(block, 0, sizeof *block);
+
+	/* Create a new bag if necessary, then pull the next piece from it */
+	if (bag_is_empty())
+		bag_random_generator();
+
+	block->type = bag_next_piece();
+
+	reset_block(block);
 }
 
 /*
@@ -679,9 +688,8 @@ void *blocks_input(void *vp)
 			LIST_REMOVE(tmp, entries);
 			LIST_INSERT_HEAD(&pgame->blocks_head, tmp, entries);
 
+			reset_block(HOLD_BLOCK());
 			HOLD_BLOCK()->hold = true;
-			HOLD_BLOCK()->col_off = BLOCKS_MAX_COLUMNS /2;
-			HOLD_BLOCK()->row_off = 1;
 
 			break;
 			}
