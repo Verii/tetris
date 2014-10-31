@@ -562,15 +562,15 @@ void *blocks_loop(void *vp)
 		if (pgame->lose || pgame->quit)
 			break;
 
+		pthread_mutex_lock(&pgame->lock);
+
 		if (pgame->pause && pgame->pause_ticks) {
 			pgame->pause_ticks--;
-			continue;
+			goto draw_game;
 		}
 
 		/* Unpause the game if we're out of pause ticks */
 		pgame->pause = (pgame->pause && pgame->pause_ticks);
-
-		pthread_mutex_lock(&pgame->lock);
 
 		unwrite_cur_block();
 		hit = drop_block(CURRENT_BLOCK());
@@ -583,8 +583,9 @@ void *blocks_loop(void *vp)
 			exit(EXIT_FAILURE);
 		}
 
-		screen_draw_game();
+		draw_game:
 
+		screen_draw_game();
 		pthread_mutex_unlock(&pgame->lock);
 	}
 
