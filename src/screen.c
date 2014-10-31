@@ -35,7 +35,7 @@
 
 #define BLOCK_CHAR "x"
 
-static WINDOW *board;
+static WINDOW *board, *pieces;
 
 static const char colors[] = { COLOR_WHITE, COLOR_RED, COLOR_GREEN,
 	COLOR_YELLOW, COLOR_BLUE, COLOR_MAGENTA, COLOR_CYAN
@@ -57,16 +57,17 @@ void screen_init(void)
 		init_pair(i + 1, colors[i], COLOR_BLACK);
 
 	board = newwin(0, 0, 0, 0);
+	pieces = newwin(4, 40, TEXT_Y_OFF +6, TEXT_X_OFF +2);
 
 	wattrset(board, COLOR_PAIR(1));
 	box(board, 0, 0);
 
 	/* Draw static text */
 	mvwprintw(board, 1, 1, "Tetris-" VERSION);
-	mvwprintw(board, TEXT_Y_OFF +5, TEXT_X_OFF +1, "Hold   Next");
-	mvwprintw(board, TEXT_Y_OFF +9, TEXT_X_OFF +1, "Controls");
-	mvwprintw(board, TEXT_Y_OFF +10, TEXT_X_OFF +2, "Pause [F1]");
-	mvwprintw(board, TEXT_Y_OFF +11, TEXT_X_OFF +2, "Quit [F3]");
+	mvwprintw(board, TEXT_Y_OFF +5, TEXT_X_OFF +1, "Hold  Next:");
+	mvwprintw(board, TEXT_Y_OFF +10, TEXT_X_OFF +1, "Controls");
+	mvwprintw(board, TEXT_Y_OFF +11, TEXT_X_OFF +2, "Pause [F1]");
+	mvwprintw(board, TEXT_Y_OFF +12, TEXT_X_OFF +2, "Quit [F3]");
 	mvwprintw(board, TEXT_Y_OFF +13, TEXT_X_OFF +2, "Move [asd]");
 	mvwprintw(board, TEXT_Y_OFF +14, TEXT_X_OFF +2, "Rotate [qe]");
 	mvwprintw(board, TEXT_Y_OFF +15, TEXT_X_OFF +2, "Hold [[space]]");
@@ -89,6 +90,7 @@ void screen_cleanup(void)
 {
 	log_info("Cleaning ncurses context");
 	delwin(board);
+	delwin(pieces);
 	clear();
 	endwin();
 }
@@ -152,16 +154,27 @@ void screen_draw_game(void)
 	/* Draw game */
 	/*************/
 
-	for (i = 0; i < LEN(HOLD_BLOCK()->p); i++) {
-		wattrset(board, A_BOLD | COLOR_PAIR(
-				(HOLD_BLOCK()->type) +1));
-		mvwprintw(board, HOLD_BLOCK()->p[i].y + TEXT_Y_OFF +7,
-				HOLD_BLOCK()->p[i].x + TEXT_X_OFF +3,
-				BLOCK_CHAR);
+	wclear(pieces);
+
+	struct blocks *np = HOLD_BLOCK();
+	int count = 0;
+
+	while (np) {
+		for (i = 0; i < LEN(np->p); i++) {
+			wattrset(pieces, A_BOLD | COLOR_PAIR(np->type +1));
+			mvwprintw(pieces, np->p[i].y +1,
+					np->p[i].x +1 +(count*5),
+					BLOCK_CHAR);
+		}
+
+		count++;
+		np = np->entries.le_next;
+
+		if (np == CURRENT_BLOCK())
+			np = np->entries.le_next;
 	}
-	/* pgame->blocks_head.lh_first
-	 * pgame->blocks_head.lh_first->entries.le_next
-	 */
+
+	wrefresh(pieces);
 
 	/* Draw the background of the board. Dot every other column */
 	for (i = 2; i < BLOCKS_MAX_ROWS; i++)
