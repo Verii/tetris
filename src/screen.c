@@ -161,8 +161,8 @@ void screen_draw_game(struct blocks_game *pgame)
 				" . . . . .");
 
 	/* Draw the game board, minus the two hidden rows above the game */
-	for (i = 2; i < pgame->height/* && pgame->spaces[i]*/; i++) {
-		for (j = 0; j < pgame->width; j++) {
+	for (i = 2; i < pgame->height; i++) {
+		for (j = 0; j < pgame->width && pgame->spaces[i]; j++) {
 			if (!blocks_at_yx(pgame, i, j))
 				continue;
 

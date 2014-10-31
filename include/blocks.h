@@ -25,25 +25,37 @@
 #include <sys/queue.h>
 
 #define PI 3.141592653589L
+
+#define BLOCKS_MAX_COLUMNS	10
+#define BLOCKS_MAX_ROWS		22
+
+#define NUM_BLOCKS		7
+#define NEXT_BLOCKS_LEN		5
+
 #define LEN(x) ((sizeof(x))/(sizeof(*x)))
 
 /* Define index yourself. We increment here at each definition */
 #define PIECE_XY(X, Y) \
 	block->p[index].x = (X); block->p[index].y = (Y); index++;
 
-#define BLOCKS_MAX_COLUMNS	10
-#define BLOCKS_MAX_ROWS		22
+/* First, Second, and Third elements in the linked list */
+#define HOLD_BLOCK(name) ((name)->blocks_head.lh_first)
+#define CURRENT_BLOCK(name) (HOLD_BLOCK(name)->entries.le_next)
+#define FIRST_NEXT_BLOCK(name) (CURRENT_BLOCK(name)->entries.le_next)
+
+/* Does a block exist at the specified (y, x) coordinate? */
+#define blocks_at_yx(p, y, x) ((p)->spaces[(y)] & (1 << (x)))
+
 
 enum blocks_block_types {
-	O_BLOCK = 0,			/* square */
-	I_BLOCK,			/* line */
+	O_BLOCK,
+	I_BLOCK,
 	T_BLOCK,
 	L_BLOCK,
 	J_BLOCK,
 	Z_BLOCK,
 	S_BLOCK,
 };
-#define NUM_BLOCKS 7
 
 enum blocks_input_cmd {
 	MOVE_LEFT,
@@ -54,8 +66,6 @@ enum blocks_input_cmd {
 	ROT_RIGHT,
 	HOLD,
 };
-
-#define NEXT_BLOCKS_LEN 5
 
 /* Only the currently falling block, the next block, and the save block are
  * stored in this structure. Once a block hits another piece, we forget about
@@ -75,40 +85,37 @@ struct blocks {
 		int8_t x, y;		/* between -1 and +2 */
 	} p[4];
 
-	LIST_ENTRY(blocks) entries;
+	LIST_ENTRY(blocks) entries;	/* LL entries */
 };
 
 struct blocks_game {
+
+	uint8_t width, height;		/* vestige of variable size boards */
+
 	/* These variables are read/written to the database
 	 * when restoring/saving the game state
 	 */
-	uint8_t width, height;
 	uint16_t level, lines_destroyed;
 	uint16_t spaces[BLOCKS_MAX_ROWS];	/* bit-field, one per row */
 	uint32_t score;
 
 	uint8_t *colors[BLOCKS_MAX_ROWS];	/* 1-to-1 with board */
+	uint16_t pause_ticks;			/* total pause ticks per game */
 	uint32_t nsec;				/* tick delay in nanoseconds */
-	uint32_t pause_ticks;			/* total pause ticks per game */
 	bool pause;				/* game pause */
 	bool lose, quit;			/* how we quit */
 	pthread_mutex_t lock;
 
-	LIST_HEAD(blocks_head, blocks) blocks_head;
+	LIST_HEAD(blocks_head, blocks) blocks_head;	/* point to LL head */
 };
 
-#define HOLD_BLOCK(name) ((name)->blocks_head.lh_first)
-#define CURRENT_BLOCK(name) ((name)->blocks_head.lh_first->entries.le_next)
-#define FIRST_NEXT_BLOCK(name) ((name)->blocks_head.lh_first->entries.le_next->entries.le_next)
-
-/* Does a block exist at the specified (y, x) coordinate? */
-#define blocks_at_yx(p, y, x) ((p)->spaces[(y)] & (1 << (x)))
+extern struct blocks_game *pgame;
 
 /* Create game state */
-int blocks_init(struct blocks_game *);
+int blocks_init(void);
 
 /* Free memory */
-int blocks_cleanup(struct blocks_game *);
+int blocks_cleanup(void);
 
 /* Main loop, doesn't return until game is over */
 void *blocks_loop(void *);
