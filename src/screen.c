@@ -133,22 +133,14 @@ void screen_draw_game(void)
 	size_t i, j;
 
 	wattrset(board, COLOR_PAIR(1));
-	mvwprintw(board, TEXT_Y_OFF +2, TEXT_X_OFF +1,
-			"Level %d", pgame->level);
-	mvwprintw(board, TEXT_Y_OFF +3, TEXT_X_OFF +1,
-			"Score %d", pgame->score);
+	mvwprintw(board, TEXT_Y_OFF+1, TEXT_X_OFF+1, "Level       ");
+	mvwprintw(board, TEXT_Y_OFF+2, TEXT_X_OFF+1, "Score       ");
+	mvwprintw(board, TEXT_Y_OFF+3, TEXT_X_OFF+1, "Pause       ");
 
-	/* Center the text horizontally, place the text slightly above
-	 * the middle vertically.
-	 */
-	if (pgame->pause) {
-		wattrset(board, COLOR_PAIR(1) | A_BOLD);
-		mvwprintw(board, (BLOCKS_MAX_ROWS -6) /2 +GAME_Y_OFF,
-				 (BLOCKS_MAX_COLUMNS -2) /2 -1 +GAME_X_OFF,
-				 "PAUSED");
-
-		goto refresh_board;
-	}
+	wattrset(board, COLOR_PAIR(5) | A_BOLD);
+	mvwprintw(board, TEXT_Y_OFF+1, TEXT_X_OFF+7, "%7d", pgame->level);
+	mvwprintw(board, TEXT_Y_OFF+2, TEXT_X_OFF+7, "%7d", pgame->score);
+	mvwprintw(board, TEXT_Y_OFF+3, TEXT_X_OFF+7, "%7d", pgame->pause_ticks);
 
 	/*************/
 	/* Draw game */
@@ -174,7 +166,7 @@ void screen_draw_game(void)
 			np = np->entries.le_next;
 	}
 
-	wrefresh(pieces);
+	wattrset(board, COLOR_PAIR(1));
 
 	/* Draw the background of the board. Dot every other column */
 	for (i = 2; i < BLOCKS_MAX_ROWS; i++)
@@ -195,7 +187,17 @@ void screen_draw_game(void)
 		}
 	}
 
-refresh_board:
+	/* Center the text horizontally, place the text slightly above
+	 * the middle vertically.
+	 */
+	if (pgame->pause) {
+		wattrset(board, COLOR_PAIR(1) | A_BOLD);
+		mvwprintw(board, (BLOCKS_MAX_ROWS -6) /2 +GAME_Y_OFF,
+				 (BLOCKS_MAX_COLUMNS -2) /2 -1 +GAME_X_OFF,
+				 "PAUSED");
+	}
+
+	wrefresh(pieces);
 	wrefresh(board);
 }
 
