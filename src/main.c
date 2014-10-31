@@ -36,8 +36,6 @@
 #include "debug.h"
 #include "screen.h"
 
-static struct db_info save;
-
 /* We can exit() at any point and still safely cleanup */
 static void cleanup(void)
 {
@@ -162,6 +160,8 @@ static void init(void)
 
 int main(int argc, char **argv)
 {
+	pthread_t input_loop;
+
 	setlocale(LC_ALL, "");
 	if (argc > 1 && argv[1][0] == '-' && argv[1][1] == 'h')
 		usage();
@@ -173,20 +173,18 @@ int main(int argc, char **argv)
 	init();
 	atexit(cleanup);
 
-	screen_draw_menu(&save);
+	screen_draw_menu();
 	screen_draw_game();
 
-	pthread_t input_loop, update_loop;
-
-	pthread_create(&update_loop, NULL, blocks_loop, NULL);
 	pthread_create(&input_loop, NULL, blocks_input, NULL);
 
+	blocks_loop(NULL);
+
 	/* when blocks_loop returns, kill the input thread and cleanup */
-	pthread_join(update_loop, NULL);
 	pthread_cancel(input_loop);
 
 	/* Print scores, tell user they're a loser, etc. */
-	screen_draw_over(&save);
+	screen_draw_over();
 
 	return 0;
 }

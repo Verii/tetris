@@ -82,6 +82,7 @@ void screen_init(void)
 			'*', BLOCKS_MAX_COLUMNS +2);
 
 	refresh();
+	wrefresh(board);
 }
 
 void screen_cleanup(void)
@@ -93,7 +94,7 @@ void screen_cleanup(void)
 }
 
 /* Ask user for difficulty and their name */
-void screen_draw_menu(struct db_info *psave)
+void screen_draw_menu(void)
 {
 	const size_t buf_len = 256;
 
@@ -120,7 +121,7 @@ void screen_draw_menu(struct db_info *psave)
 		);
 
 	/* Start the game paused if we can resume from an old save */
-	if (db_resume_state(psave, pgame) > 0) {
+	if (db_resume_state() > 0) {
 		pgame->pause = true;
 	}
 }
@@ -178,11 +179,8 @@ refresh_board:
 }
 
 /* Game over screen */
-void screen_draw_over(struct db_info *psave)
+void screen_draw_over(void)
 {
-	if (!psave)
-		return;
-
 	log_info("Game over");
 
 	clear();
@@ -194,14 +192,14 @@ void screen_draw_over(struct db_info *psave)
 	mvprintw(LINES - 2, 1, "Press F1 to quit.");
 
 	if (pgame->lose) {
-		db_save_score(psave, pgame);
+		db_save_score();
 	} else {
-		db_save_state(psave, pgame);
+		db_save_state();
 		return;
 	}
 
 	/* Print score board when you lose a game */
-	struct db_results *res = db_get_scores(psave, 10);
+	struct db_results *res = db_get_scores(10);
 	while (res) {
 		char *date = ctime(&res->date);
 		static unsigned char count = 0;
