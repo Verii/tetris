@@ -474,7 +474,7 @@ int blocks_init(void)
 
 	/* Allocate memory for colors */
 	for (i = 0; i < BLOCKS_MAX_ROWS; i++) {
-		pgame->colors[i] = calloc(BLOCKS_MAX_COLUMNS,
+		pgame->colors[i] = malloc(BLOCKS_MAX_COLUMNS *
 					  sizeof(*pgame->colors[i]));
 		if (!pgame->colors[i]) {
 			log_err("Out of memory");

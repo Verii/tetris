@@ -152,6 +152,13 @@ void screen_draw_game(void)
 	/* Draw game */
 	/*************/
 
+	for (i = 0; i < LEN(HOLD_BLOCK()->p); i++) {
+		wattrset(board, A_BOLD | COLOR_PAIR(
+				(HOLD_BLOCK()->type) +1));
+		mvwprintw(board, HOLD_BLOCK()->p[i].y + TEXT_Y_OFF +7,
+				HOLD_BLOCK()->p[i].x + TEXT_X_OFF +3,
+				BLOCK_CHAR);
+	}
 	/* pgame->blocks_head.lh_first
 	 * pgame->blocks_head.lh_first->entries.le_next
 	 */
@@ -167,8 +174,9 @@ void screen_draw_game(void)
 			if (!blocks_at_yx(i, j))
 				continue;
 
-			wattrset(board, COLOR_PAIR((pgame->colors[i][j]) +1)
-					| A_BOLD);
+			wattrset(board, A_BOLD | COLOR_PAIR(
+					(pgame->colors[i][j] %sizeof(colors))
+					+1));
 			mvwprintw(board, i -2 +GAME_Y_OFF, j +1 +GAME_X_OFF,
 					BLOCK_CHAR);
 		}
