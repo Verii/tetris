@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014  James Smith <james@theta.pw>
+ * Copyright (C) 2014  James Smith <james@apertum.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -53,7 +53,7 @@ static void usage(void)
 {
 
 	const char *LICENSE =
-"Copyright (C) 2014 James Smith <james@theta.pw>\n\n"
+"Copyright (C) 2014 James Smith <james@apertum.org>\n\n"
 "This program is free software; you can redistribute it and/or modify\n"
 "it under the terms of the GNU General Public License as published by\n"
 "the Free Software Foundation; either version 2 of the License, or\n"

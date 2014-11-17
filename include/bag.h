@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014  James Smith <james@theta.pw>
+ * Copyright (C) 2014  James Smith <james@apertum.org>
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
