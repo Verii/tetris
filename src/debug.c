@@ -42,9 +42,8 @@ void debug_log(const char *fmt, ...)
 	if (ret < 0) {
 		msg = NULL;
 	} else {
-		int len = strlen(msg);
-		if (msg[len] == '\n')
-			msg[len] = '\0';
+		if (msg[ret-1] == '\n')
+			msg[ret-1] = '\0';
 	}
 
 	fprintf(stderr, "%s %s\n", date, msg ? msg : "");
