@@ -490,8 +490,6 @@ int blocks_init(void)
 
 		randomize_block(np);
 
-		debug("Randomized new block: %d", i);
-
 		/* Manually add the head, then continue adding the others */
 		if (i == 0) {
 			LIST_INSERT_HEAD(&pgame->blocks_head, np, entries);
@@ -588,7 +586,9 @@ void *blocks_loop(void *vp)
 		pthread_mutex_lock(&pgame->lock);
 
 		if (pgame->pause && pgame->pause_ticks) {
+#ifndef DEBUG
 			pgame->pause_ticks--;
+#endif
 			goto draw_game;
 		}
 
@@ -654,15 +654,21 @@ void *blocks_input(void *vp)
 		 * other thread */
 		pthread_mutex_lock(&pgame->lock);
 
-		switch (ch) {
-		case KEY_F(1):
+		switch (toupper(ch)) {
+		case 'G':
+			pgame->ghosts = !pgame->ghosts;
+			goto draw_game;
+		case 'P':
 			pgame->pause = !pgame->pause;
 			goto draw_game;
-		case KEY_F(3):
+		case 'O':
 			pgame->pause = false;
 			pgame->quit = true;
 			goto draw_game;
 		}
+
+		if (pgame->pause)
+			goto draw_game;
 
 		/* remove the current piece from the board */
 		unwrite_cur_block();
