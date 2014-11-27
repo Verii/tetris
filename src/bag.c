@@ -74,19 +74,20 @@ retry:
 
 int bag_next_piece(void) {
 	static size_t index = 0;
-	int tmp = bag_bag7[index];
+
+	int ret = bag_bag7[index];
 
 	/* Mark bag location dirty */
 	bag_bag7[index] |= DIRTY_BIT;
 
-	if (++index == NUM_BLOCKS)
+	if (++index >= LEN(bag_bag7))
 		index = 0;
 
-	return tmp;
+	return ret;
 }
 
 int bag_is_empty(void) {
-	for (int i = 0; i < 7; i++)
+	for (size_t i = 0; i < LEN(bag_bag7); i++)
 		if (bag_bag7[i] < DIRTY_BIT)
 			return 0;
 
