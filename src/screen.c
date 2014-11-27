@@ -26,6 +26,7 @@
 #include "db.h"
 #include "debug.h"
 #include "screen.h"
+#include "log_queue.h"
 
 #define GAME_Y_OFF 1
 #define GAME_X_OFF 18
@@ -201,6 +202,16 @@ void screen_draw_game(void)
 	mvwprintw(board, TEXT_Y_OFF+1, TEXT_X_OFF+7, "%7d", pgame->level);
 	mvwprintw(board, TEXT_Y_OFF+2, TEXT_X_OFF+7, "%7d", pgame->score);
 	mvwprintw(board, TEXT_Y_OFF+3, TEXT_X_OFF+7, "%7d", pgame->pause_ticks);
+
+	/* Print in-game logs/messages */
+	struct log_entry *np = entry_head.lh_first;
+	wattrset(board, COLOR_PAIR(3));
+
+	for (i = 0; i < 4 && np; i++) {
+		mvwprintw(board, TEXT_Y_OFF +14 +i, TEXT_X_OFF +2, "%s",
+			np->msg);
+		np = np->entries.le_next;
+	}
 
 	/* It's not possible for a block to appear thrice in a row, so this will
 	 * always hash differently if the blocks have changed.

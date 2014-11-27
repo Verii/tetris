@@ -35,6 +35,7 @@
 #include "db.h"
 #include "debug.h"
 #include "screen.h"
+#include "log_queue.h"
 
 /* We can exit() at any point and still safely cleanup */
 static void cleanup(void)
@@ -44,8 +45,10 @@ static void cleanup(void)
 
 	/* Game separator */
 	fprintf(stderr, "--\n");
-
 	fclose(stderr);
+
+	log_queue_clean();
+
 	printf("Thanks for playing Blocks-%s!\n", VERSION);
 }
 
@@ -101,6 +104,8 @@ static int try_mkdir(const char *path, mode_t mode)
 
 static void init(void)
 {
+	LIST_INIT(&entry_head);
+
 	/* Most file systems limit the size of filenames to 255 octets */
 	char *home_env, game_dir[256];
 	mode_t mode = S_IRUSR | S_IWUSR | S_IXUSR;
@@ -130,7 +135,8 @@ static void init(void)
 			goto err_subdir;
 	}
 
-	/* open for writing in append mode ~/.local/share/tetris/logs */
+	/* redirect stderr to log file.
+	 * open for writing in append mode ~/.local/share/tetris/logs */
 	strlcat(game_dir, "/logs", sizeof game_dir);
 	if (freopen(game_dir, "a", stderr) == NULL) {
 		fprintf(stderr, "Could not open: %s\n", game_dir);

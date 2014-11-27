@@ -402,15 +402,20 @@ static int destroy_lines(void)
 		destroyed++;
 	}
 
+	if (destroyed == 0)
+		return 0;
+
 	pgame->lines_destroyed += destroyed;
 	if (pgame->lines_destroyed >= (pgame->level * 2 + 2)) {
 		pgame->lines_destroyed -= (pgame->level * 2 + 2);
 		pgame->level++;
 		update_tick_speed();
+
+		debug_ingame_log("Level up! Speed up!");
 	}
 
 	/* We lose our difficulty multipliers on easy moves */
-	if ((destroyed && destroyed != 4) && !CURRENT_BLOCK()->t_spin)
+	if (destroyed != 4 && !CURRENT_BLOCK()->t_spin)
 		difficult = 0;
 
 	if (CURRENT_BLOCK()->t_spin)
@@ -428,6 +433,7 @@ static int destroy_lines(void)
 			point_mod = 500;
 			break;
 		case 4:
+			debug_ingame_log("Tetris!");
 			difficult++;
 			point_mod = 800;
 			break;

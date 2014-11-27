@@ -25,6 +25,7 @@
  * [TIME/DATE] message
  */
 void debug_log(const char *fmt, ...);
+void debug_ingame_log(const char *fmt, ...);
 
 #ifdef DEBUG
 #define debug(M, ...)	 debug_log("[DEBUG] " M, ##__VA_ARGS__)

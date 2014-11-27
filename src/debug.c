@@ -22,30 +22,55 @@
 #include <time.h>
 
 #include "debug.h"
+#include "log_queue.h"
+
+static void debug_format_message(char **strp, const char *fmt, va_list ap)
+{
+	int ret;
+	ret = vasprintf(strp, fmt, ap);
+
+	if (ret < 0) {
+		*strp = NULL;
+	} else {
+		if ((*strp)[ret-1] == '\n')
+			(*strp)[ret-1] = '\0';
+	}
+}
+
+/* Adds log message to a message queue, to be printed in game.
+ * Then prints the same message to stderr.
+ */
+void debug_ingame_log(const char *fmt, ...)
+{
+	char *debug_message;
+	va_list ap;
+
+	va_start(ap, fmt);
+	debug_format_message(&debug_message, fmt, ap);
+	va_end(ap);
+
+	if (debug_message)
+		log_queue_add_entry(debug_message);
+
+	free(debug_message);
+}
 
 /* Prints a log message of the form:
  * "[time] message"
  */
 void debug_log(const char *fmt, ...)
 {
+	char *debug_message;
 	time_t s = time(NULL);
-	char *msg, date[32];
-	va_list ap;
-	int ret;
+	char date[32];
 
 	strftime(date, sizeof date, "[%F %H:%M]", localtime(&s));
 
+	va_list ap;
 	va_start(ap, fmt);
-	ret = vasprintf(&msg, fmt, ap);
+	debug_format_message(&debug_message, fmt, ap);
 	va_end(ap);
 
-	if (ret < 0) {
-		msg = NULL;
-	} else {
-		if (msg[ret-1] == '\n')
-			msg[ret-1] = '\0';
-	}
-
-	fprintf(stderr, "%s %s\n", date, msg ? msg : "");
-	free(msg);
+	fprintf(stderr, "%s %s\n", date, debug_message ? debug_message : "");
+	free(debug_message);
 }
