@@ -28,18 +28,19 @@
 #include "screen.h"
 #include "log_queue.h"
 
-#define GAME_Y_OFF 1
-#define GAME_X_OFF 18
+/* Hold/Next Pieces are draw to the left of the Game */
+#define PIECES_Y_OFF 4
+#define PIECES_X_OFF 3
+#define PIECES_CHAR "x"
 
-#define BLOCKS_Y_OFF 3
-#define BLOCKS_X_OFF 2
+#define BOARD_Y_OFF 1
+#define BOARD_X_OFF 18
 
+/* Text is draw to the right of the game board */
 #define TEXT_Y_OFF 1
-#define TEXT_X_OFF GAME_X_OFF + BLOCKS_MAX_COLUMNS + 2
+#define TEXT_X_OFF BOARD_X_OFF + BLOCKS_MAX_COLUMNS + 2
 
-#define BLOCK_CHAR "x"
-
-static WINDOW *board, *pieces;
+static WINDOW *board, *pieces, *text;
 
 static const char colors[] = { COLOR_WHITE, COLOR_RED, COLOR_GREEN,
 	COLOR_YELLOW, COLOR_BLUE, COLOR_MAGENTA, COLOR_CYAN
@@ -60,62 +61,32 @@ void screen_init(void)
 	for (size_t i = 0; i < LEN(colors); i++)
 		init_pair(i + 1, colors[i], COLOR_BLACK);
 
-	board = newwin(0, 0, 0, 0);
-	pieces = newwin(16, 13, BLOCKS_Y_OFF +1, BLOCKS_X_OFF);
-
-	wattrset(board, COLOR_PAIR(1));
-	box(board, 0, 0);
+	attrset(COLOR_PAIR(1));
 
 	/* Draw static text */
-	mvwprintw(board, 1, 1, "Tetris-" VERSION);
+	box(stdscr, 0, 0);
+	mvprintw(1, 1, "Tetris-" VERSION);
 
-	mvwprintw(board, TEXT_Y_OFF +1, TEXT_X_OFF +1, "Level");
-	mvwprintw(board, TEXT_Y_OFF +2, TEXT_X_OFF +1, "Score");
-	mvwprintw(board, TEXT_Y_OFF +3, TEXT_X_OFF +1, "Pause");
+	mvprintw(PIECES_Y_OFF-1, PIECES_X_OFF+1, "Hold   Next");
 
-	mvwprintw(board, TEXT_Y_OFF +5 , TEXT_X_OFF +1, "Controls");
-	mvwprintw(board, TEXT_Y_OFF +6 , TEXT_X_OFF +2, "Pause [p]");
-	mvwprintw(board, TEXT_Y_OFF +7 , TEXT_X_OFF +2, "Save/Quit [o]");
-	mvwprintw(board, TEXT_Y_OFF +8 , TEXT_X_OFF +2, "Move [asd]");
-	mvwprintw(board, TEXT_Y_OFF +9 , TEXT_X_OFF +2, "Rotate [qe]");
-	mvwprintw(board, TEXT_Y_OFF +10, TEXT_X_OFF +2, "Ghosts [g]");
-	mvwprintw(board, TEXT_Y_OFF +11, TEXT_X_OFF +2, "Hold [[space]]");
+	pieces = newwin(16, 13, PIECES_Y_OFF, PIECES_X_OFF);
 
-	mvwprintw(board, BLOCKS_Y_OFF, BLOCKS_X_OFF +1, "Hold");
-	mvwprintw(board, BLOCKS_Y_OFF, BLOCKS_X_OFF +8, "Next");
+	board = newwin(BLOCKS_MAX_ROWS -1, BLOCKS_MAX_COLUMNS+2,
+			BOARD_Y_OFF, BOARD_X_OFF);
 
-	wattrset(board, COLOR_PAIR(2));
-	mvwprintw(board, TEXT_Y_OFF +13, TEXT_X_OFF +1, "Log:");
-
-#ifdef DEBUG
-	wattrset(board, A_BOLD | COLOR_PAIR(2));
-	mvwprintw(board, TEXT_Y_OFF +19, TEXT_X_OFF +1,
-			"DEBUG @ %s %s", __DATE__, __TIME__);
-
-	wattrset(board, A_BOLD | COLOR_PAIR(3));
-	mvwprintw(board, TEXT_Y_OFF +20, TEXT_X_OFF +1,
-			"saving to in-memory database");
-#endif
-
-	/* Draw board outline */
-	wattrset(board, A_BOLD | COLOR_PAIR(5));
-
-	mvwvline(board, GAME_Y_OFF, GAME_X_OFF, '*', BLOCKS_MAX_ROWS -1);
-
-	mvwvline(board, GAME_Y_OFF, BLOCKS_MAX_COLUMNS +1 +GAME_X_OFF,
-			'*', BLOCKS_MAX_ROWS -1);
-	mvwhline(board, BLOCKS_MAX_ROWS -2 +GAME_Y_OFF, GAME_X_OFF,
-			'*', BLOCKS_MAX_COLUMNS +2);
+	text = newwin(BLOCKS_MAX_ROWS, 40, TEXT_Y_OFF, TEXT_X_OFF);
 
 	refresh();
-	wrefresh(board);
 }
 
 void screen_cleanup(void)
 {
 	log_info("Cleaning ncurses context");
+
 	delwin(board);
 	delwin(pieces);
+	delwin(text);
+
 	clear();
 	endwin();
 }
@@ -149,16 +120,76 @@ void screen_draw_menu(void)
 	 */
 #ifdef DEBUG
 	strncpy(psave->file_loc, ":memory:", buf_len);
+	return; // Can't resume from an in-memory DB anyway. Don't polute logs.
 #endif
 
-	/* Start the game paused if we can resume from an old save */
+	/* Try to resume the last played game.
+	 * If we can, pause the game.
+	 */
 	if (db_resume_state() > 0) {
 		pgame->pause = true;
 	}
 }
 
+static void draw_text(void)
+{
+	size_t i = 0;
+
+	werase(text);
+
+	wattrset(text, COLOR_PAIR(1));
+
+	mvwprintw(text, 1, 1, "Level");
+	mvwprintw(text, 2, 1, "Score");
+	mvwprintw(text, 3, 1, "Pause");
+
+	mvwprintw(text, 5, 1, "Controls");
+	mvwprintw(text, 6 , 2, "Pause [p]");
+	mvwprintw(text, 7 , 2, "Save/Quit [o]");
+	mvwprintw(text, 8 , 2, "Move [asd]");
+	mvwprintw(text, 9 , 2, "Rotate [qe]");
+	mvwprintw(text, 10, 2, "Ghosts [g]");
+	mvwprintw(text, 11, 2, "Hold [[space]]");
+
+	wattrset(text, COLOR_PAIR(2));
+	mvwprintw(text, 13, 1, "Log:");
+
+	wattrset(text, COLOR_PAIR(5));
+	mvwprintw(text, 1, 7, "%7d", pgame->level);
+	mvwprintw(text, 2, 7, "%7d", pgame->score);
+	mvwprintw(text, 3, 7, "%7d", pgame->pause_ticks);
+
+	/* Print in-game logs/messages */
+	wattrset(text, COLOR_PAIR(3));
+
+	struct log_entry *np;
+	LIST_FOREACH(np, &entry_head, entries) {
+		/* Display 4 messages, then remove anything left over */
+		if (i < 4) {
+			mvwprintw(text, 14+i, 2, "%s", np->msg);
+		} else {
+			struct log_entry *tmp = np;
+
+			LIST_REMOVE(tmp, entries);
+			free(tmp->msg);
+			free(tmp);
+		}
+		i++;
+	}
+
+#ifdef DEBUG
+	wattrset(text, A_BOLD | COLOR_PAIR(2));
+	mvwprintw(text, 19, 1, "DEBUG @ %s %s", __DATE__, __TIME__);
+
+	wattrset(text, A_BOLD | COLOR_PAIR(3));
+	mvwprintw(text, 20, 1, "saving to in-memory database");
+#endif
+
+	wnoutrefresh(text);
+}
+
 /* Draw the Hold and Next blocks listing on the side of the game. */
-void screen_draw_blocks(void)
+static void draw_pieces(void)
 {
 	struct blocks *np;
 	size_t i, count = 0;
@@ -173,7 +204,7 @@ void screen_draw_blocks(void)
 	for (i = 0; i < LEN(np->p); i++) {
 		wattrset(pieces, A_BOLD | COLOR_PAIR(np->type +1));
 		mvwprintw(pieces, np->p[i].y +2,
-				np->p[i].x +3, BLOCK_CHAR);
+				np->p[i].x +3, PIECES_CHAR);
 	}
 
 	np = FIRST_NEXT_BLOCK();
@@ -182,7 +213,7 @@ void screen_draw_blocks(void)
 		for (i = 0; i < LEN(np->p); i++) {
 			wattrset(pieces, A_BOLD | COLOR_PAIR(np->type +1));
 			mvwprintw(pieces, np->p[i].y +2 +(count*3),
-					np->p[i].x +9, BLOCK_CHAR);
+					np->p[i].x +9, PIECES_CHAR);
 		}
 
 		count++;
@@ -192,76 +223,49 @@ void screen_draw_blocks(void)
 	wnoutrefresh(pieces);
 }
 
-void screen_draw_game(void)
+static void draw_board(void)
 {
-	static size_t hash_pieces = 0;
-	size_t tmp_hash_pieces;
 	size_t i, j;
-
-	wattrset(board, COLOR_PAIR(5) | A_BOLD);
-	mvwprintw(board, TEXT_Y_OFF+1, TEXT_X_OFF+7, "%7d", pgame->level);
-	mvwprintw(board, TEXT_Y_OFF+2, TEXT_X_OFF+7, "%7d", pgame->score);
-	mvwprintw(board, TEXT_Y_OFF+3, TEXT_X_OFF+7, "%7d", pgame->pause_ticks);
-
-	/* Print in-game logs/messages */
-	struct log_entry *np = entry_head.lh_first;
-	wattrset(board, COLOR_PAIR(3));
-
-	for (i = 0; i < 4 && np; i++) {
-		mvwprintw(board, TEXT_Y_OFF +14 +i, TEXT_X_OFF +2, "%s",
-			np->msg);
-		np = np->entries.le_next;
-	}
-
-	/* It's not possible for a block to appear thrice in a row, so this will
-	 * always hash differently if the blocks have changed.
-	 */
-	tmp_hash_pieces =
-		(CURRENT_BLOCK()->type << 16) +
-		(FIRST_NEXT_BLOCK()->type << 8) +
-		FIRST_NEXT_BLOCK()->entries.le_next->type;
-
-	/* Redraw the blocks if they've changed since last we checked. */
-	if (hash_pieces != tmp_hash_pieces) {
-		hash_pieces = tmp_hash_pieces;
-		screen_draw_blocks();
-	}
-
-	/***********************/
-	/* Draw the Game board */
-	/***********************/
-
 	wattrset(board, COLOR_PAIR(1));
+
+	/* Draw board outline */
+	wattrset(board, A_BOLD | COLOR_PAIR(5));
+
+	mvwvline(board, 0, 0, '*', BLOCKS_MAX_ROWS -1);
+	mvwvline(board, 0, BLOCKS_MAX_COLUMNS +1, '*', BLOCKS_MAX_ROWS -1);
+
+	mvwhline(board, BLOCKS_MAX_ROWS -2, 0, '*', BLOCKS_MAX_COLUMNS +2);
 
 	/* Draw the background of the board. Dot every other column */
 	for (i = 2; i < BLOCKS_MAX_ROWS; i++)
-		mvwprintw(board, i -2 +GAME_Y_OFF, 1 +GAME_X_OFF,
-				" . . . . .");
+		mvwprintw(board, i -2, 1, " . . . . .");
 
-	/* Draw the Ghost block on the bottom of the board, if the user wants. */
+	/* Draw the Ghost block on the bottom of the board, if the user wants */
 	/* We draw this before we draw the pieces so that the falling block
 	 * covers the outline of the ghost block. */
 	if (pgame->ghosts && ghost_block) {
 		wattrset(board, A_DIM|COLOR_PAIR(ghost_block->type %sizeof(colors) +1));
 		for (i = 0; i < LEN(ghost_block->p); i++) {
 			mvwprintw(board,
-				ghost_block->p[i].y +ghost_block->row_off +GAME_Y_OFF-2,
-				ghost_block->p[i].x +ghost_block->col_off +GAME_X_OFF+1,
-				BLOCK_CHAR);
+				ghost_block->p[i].y +ghost_block->row_off -2,
+				ghost_block->p[i].x +ghost_block->col_off +1,
+				PIECES_CHAR);
 		}
 	}
 
 	/* Draw the game board, minus the two hidden rows above the game */
 	for (i = 2; i < BLOCKS_MAX_ROWS; i++) {
-		for (j = 0; j < BLOCKS_MAX_COLUMNS && pgame->spaces[i]; j++) {
+		if (pgame->spaces[i] == 0)
+			continue;
+
+		for (j = 0; j < BLOCKS_MAX_COLUMNS; j++) {
 			if (!blocks_at_yx(i, j))
 				continue;
 
 			wattrset(board, A_BOLD | COLOR_PAIR(
 					(pgame->colors[i][j] %sizeof(colors))
 					+1));
-			mvwprintw(board, i -2 +GAME_Y_OFF, j +1 +GAME_X_OFF,
-					BLOCK_CHAR);
+			mvwprintw(board, i -2, j +1, PIECES_CHAR);
 		}
 	}
 
@@ -270,12 +274,34 @@ void screen_draw_game(void)
 	 */
 	if (pgame->pause) {
 		wattrset(board, COLOR_PAIR(1) | A_BOLD);
-		mvwprintw(board, (BLOCKS_MAX_ROWS -6) /2 +GAME_Y_OFF,
-				 (BLOCKS_MAX_COLUMNS -2) /2 -1 +GAME_X_OFF,
+		mvwprintw(board, (BLOCKS_MAX_ROWS -6) /2,
+				 (BLOCKS_MAX_COLUMNS -2) /2 -1,
 				 "PAUSED");
 	}
 
 	wnoutrefresh(board);
+}
+
+void screen_draw_game(void)
+{
+	static size_t hash_pieces = 0;
+
+	/* It's not possible for a block to appear thrice in a row, so this will
+	 * always hash differently if the blocks have changed.
+	 */
+	size_t tmp_hash_pieces =
+		(CURRENT_BLOCK()->type << 16) +
+		(FIRST_NEXT_BLOCK()->type << 8) +
+		FIRST_NEXT_BLOCK()->entries.le_next->type;
+
+	/* Redraw the blocks if they've changed since last we checked. */
+	if (hash_pieces != tmp_hash_pieces) {
+		hash_pieces = tmp_hash_pieces;
+		draw_pieces();
+	}
+
+	draw_board();
+	draw_text();
 
 	doupdate();
 }
