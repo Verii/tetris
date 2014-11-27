@@ -64,13 +64,30 @@ void screen_init(void)
 
 	/* Draw static text */
 	mvwprintw(board, 1, 1, "Tetris-" VERSION);
-	mvwprintw(board, TEXT_Y_OFF +5, TEXT_X_OFF +1, "Hold  Next:");
-	mvwprintw(board, TEXT_Y_OFF +10, TEXT_X_OFF +1, "Controls");
-	mvwprintw(board, TEXT_Y_OFF +11, TEXT_X_OFF +2, "Pause [F1]");
-	mvwprintw(board, TEXT_Y_OFF +12, TEXT_X_OFF +2, "Quit [F3]");
-	mvwprintw(board, TEXT_Y_OFF +13, TEXT_X_OFF +2, "Move [asd]");
-	mvwprintw(board, TEXT_Y_OFF +14, TEXT_X_OFF +2, "Rotate [qe]");
-	mvwprintw(board, TEXT_Y_OFF +15, TEXT_X_OFF +2, "Hold [[space]]");
+#ifdef DEBUG
+	wattrset(board, A_BOLD | COLOR_PAIR(2));
+	mvwprintw(board, TEXT_Y_OFF +18, TEXT_X_OFF +1,
+			"DEBUG @ %s %s", __DATE__, __TIME__);
+
+	wattrset(board, A_BOLD | COLOR_PAIR(3));
+	mvwprintw(board, TEXT_Y_OFF +19, TEXT_X_OFF +1,
+			"saving to in-memory database");
+
+	wattrset(board, COLOR_PAIR(1));
+#endif
+
+	wattrset(board, COLOR_PAIR(1));
+	mvwprintw(board, TEXT_Y_OFF+1, TEXT_X_OFF+1, "Level");
+	mvwprintw(board, TEXT_Y_OFF+2, TEXT_X_OFF+1, "Score");
+	mvwprintw(board, TEXT_Y_OFF+3, TEXT_X_OFF+1, "Pause");
+
+	mvwprintw(board, TEXT_Y_OFF +7, TEXT_X_OFF +1, "Controls");
+	mvwprintw(board, TEXT_Y_OFF +8, TEXT_X_OFF +2, "Pause [p]");
+	mvwprintw(board, TEXT_Y_OFF +9, TEXT_X_OFF +2, "Save/Quit [o]");
+	mvwprintw(board, TEXT_Y_OFF +10, TEXT_X_OFF +2, "Move [asd]");
+	mvwprintw(board, TEXT_Y_OFF +11, TEXT_X_OFF +2, "Rotate [qe]");
+	mvwprintw(board, TEXT_Y_OFF +12, TEXT_X_OFF +2, "Ghosts [g]");
+	mvwprintw(board, TEXT_Y_OFF +13, TEXT_X_OFF +2, "Hold [[space]]");
 
 	/* Draw board outline */
 	wattrset(board, A_BOLD | COLOR_PAIR(5));
