@@ -102,12 +102,14 @@ struct blocks_game {
 	uint8_t *colors[BLOCKS_MAX_ROWS];	/* 1-to-1 with board */
 	uint16_t pause_ticks;		/* total pause ticks per game */
 	uint32_t nsec;			/* tick delay in nanoseconds */
-	bool pause;			/* game pause */
-	bool lose, quit;		/* how we quit */
-	bool ghosts;			/* Draw the ghost block */
+	bool pause;			/* game pause? */
+	bool lose, quit;		/* quit? lose? */
+	bool ghosts;			/* Draw the ghost block? */
+
+	struct blocks_game *opp;	/* Don't get too excited */
 
 	pthread_mutex_t lock;
-	LIST_HEAD(blocks_head, blocks) blocks_head;	/* point to LL head */
+	LIST_HEAD(blocks_head, blocks) blocks_head;	/* list of blocks */
 };
 
 extern struct blocks_game	*pgame;

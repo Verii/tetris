@@ -25,9 +25,6 @@
 void screen_init(void);
 void screen_cleanup(void);
 
-/* Get user id, filename, etc */
-void screen_draw_menu(void);
-
 /* Update screen */
 void screen_draw_game(void);
 

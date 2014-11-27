@@ -31,7 +31,7 @@ struct log_entry {
 int log_queue_add_entry(const char *);
 
 /* Cleanup memory */
-#define log_queue_clean() while (entry_head.lh_first) { \
+#define log_queue_cleanup() while (entry_head.lh_first) { \
 		struct log_entry *tmp_ = entry_head.lh_first; \
 		LIST_REMOVE(tmp_, entries); \
 		free(tmp_->msg); \

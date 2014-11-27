@@ -481,6 +481,9 @@ int blocks_init(void)
 	pgame->pause_ticks = 1000;
 	pgame->ghosts = true;
 
+	/* XXX For testing screen updates. */
+	pgame->opp = pgame;
+
 	ghost_block = malloc(sizeof *ghost_block);
 	if (!ghost_block) {
 		log_err("No memory for ghost block");

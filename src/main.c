@@ -42,12 +42,11 @@ static void cleanup(void)
 {
 	screen_cleanup();
 	blocks_cleanup();
+	log_queue_cleanup();
 
 	/* Game separator */
 	fprintf(stderr, "--\n");
 	fclose(stderr);
-
-	log_queue_clean();
 
 	printf("Thanks for playing Blocks-%s!\n", VERSION);
 }
@@ -68,7 +67,10 @@ static void usage(void)
 
 	extern const char *__progname;
 	fprintf(stderr, "%s\nBuilt on %s at %s\n"
-		"%s-%s usage:\n\t" "[-h] this help\n",
+		"%s-%s usage:\n\t"
+		"[-u] usage\n\t"
+		"[-h host] hostname to connect to\n\t"
+		"[-p port] port to connect to\n",
 		LICENSE, __DATE__, __TIME__, __progname, VERSION);
 
 	exit(EXIT_FAILURE);
@@ -121,6 +123,7 @@ static void init(void)
 		exit(EXIT_FAILURE);
 	}
 
+	/* HOME/.local/share/tetris */
 	char *dirs[] = {
 		"/.local",
 		"/share",
@@ -128,8 +131,7 @@ static void init(void)
 		NULL,
 	};
 
-	int i;
-	for (i = 0; dirs[i]; i++) {
+	for (int i = 0; dirs[i]; i++) {
 		strlcat(game_dir, dirs[i], sizeof game_dir);
 		if (try_mkdir(game_dir, mode) < 0)
 			goto err_subdir;
@@ -166,22 +168,34 @@ static void init(void)
 
 int main(int argc, char **argv)
 {
-	pthread_t input_loop;
-
 	setlocale(LC_ALL, "");
-	if (argc > 1 && argv[1][0] == '-' && argv[1][1] == 'h')
-		usage();
+
+//	char *host, *port;
 
 	/* Quit if we're not attached to a tty */
 	if (!isatty(fileno(stdin)))
 		exit(EXIT_FAILURE);
 
+	int ch;
+	while ((ch = getopt(argc, argv, "uh:p:")) != -1) {
+		switch(ch) {
+		case 'h':
+			printf("%s\n", optarg);
+			break;
+		case 'p':
+			printf("%s\n", optarg);
+			break;
+		case 'u':
+		default:
+			usage();
+			break;
+		}
+	}
+
 	init();
 	atexit(cleanup);
 
-	screen_draw_menu();
-	screen_draw_game();
-
+	pthread_t input_loop;
 	pthread_create(&input_loop, NULL, blocks_input, NULL);
 
 	blocks_loop(NULL);
