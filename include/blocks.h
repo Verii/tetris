@@ -106,6 +106,7 @@ struct blocks_game {
 	bool lose, quit;		/* how we quit */
 	bool ghosts;			/* Draw the ghost block */
 
+	pthread_mutex_t lock;
 	LIST_HEAD(blocks_head, blocks) blocks_head;	/* point to LL head */
 };
 
