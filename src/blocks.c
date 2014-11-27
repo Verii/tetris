@@ -284,6 +284,7 @@ static void update_ghost_block(void)
 
 	ghost_block->row_off = CURRENT_BLOCK()->row_off;
 	ghost_block->col_off = CURRENT_BLOCK()->col_off;
+	ghost_block->type = CURRENT_BLOCK()->type;
 	memcpy(ghost_block->p, CURRENT_BLOCK()->p, sizeof ghost_block->p);
 
 	while (drop_block(ghost_block)) ;
