@@ -381,15 +381,14 @@ static int destroy_lines(void)
 
 	/* The first two rows are 'above' the game, that's where the new blocks
 	 * come into existence. We lose if there's ever a block there. */
-	for (i = 0; i < 2; i++)
-		if (pgame->spaces[i])
-			pgame->lose = true;
+	if (pgame->spaces[0] || pgame->spaces[1])
+		pgame->lose = true; // We still get points for the turn, though
 
 	/* Check each row for a full line,
 	 * we check in reverse to ease moving the rows down when we find a full
 	 * row. Ignore the top two rows, which we checked above.
 	 */
-	for (i = BLOCKS_MAX_ROWS - 1; i >= 2; i--) {
+	for (i = BLOCKS_MAX_ROWS -1; i >= 2; i--) {
 
 		if (pgame->spaces[i] != full_row)
 			continue;
@@ -404,8 +403,9 @@ static int destroy_lines(void)
 	}
 
 	if (destroyed == 0)
-		return 0;
+		goto get_points;
 
+	/* Check for level up, Increase speed */
 	pgame->lines_destroyed += destroyed;
 	if (pgame->lines_destroyed >= (pgame->level * 2 + 2)) {
 		pgame->lines_destroyed -= (pgame->level * 2 + 2);
@@ -414,13 +414,6 @@ static int destroy_lines(void)
 
 		debug_ingame_log("Level up! Speed up!");
 	}
-
-	/* We lose our difficulty multipliers on easy moves */
-	if (destroyed != 4 && !CURRENT_BLOCK()->t_spin)
-		difficult = 0;
-
-	if (CURRENT_BLOCK()->t_spin)
-		difficult++;
 
 	/* Number of lines destroyed in move */
 	switch (destroyed) {
@@ -434,14 +427,26 @@ static int destroy_lines(void)
 			point_mod = 500;
 			break;
 		case 4:
-			debug_ingame_log("Tetris!");
-			difficult++;
 			point_mod = 800;
 			break;
 	}
 
+	/* We lose our difficulty multipliers on easy moves */
+	if (destroyed == 4) {
+		debug_ingame_log("Tetris!");
+		difficult++;
+	} else if (CURRENT_BLOCK()->t_spin) {
+		debug_ingame_log("T spin!");
+		difficult++;
+	} else {
+		difficult = 0;
+	}
+
+	/* Add difficulty bonus for consecutive difficult moves */
 	if (difficult > 1)
 		point_mod = (point_mod * 3) /2;
+
+	get_points:
 
 	pgame->score += point_mod * pgame->level
 		+ CURRENT_BLOCK()->soft_drop
