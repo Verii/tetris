@@ -33,6 +33,7 @@
 #include "screen.h"
 
 struct blocks_game *pgame;
+struct blocks *ghost_block;
 
 /*
  * Resets the block to its default positional state
