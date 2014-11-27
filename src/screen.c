@@ -27,14 +27,14 @@
 #include "debug.h"
 #include "screen.h"
 
-#define GAME_Y_OFF 2
-#define GAME_X_OFF 2
+#define GAME_Y_OFF 1
+#define GAME_X_OFF 18
 
-#define TEXT_Y_OFF 2
-#define TEXT_X_OFF (BLOCKS_MAX_COLUMNS + GAME_X_OFF + 2)
+#define BLOCKS_Y_OFF 3
+#define BLOCKS_X_OFF 2
 
-#define BLOCKS_Y_OFF TEXT_Y_OFF
-#define BLOCKS_X_OFF TEXT_X_OFF + 20
+#define TEXT_Y_OFF 1
+#define TEXT_X_OFF GAME_X_OFF + BLOCKS_MAX_COLUMNS + 2
 
 #define BLOCK_CHAR "x"
 
@@ -60,37 +60,41 @@ void screen_init(void)
 		init_pair(i + 1, colors[i], COLOR_BLACK);
 
 	board = newwin(0, 0, 0, 0);
-	pieces = newwin(17, 14, BLOCKS_Y_OFF, BLOCKS_X_OFF);
+	pieces = newwin(16, 13, BLOCKS_Y_OFF +1, BLOCKS_X_OFF);
 
 	wattrset(board, COLOR_PAIR(1));
 	box(board, 0, 0);
 
 	/* Draw static text */
 	mvwprintw(board, 1, 1, "Tetris-" VERSION);
+
+	mvwprintw(board, TEXT_Y_OFF +1, TEXT_X_OFF +1, "Level");
+	mvwprintw(board, TEXT_Y_OFF +2, TEXT_X_OFF +1, "Score");
+	mvwprintw(board, TEXT_Y_OFF +3, TEXT_X_OFF +1, "Pause");
+
+	mvwprintw(board, TEXT_Y_OFF +5 , TEXT_X_OFF +1, "Controls");
+	mvwprintw(board, TEXT_Y_OFF +6 , TEXT_X_OFF +2, "Pause [p]");
+	mvwprintw(board, TEXT_Y_OFF +7 , TEXT_X_OFF +2, "Save/Quit [o]");
+	mvwprintw(board, TEXT_Y_OFF +8 , TEXT_X_OFF +2, "Move [asd]");
+	mvwprintw(board, TEXT_Y_OFF +9 , TEXT_X_OFF +2, "Rotate [qe]");
+	mvwprintw(board, TEXT_Y_OFF +10, TEXT_X_OFF +2, "Ghosts [g]");
+	mvwprintw(board, TEXT_Y_OFF +11, TEXT_X_OFF +2, "Hold [[space]]");
+
+	mvwprintw(board, BLOCKS_Y_OFF, BLOCKS_X_OFF +1, "Hold");
+	mvwprintw(board, BLOCKS_Y_OFF, BLOCKS_X_OFF +8, "Next");
+
+	wattrset(board, COLOR_PAIR(2));
+	mvwprintw(board, TEXT_Y_OFF +13, TEXT_X_OFF +1, "Log:");
+
 #ifdef DEBUG
 	wattrset(board, A_BOLD | COLOR_PAIR(2));
-	mvwprintw(board, TEXT_Y_OFF +18, TEXT_X_OFF +1,
+	mvwprintw(board, TEXT_Y_OFF +19, TEXT_X_OFF +1,
 			"DEBUG @ %s %s", __DATE__, __TIME__);
 
 	wattrset(board, A_BOLD | COLOR_PAIR(3));
-	mvwprintw(board, TEXT_Y_OFF +19, TEXT_X_OFF +1,
+	mvwprintw(board, TEXT_Y_OFF +20, TEXT_X_OFF +1,
 			"saving to in-memory database");
-
-	wattrset(board, COLOR_PAIR(1));
 #endif
-
-	wattrset(board, COLOR_PAIR(1));
-	mvwprintw(board, TEXT_Y_OFF+1, TEXT_X_OFF+1, "Level");
-	mvwprintw(board, TEXT_Y_OFF+2, TEXT_X_OFF+1, "Score");
-	mvwprintw(board, TEXT_Y_OFF+3, TEXT_X_OFF+1, "Pause");
-
-	mvwprintw(board, TEXT_Y_OFF +7, TEXT_X_OFF +1, "Controls");
-	mvwprintw(board, TEXT_Y_OFF +8, TEXT_X_OFF +2, "Pause [p]");
-	mvwprintw(board, TEXT_Y_OFF +9, TEXT_X_OFF +2, "Save/Quit [o]");
-	mvwprintw(board, TEXT_Y_OFF +10, TEXT_X_OFF +2, "Move [asd]");
-	mvwprintw(board, TEXT_Y_OFF +11, TEXT_X_OFF +2, "Rotate [qe]");
-	mvwprintw(board, TEXT_Y_OFF +12, TEXT_X_OFF +2, "Ghosts [g]");
-	mvwprintw(board, TEXT_Y_OFF +13, TEXT_X_OFF +2, "Hold [[space]]");
 
 	/* Draw board outline */
 	wattrset(board, A_BOLD | COLOR_PAIR(5));
@@ -163,15 +167,12 @@ void screen_draw_blocks(void)
 	wattrset(pieces, COLOR_PAIR(1));
 
 	box(pieces, 0, 0);
-	mvwprintw(pieces, 1, 2, "Next");
-	mvwprintw(pieces, 1, 8, "Hold");
-
 	np = HOLD_BLOCK();
 
 	for (i = 0; i < LEN(np->p); i++) {
 		wattrset(pieces, A_BOLD | COLOR_PAIR(np->type +1));
-		mvwprintw(pieces, np->p[i].y +3,
-				np->p[i].x +9, BLOCK_CHAR);
+		mvwprintw(pieces, np->p[i].y +2,
+				np->p[i].x +3, BLOCK_CHAR);
 	}
 
 	np = FIRST_NEXT_BLOCK();
@@ -179,8 +180,8 @@ void screen_draw_blocks(void)
 	while (np) {
 		for (i = 0; i < LEN(np->p); i++) {
 			wattrset(pieces, A_BOLD | COLOR_PAIR(np->type +1));
-			mvwprintw(pieces, np->p[i].y +3 +(count*3),
-					np->p[i].x +3, BLOCK_CHAR);
+			mvwprintw(pieces, np->p[i].y +2 +(count*3),
+					np->p[i].x +9, BLOCK_CHAR);
 		}
 
 		count++;
@@ -196,19 +197,15 @@ void screen_draw_game(void)
 	size_t tmp_hash_pieces;
 	size_t i, j;
 
+	wattrset(board, COLOR_PAIR(5) | A_BOLD);
+	mvwprintw(board, TEXT_Y_OFF+1, TEXT_X_OFF+7, "%7d", pgame->level);
+	mvwprintw(board, TEXT_Y_OFF+2, TEXT_X_OFF+7, "%7d", pgame->score);
+	mvwprintw(board, TEXT_Y_OFF+3, TEXT_X_OFF+7, "%7d", pgame->pause_ticks);
+
 	/* Center the text horizontally, place the text slightly above
 	 * the middle vertically.
 	 */
 	if (pgame->pause) {
-		wattrset(board, COLOR_PAIR(5) | A_BOLD);
-
-		mvwprintw(board, TEXT_Y_OFF+1, TEXT_X_OFF+7,
-				"%7d", pgame->level);
-		mvwprintw(board, TEXT_Y_OFF+2, TEXT_X_OFF+7,
-				"%7d", pgame->score);
-		mvwprintw(board, TEXT_Y_OFF+3, TEXT_X_OFF+7,
-				"%7d", pgame->pause_ticks);
-
 		wattrset(board, COLOR_PAIR(1) | A_BOLD);
 		mvwprintw(board, (BLOCKS_MAX_ROWS -6) /2 +GAME_Y_OFF,
 				 (BLOCKS_MAX_COLUMNS -2) /2 -1 +GAME_X_OFF,
