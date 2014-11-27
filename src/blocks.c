@@ -114,28 +114,34 @@ static void randomize_block(struct blocks *block)
 	reset_block(block);
 }
 
-/*
- * To prevent an additional free/malloc we recycle the allocated memory.
- *
- * First remove it from its current state, causing the next block to 'fall'
- * into place. Then we randomize it(WHICH WIPES ALL DATA, INCLUDING PREVIOUS
- * POINTERS) and reinstall it at the end of the list.
- */
-static void update_cur_block()
+/* translate pieces in block horizontally. */
+static int translate_block(struct blocks *block, enum blocks_input_cmd cmd)
 {
-	struct blocks *last, *np = CURRENT_BLOCK();
+	int bounds_x, bounds_y;
+	int dir = 1;
+	size_t i;
 
-	LIST_REMOVE(np, entries);
+	if (!block)
+		return -1;
 
-	randomize_block(np);
+	if (cmd == MOVE_LEFT)
+		dir = -1;
 
-	/* Find last block in list */
-	for (last = FIRST_NEXT_BLOCK();
-	     last && last->entries.le_next;
-	     last = last->entries.le_next)
-		;
+	/* Check each piece for a collision */
+	for (i = 0; i < LEN(block->p); i++) {
+		bounds_x = block->p[i].x + block->col_off + dir;
+		bounds_y = block->p[i].y + block->row_off;
 
-	LIST_INSERT_AFTER(last, np, entries);
+		/* Check out of bounds before we write it */
+		if (bounds_x < 0 || bounds_x >= BLOCKS_MAX_COLUMNS ||
+		    bounds_y < 0 || bounds_y >= BLOCKS_MAX_ROWS ||
+		    blocks_at_yx(bounds_y, bounds_x))
+			return 0;
+	}
+
+	block->col_off += dir;
+
+	return 1;
 }
 
 /* rotate pieces in blocks by either 90^ or -90^ around (0, 0) pivot */
@@ -181,39 +187,11 @@ static int rotate_block(struct blocks *block, enum blocks_input_cmd cmd)
 	return 1;
 }
 
-/* translate pieces in block horizontally. */
-static int translate_block(struct blocks *block, enum blocks_input_cmd cmd)
-{
-	int bounds_x, bounds_y;
-	int dir = 1;
-	size_t i;
-
-	if (!block)
-		return -1;
-
-	if (cmd == MOVE_LEFT)
-		dir = -1;
-
-	/* Check each piece for a collision */
-	for (i = 0; i < LEN(block->p); i++) {
-		bounds_x = block->p[i].x + block->col_off + dir;
-		bounds_y = block->p[i].y + block->row_off;
-
-		/* Check out of bounds before we write it */
-		if (bounds_x < 0 || bounds_x >= BLOCKS_MAX_COLUMNS ||
-		    bounds_y < 0 || bounds_y >= BLOCKS_MAX_ROWS ||
-		    blocks_at_yx(bounds_y, bounds_x))
-			return 0;
-	}
-
-	block->col_off += dir;
-
-	return 1;
-}
-
 /*
- * Tetris Guidlines say wallkicks first try to move left, attempt rotation
- * again. Then if that fails, we try again but by moving to the right.
+ * Tetris Guidlines:
+ * If rotation fails, try to move the block left, then try to rotate again.
+ * If translation or rotation fails again, try to translate right, then try to
+ * 	rotate again.
  */
 static int try_wall_kick(struct blocks *block, enum blocks_input_cmd cmd)
 {
@@ -236,6 +214,32 @@ static int try_wall_kick(struct blocks *block, enum blocks_input_cmd cmd)
 }
 
 /*
+ * Attempts to translate the block one row down.
+ * This function is used during normal gravitational events, and during
+ * user-input 'soft drop' events.
+ */
+static int drop_block(struct blocks *block)
+{
+	size_t i, bounds_x, bounds_y;
+
+	if (!pgame || !block)
+		return -1;
+
+	for (i = 0; i < LEN(block->p); i++) {
+		bounds_y = block->p[i].y + block->row_off + 1;
+		bounds_x = block->p[i].x + block->col_off;
+
+		if (bounds_y >= BLOCKS_MAX_ROWS ||
+		    blocks_at_yx(bounds_y, bounds_x))
+			return 0;
+	}
+
+	block->row_off++;
+
+	return 1;
+}
+
+/*
  * Decrease the tick delay of the falling block.
  * Algorithm will most likely change. It currently follows the arctan curve.
  * Not quite sure that I like it, though.
@@ -247,6 +251,99 @@ static void update_tick_speed(void)
 	/* See tests/level-curve.c */
 	speed += atan((double)pgame->level / 5.0) * 2 / PI * 3;
 	pgame->nsec = (uint32_t) ((double)1E9 / speed) - 1;
+}
+
+/*
+ * To prevent an additional free/malloc we recycle the allocated memory.
+ *
+ * First remove it from its current state, causing the next block to 'fall'
+ * into place. Then we randomize it(WHICH WIPES ALL DATA, INCLUDING PREVIOUS
+ * POINTERS) and reinstall it at the end of the list.
+ */
+static void update_cur_block(void)
+{
+	struct blocks *last, *np = CURRENT_BLOCK();
+
+	LIST_REMOVE(np, entries);
+
+	randomize_block(np);
+
+	/* Find last block in list */
+	for (last = FIRST_NEXT_BLOCK();
+	     last && last->entries.le_next;
+	     last = last->entries.le_next)
+		;
+
+	LIST_INSERT_AFTER(last, np, entries);
+}
+
+static void update_ghost_block(void)
+{
+	if (!ghost_block || !pgame->ghosts)
+		return;
+
+	ghost_block->row_off = CURRENT_BLOCK()->row_off;
+	ghost_block->col_off = CURRENT_BLOCK()->col_off;
+	memcpy(ghost_block->p, CURRENT_BLOCK()->p, sizeof ghost_block->p);
+
+	while (drop_block(ghost_block)) ;
+}
+
+/*
+ * Remove the currently falling block from the board.
+ * NOT THE LINKED LIST. The block still exists in memory. We are literally just
+ * erasing the bits from the actual game board. This is used before operating
+ * on a game piece(e.g. before rotation or translation).
+ */
+static void unwrite_cur_block(void)
+{
+	struct blocks *block;
+	size_t i, x, y;
+
+	if (!CURRENT_BLOCK())
+		return;
+
+	block = CURRENT_BLOCK();
+
+	for (i = 0; i < LEN(block->p); i++) {
+		y = block->row_off + block->p[i].y;
+		x = block->col_off + block->p[i].x;
+
+		/* Remove the bit where the block exists */
+		pgame->spaces[y] &= ~(1 << x);
+	}
+}
+
+/*
+ * Inverse of the above. We write the pieces to the game board.
+ * Used after operations on a block(e.g. rotation or translation).
+ */
+static void write_cur_block(void)
+{
+	struct blocks *block;
+	int px[4], py[4];
+	size_t i;
+
+	if (!CURRENT_BLOCK())
+		return;
+
+	block = CURRENT_BLOCK();
+
+	for (i = 0; i < LEN(block->p); i++) {
+		py[i] = block->row_off + block->p[i].y;
+		px[i] = block->col_off + block->p[i].x;
+
+		if (px[i] < 0 || px[i] >= BLOCKS_MAX_COLUMNS ||
+		    py[i] < 0 || py[i] >= BLOCKS_MAX_ROWS)
+			return;
+	}
+
+	/* pgame->spaces is an array of bit fields, 1 per row */
+	for (i = 0; i < LEN(block->p); i++) {
+		/* Set the bit where the block exists */
+		pgame->spaces[py[i]] |= (1 << px[i]);
+		pgame->colors[py[i]][px[i]] = block->type;
+	}
 }
 
 /*
@@ -344,89 +441,6 @@ static int destroy_lines(void)
 		+ (CURRENT_BLOCK()->hard_drop * 2);
 
 	return destroyed;
-}
-
-/*
- * Remove the currently falling block from the board.
- * NOT THE LINKED LIST. The block still exists in memory. We are literally just
- * erasing the bits from the actual game board. This is used before operating
- * on a game piece(e.g. before rotation or translation).
- */
-static void unwrite_cur_block(void)
-{
-	struct blocks *block;
-	size_t i, x, y;
-
-	if (!CURRENT_BLOCK())
-		return;
-
-	block = CURRENT_BLOCK();
-
-	for (i = 0; i < LEN(block->p); i++) {
-		y = block->row_off + block->p[i].y;
-		x = block->col_off + block->p[i].x;
-
-		/* Remove the bit where the block exists */
-		pgame->spaces[y] &= ~(1 << x);
-	}
-}
-
-/*
- * Inverse of the above. We write the pieces to the game board.
- * Used after operations on a block(e.g. rotation or translation).
- */
-static void write_cur_block(void)
-{
-	struct blocks *block;
-	int px[4], py[4];
-	size_t i;
-
-	if (!CURRENT_BLOCK())
-		return;
-
-	block = CURRENT_BLOCK();
-
-	for (i = 0; i < LEN(block->p); i++) {
-		py[i] = block->row_off + block->p[i].y;
-		px[i] = block->col_off + block->p[i].x;
-
-		if (px[i] < 0 || px[i] >= BLOCKS_MAX_COLUMNS ||
-		    py[i] < 0 || py[i] >= BLOCKS_MAX_ROWS)
-			return;
-	}
-
-	/* pgame->spaces is an array of bit fields, 1 per row */
-	for (i = 0; i < LEN(block->p); i++) {
-		/* Set the bit where the block exists */
-		pgame->spaces[py[i]] |= (1 << px[i]);
-		pgame->colors[py[i]][px[i]] = block->type;
-	}
-}
-
-/*
- * Attempts to translate the block one row down.
- * This function is used during normal gravitational events, and during
- * user-input 'soft drop' events.
- */
-static int drop_block(struct blocks *block)
-{
-	size_t i, bounds_x, bounds_y;
-
-	if (!pgame || !block)
-		return -1;
-
-	for (i = 0; i < LEN(block->p); i++) {
-		bounds_y = block->p[i].y + block->row_off + 1;
-		bounds_x = block->p[i].x + block->col_off;
-
-		if (bounds_y >= BLOCKS_MAX_ROWS ||
-		    blocks_at_yx(bounds_y, bounds_x))
-			return 0;
-	}
-
-	block->row_off++;
-
-	return 1;
 }
 
 /*
