@@ -202,17 +202,6 @@ void screen_draw_game(void)
 	mvwprintw(board, TEXT_Y_OFF+2, TEXT_X_OFF+7, "%7d", pgame->score);
 	mvwprintw(board, TEXT_Y_OFF+3, TEXT_X_OFF+7, "%7d", pgame->pause_ticks);
 
-	/* Center the text horizontally, place the text slightly above
-	 * the middle vertically.
-	 */
-	if (pgame->pause) {
-		wattrset(board, COLOR_PAIR(1) | A_BOLD);
-		mvwprintw(board, (BLOCKS_MAX_ROWS -6) /2 +GAME_Y_OFF,
-				 (BLOCKS_MAX_COLUMNS -2) /2 -1 +GAME_X_OFF,
-				 "PAUSED");
-		goto done;
-	}
-
 	/* It's not possible for a block to appear thrice in a row, so this will
 	 * always hash differently if the blocks have changed.
 	 */
@@ -242,8 +231,7 @@ void screen_draw_game(void)
 	/* We draw this before we draw the pieces so that the falling block
 	 * covers the outline of the ghost block. */
 	if (pgame->ghosts && ghost_block) {
-		wattrset(board, A_DIM|COLOR_PAIR(ghost_block->type
-				%sizeof(colors) +1));
+		wattrset(board, A_DIM|COLOR_PAIR(ghost_block->type %sizeof(colors) +1));
 		for (i = 0; i < LEN(ghost_block->p); i++) {
 			mvwprintw(board,
 				ghost_block->p[i].y +ghost_block->row_off +GAME_Y_OFF-2,
@@ -266,7 +254,15 @@ void screen_draw_game(void)
 		}
 	}
 
-	done:
+	/* Center the text horizontally, place the text slightly above
+	 * the middle vertically.
+	 */
+	if (pgame->pause) {
+		wattrset(board, COLOR_PAIR(1) | A_BOLD);
+		mvwprintw(board, (BLOCKS_MAX_ROWS -6) /2 +GAME_Y_OFF,
+				 (BLOCKS_MAX_COLUMNS -2) /2 -1 +GAME_X_OFF,
+				 "PAUSED");
+	}
 
 	wnoutrefresh(board);
 
