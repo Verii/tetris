@@ -16,6 +16,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+/* There will always be ghosts in machines - Asimov */
+
 #ifndef BLOCKS_H_
 #define BLOCKS_H_
 
@@ -67,10 +69,11 @@ enum blocks_input_cmd {
 	HOLD,
 };
 
-/* Only the currently falling block, the next block, and the save block are
- * stored in this structure. Once a block hits another piece, we forget about
- * it; it becomes part of the game board.
+/* Only the state-dependent 7 blocks(cur, hold, 5 next blocks) are stored in
+ * this structure. Once a block hits another piece, we forget about it; it
+ * becomes part of the game board.
  */
+
 struct blocks {
 	uint32_t lock_delay;		/* how long to wait (nsec) */
 	uint8_t soft_drop, hard_drop;	/* number of blocks dropped */
@@ -97,16 +100,17 @@ struct blocks_game {
 	uint32_t score;
 
 	uint8_t *colors[BLOCKS_MAX_ROWS];	/* 1-to-1 with board */
-	uint16_t pause_ticks;			/* total pause ticks per game */
-	uint32_t nsec;				/* tick delay in nanoseconds */
-	bool pause;				/* game pause */
-	bool lose, quit;			/* how we quit */
-	pthread_mutex_t lock;
+	uint16_t pause_ticks;		/* total pause ticks per game */
+	uint32_t nsec;			/* tick delay in nanoseconds */
+	bool pause;			/* game pause */
+	bool lose, quit;		/* how we quit */
+	bool ghosts;			/* Draw the ghost block */
 
 	LIST_HEAD(blocks_head, blocks) blocks_head;	/* point to LL head */
 };
 
-extern struct blocks_game *pgame;
+extern struct blocks_game	*pgame;
+extern struct blocks		*ghost_block;
 
 /* Create game state */
 int blocks_init(void);

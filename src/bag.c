@@ -64,7 +64,7 @@ void bag_random_generator(void) {
 	 * |      |      |      |      |
 	 * +------+------+------+------+
 	 *           0      1      2
-	 *					^
+	 *		    ^
 	 *
 	 * Z == bag[cur_elm] = avail_blocks[k];
 	 *
@@ -79,7 +79,7 @@ void bag_random_generator(void) {
 	 * |      |      |      |      |
 	 * +------+------+------+------+
 	 *           0             1
-	 *   					   ^
+	 *			   ^
 	 *
 	 * S == bag[cur_elm] = avail_blocks[k];
 	 */
