@@ -33,6 +33,9 @@
 #define TEXT_Y_OFF 2
 #define TEXT_X_OFF (BLOCKS_MAX_COLUMNS + GAME_X_OFF + 2)
 
+#define BLOCKS_Y_OFF TEXT_Y_OFF
+#define BLOCKS_X_OFF TEXT_X_OFF + 20
+
 #define BLOCK_CHAR "x"
 
 static WINDOW *board, *pieces;
@@ -57,7 +60,7 @@ void screen_init(void)
 		init_pair(i + 1, colors[i], COLOR_BLACK);
 
 	board = newwin(0, 0, 0, 0);
-	pieces = newwin(4, 40, TEXT_Y_OFF +6, TEXT_X_OFF +2);
+	pieces = newwin(17, 14, BLOCKS_Y_OFF, BLOCKS_X_OFF);
 
 	wattrset(board, COLOR_PAIR(1));
 	box(board, 0, 0);
@@ -150,43 +153,84 @@ void screen_draw_menu(void)
 	}
 }
 
-void screen_draw_game(void)
+/* Draw the Hold and Next blocks listing on the side of the game. */
+void screen_draw_blocks(void)
 {
-	size_t i, j;
+	struct blocks *np;
+	size_t i, count = 0;
 
-	wattrset(board, COLOR_PAIR(1));
-	mvwprintw(board, TEXT_Y_OFF+1, TEXT_X_OFF+1, "Level       ");
-	mvwprintw(board, TEXT_Y_OFF+2, TEXT_X_OFF+1, "Score       ");
-	mvwprintw(board, TEXT_Y_OFF+3, TEXT_X_OFF+1, "Pause       ");
+	werase(pieces);
 
-	wattrset(board, COLOR_PAIR(5) | A_BOLD);
-	mvwprintw(board, TEXT_Y_OFF+1, TEXT_X_OFF+7, "%7d", pgame->level);
-	mvwprintw(board, TEXT_Y_OFF+2, TEXT_X_OFF+7, "%7d", pgame->score);
-	mvwprintw(board, TEXT_Y_OFF+3, TEXT_X_OFF+7, "%7d", pgame->pause_ticks);
+	wattrset(pieces, COLOR_PAIR(1));
 
-	/*************/
-	/* Draw game */
-	/*************/
+	box(pieces, 0, 0);
+	mvwprintw(pieces, 1, 2, "Next");
+	mvwprintw(pieces, 1, 8, "Hold");
 
-	wclear(pieces);
+	np = HOLD_BLOCK();
 
-	struct blocks *np = HOLD_BLOCK();
-	int count = 0;
+	for (i = 0; i < LEN(np->p); i++) {
+		wattrset(pieces, A_BOLD | COLOR_PAIR(np->type +1));
+		mvwprintw(pieces, np->p[i].y +3,
+				np->p[i].x +9, BLOCK_CHAR);
+	}
+
+	np = FIRST_NEXT_BLOCK();
 
 	while (np) {
 		for (i = 0; i < LEN(np->p); i++) {
 			wattrset(pieces, A_BOLD | COLOR_PAIR(np->type +1));
-			mvwprintw(pieces, np->p[i].y +1,
-					np->p[i].x +1 +(count*5),
-					BLOCK_CHAR);
+			mvwprintw(pieces, np->p[i].y +3 +(count*3),
+					np->p[i].x +3, BLOCK_CHAR);
 		}
 
 		count++;
 		np = np->entries.le_next;
-
-		if (np == CURRENT_BLOCK())
-			np = np->entries.le_next;
 	}
+
+	wnoutrefresh(pieces);
+}
+
+void screen_draw_game(void)
+{
+	static size_t hash_pieces = 0;
+	size_t tmp_hash_pieces;
+	size_t i, j;
+
+	/* Center the text horizontally, place the text slightly above
+	 * the middle vertically.
+	 */
+	if (pgame->pause) {
+		wattrset(board, COLOR_PAIR(1) | A_BOLD);
+		mvwprintw(board, (BLOCKS_MAX_ROWS -6) /2 +GAME_Y_OFF,
+				 (BLOCKS_MAX_COLUMNS -2) /2 -1 +GAME_X_OFF,
+				 "PAUSED");
+		goto done;
+	}
+
+	/* It's not possible for a block to appear thrice in a row, so this will
+	 * always hash differently if the blocks have changed.
+	 */
+	tmp_hash_pieces =
+		(CURRENT_BLOCK()->type << 16) +
+		(FIRST_NEXT_BLOCK()->type << 8) +
+		FIRST_NEXT_BLOCK()->entries.le_next->type;
+
+	/* Redraw the blocks if they've changed since last we checked. */
+	if (hash_pieces != tmp_hash_pieces) {
+		hash_pieces = tmp_hash_pieces;
+		screen_draw_blocks();
+	}
+
+	/***********************/
+	/* Draw the Game board */
+	/***********************/
+
+	wattrset(board, COLOR_PAIR(5) | A_BOLD);
+
+	mvwprintw(board, TEXT_Y_OFF+1, TEXT_X_OFF+7, "%7d", pgame->level);
+	mvwprintw(board, TEXT_Y_OFF+2, TEXT_X_OFF+7, "%7d", pgame->score);
+	mvwprintw(board, TEXT_Y_OFF+3, TEXT_X_OFF+7, "%7d", pgame->pause_ticks);
 
 	wattrset(board, COLOR_PAIR(1));
 
@@ -194,6 +238,19 @@ void screen_draw_game(void)
 	for (i = 2; i < BLOCKS_MAX_ROWS; i++)
 		mvwprintw(board, i -2 +GAME_Y_OFF, 1 +GAME_X_OFF,
 				" . . . . .");
+
+	/* Draw the Ghost block on the bottom of the board, if the user wants. */
+	/* We draw this before we draw the pieces so that the falling block covers
+	 * the outline of the ghost block. */
+	if (pgame->ghosts && ghost_block) {
+		wattrset(board, A_DIM|COLOR_PAIR(ghost_block->type %sizeof(colors) +1));
+		for (i = 0; i < LEN(ghost_block->p); i++) {
+			mvwprintw(board,
+				ghost_block->p[i].y +GAME_Y_OFF +ghost_block->row_off -2,
+				ghost_block->p[i].x +GAME_X_OFF +ghost_block->col_off +1,
+				BLOCK_CHAR);
+		}
+	}
 
 	/* Draw the game board, minus the two hidden rows above the game */
 	for (i = 2; i < BLOCKS_MAX_ROWS; i++) {
@@ -209,18 +266,11 @@ void screen_draw_game(void)
 		}
 	}
 
-	/* Center the text horizontally, place the text slightly above
-	 * the middle vertically.
-	 */
-	if (pgame->pause) {
-		wattrset(board, COLOR_PAIR(1) | A_BOLD);
-		mvwprintw(board, (BLOCKS_MAX_ROWS -6) /2 +GAME_Y_OFF,
-				 (BLOCKS_MAX_COLUMNS -2) /2 -1 +GAME_X_OFF,
-				 "PAUSED");
-	}
+	done:
 
-	wrefresh(pieces);
-	wrefresh(board);
+	wnoutrefresh(board);
+
+	doupdate();
 }
 
 /* Game over screen */
