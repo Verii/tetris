@@ -44,9 +44,8 @@ struct db_results {
 	TAILQ_ENTRY(db_results) entries;
 };
 
-/* These functions automatically open the database specified in db_info,
- * they do their thing and then cleanup after themselves.
- */
+int db_init(void);
+int db_cleanup(void);
 
 /* Saves game state to disk. Can be restored at a later time */
 int db_save_state(void);
