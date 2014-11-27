@@ -16,13 +16,13 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#include <string.h>
+
 #include "bag.h"
 
-#define FILL_BIT 0x80
-#define DIRTY_BIT FILL_BIT
+#define DIRTY_BIT 0x80
 
-static int bag_bag7[] = { DIRTY_BIT, DIRTY_BIT, DIRTY_BIT,
-			  DIRTY_BIT, DIRTY_BIT, DIRTY_BIT, DIRTY_BIT };
+static int bag_bag7[NUM_BLOCKS];
 
 /* This is the "Random Generator" algorithm.
  * Create a 'bag' of all seven pieces, then one by one remove an element from
@@ -31,7 +31,11 @@ static int bag_bag7[] = { DIRTY_BIT, DIRTY_BIT, DIRTY_BIT,
  * This helps to reduce the length of sequential pieces.
  */
 void bag_random_generator(void) {
-	uint8_t rng_block, avail_blocks[] = {
+
+	uint8_t rng_block;
+
+	/* The order here DOES matter, edit with caution */
+	uint8_t avail_blocks[] = {
 		O_BLOCK,
 		I_BLOCK,
 		T_BLOCK,
@@ -41,35 +45,65 @@ void bag_random_generator(void) {
 		S_BLOCK,
 	};
 
-	debug("Creating new bag");
+	memset(bag_bag7, DIRTY_BIT, NUM_BLOCKS);
 
 	/*
-	 * First piece is never the O, S, or Z blocks.
+	 * From the Tetris Guidlines:
+	 * 	First piece is never the O, S, or Z blocks.
 	 */
-retry:
-	rng_block = rand() % NUM_BLOCKS;
-	if (rng_block == O_BLOCK ||
-	    rng_block == S_BLOCK ||
-	    rng_block == Z_BLOCK)
-		goto retry;
-
+	rng_block = rand() % (NUM_BLOCKS - 3) + 1;
 	bag_bag7[0] = avail_blocks[rng_block];
-	avail_blocks[rng_block] |= FILL_BIT; // Mark dirty
+	avail_blocks[rng_block] = DIRTY_BIT;
 
+	/* int k = rand() % (NUM_BLOCKS - CHOSEN_ELEMENTS);
+	 * k == 1;
+	 *
+	 * +------+------+------+------+
+	 * |      |      |      |      |
+	 * | nil  |  T   |  Z   |  S   |
+	 * |      |      |      |      |
+	 * +------+------+------+------+
+	 *           0      1      2
+	 *					^
+	 *
+	 * Z == bag[cur_elm] = avail_blocks[k];
+	 *
+	 * ---
+	 *
+	 * int k = rand() % (NUM_BLOCKS - CHOSEN_ELEMENTS);
+	 * k == 1;
+	 *
+	 * +------+------+------+------+
+	 * |      |      |      |      |
+	 * | nil  |  T   | nil  |  S   |
+	 * |      |      |      |      |
+	 * +------+------+------+------+
+	 *           0             1
+	 *   					   ^
+	 *
+	 * S == bag[cur_elm] = avail_blocks[k];
+	 */
 
 	/*
 	 * Fill remaining bag locations with available pieces
 	 */
 	for (uint8_t i = 1; i < NUM_BLOCKS; i++) {
 
-		/* Keep trying until we find a block that hasn't been used */
-		do {
-			rng_block = rand() % NUM_BLOCKS;
-		} while (avail_blocks[rng_block] >= FILL_BIT);
+		rng_block = rand() % (NUM_BLOCKS - i) +1;
 
-		bag_bag7[i] = avail_blocks[rng_block];
-		avail_blocks[rng_block] |= FILL_BIT;
+		size_t get_elm = 0;
+
+		for (; get_elm < NUM_BLOCKS && rng_block; get_elm++)
+			if (avail_blocks[get_elm] != DIRTY_BIT)
+				rng_block--;
+
+		bag_bag7[i] = avail_blocks[get_elm-1];
+		avail_blocks[get_elm-1] = DIRTY_BIT;
 	}
+
+	debug("Creating new bag.");
+	for (size_t i = 0; i < NUM_BLOCKS; i++)
+		debug("block %d, type %d", i, bag_bag7[i]);
 }
 
 int bag_next_piece(void) {
