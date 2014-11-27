@@ -468,6 +468,12 @@ int blocks_init(void)
 	pgame->level = 1;
 	pgame->nsec = 1E9 - 1;
 	pgame->pause_ticks = 1000;
+	pgame->ghosts = true;
+
+	ghost_block = malloc(sizeof *ghost_block);
+	if (!ghost_block) {
+		log_err("No memory for ghost block");
+	}
 
 	LIST_INIT(&pgame->blocks_head);
 
@@ -590,7 +596,11 @@ void *blocks_loop(void *vp)
 		pgame->pause = (pgame->pause && pgame->pause_ticks);
 
 		unwrite_cur_block();
+
 		hit = drop_block(CURRENT_BLOCK());
+
+		update_ghost_block();
+
 		write_cur_block();
 
 		if (hit == 0) {
@@ -715,6 +725,8 @@ void *blocks_input(void *vp)
 			break;
 			}
 		}
+
+		update_ghost_block();
 
 		/* then rewrite it */
 		write_cur_block();
