@@ -15,4 +15,5 @@ src/main.c is also a good place to start.
 ## License
 Read the LICENSE file.
 
-![screenshot](assets/screenshot.png "falling blocks game")
+![screenshot](assets/screenshot2.png "falling blocks game2")
+![screenshot2](assets/screenshot.png "falling blocks game")
