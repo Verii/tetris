@@ -32,17 +32,16 @@
 #include <unistd.h>
 
 #include "blocks.h"
-#include "db.h"
-#include "debug.h"
 #include "screen.h"
-#include "log_queue.h"
+#include "logs.h"
+#include "db.h"
 
 /* We can exit() at any point and still safely cleanup */
 static void cleanup(void)
 {
 	screen_cleanup();
 	blocks_cleanup();
-	log_queue_cleanup();
+	logs_cleanup();
 
 	/* Game separator */
 	fprintf(stderr, "--\n");

@@ -19,9 +19,6 @@
 #ifndef SCREEN_H_
 #define SCREEN_H_
 
-#include "blocks.h"
-#include "db.h"
-
 void screen_init(void);
 void screen_cleanup(void);
 

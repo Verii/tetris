@@ -1,7 +1,7 @@
 BIN = blocks
 VERSION = v0.27
-SRC = src/main.c src/bag.c src/blocks.c src/db.c src/debug.c \
-      src/screen.c src/log_queue.c
+SRC = src/main.c src/bag.c src/blocks.c src/db.c \
+      src/screen.c src/logs.c
 OBJS = ${SRC:.c=.o}
 
 DESTDIR = /usr/local/bin

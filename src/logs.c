@@ -17,14 +17,14 @@
  */
 
 #include <stdarg.h>
+#include <time.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
+#include <sys/queue.h>
 
-#include "debug.h"
-#include "log_queue.h"
+#include "logs.h"
 
-static void debug_format_message(char **strp, const char *fmt, va_list ap)
+static void logs_format_message(char **strp, const char *fmt, va_list ap)
 {
 	int ret;
 	ret = vasprintf(strp, fmt, ap);
@@ -37,20 +37,57 @@ static void debug_format_message(char **strp, const char *fmt, va_list ap)
 	}
 }
 
-/* Adds log message to a message queue, to be printed in game.
- * Then prints the same message to stderr.
- */
-void debug_ingame_log(const char *fmt, ...)
+static int logs_add_to_queue(const char *msg)
+{
+	int msg_len = -1;
+	struct log_entry *np = calloc(1, sizeof *np);
+	if (!np)
+		return -1;
+
+	msg_len = strlen(msg)+1;
+
+	np->msg = malloc(msg_len);
+	if (!np->msg) {
+		free(np);
+		return -1;
+	}
+
+	strncpy(np->msg, msg, msg_len);
+
+	LIST_INSERT_HEAD(&entry_head, np, entries);
+
+	return msg_len;
+}
+
+void logs_init(void)
+{
+	LIST_INIT(&entry_head);
+}
+
+void logs_cleanup(void)
+{
+	struct log_entry *np;
+
+	while (entry_head.lh_first) {
+		np = entry_head.lh_first;
+		LIST_REMOVE(np, entries);
+		free(np->msg);
+		free(np);
+	}
+}
+
+/* Adds log message to a message queue, to be printed in game */
+void logs_to_game(const char *fmt, ...)
 {
 	char *debug_message;
 	va_list ap;
 
 	va_start(ap, fmt);
-	debug_format_message(&debug_message, fmt, ap);
+	logs_format_message(&debug_message, fmt, ap);
 	va_end(ap);
 
 	if (debug_message)
-		log_queue_add_entry(debug_message);
+		logs_add_to_queue(debug_message);
 
 	free(debug_message);
 }
@@ -58,7 +95,7 @@ void debug_ingame_log(const char *fmt, ...)
 /* Prints a log message of the form:
  * "[time] message"
  */
-void debug_log(const char *fmt, ...)
+void logs_to_file(const char *fmt, ...)
 {
 	char *debug_message;
 	time_t s = time(NULL);
@@ -68,7 +105,7 @@ void debug_log(const char *fmt, ...)
 
 	va_list ap;
 	va_start(ap, fmt);
-	debug_format_message(&debug_message, fmt, ap);
+	logs_format_message(&debug_message, fmt, ap);
 	va_end(ap);
 
 	fprintf(stderr, "%s %s\n", date, debug_message ? debug_message : "");

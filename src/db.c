@@ -23,7 +23,7 @@
 #include <sqlite3.h>
 
 #include "db.h"
-#include "debug.h"
+#include "logs.h"
 #include "blocks.h"
 
 static struct db_info save;

@@ -22,11 +22,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "blocks.h"
 #include "db.h"
-#include "debug.h"
+#include "logs.h"
+#include "blocks.h"
 #include "screen.h"
-#include "log_queue.h"
 
 /* Hold/Next Pieces are draw to the left of the Game */
 #define PIECES_Y_OFF 4

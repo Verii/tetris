@@ -29,7 +29,7 @@
 
 #include "bag.h"
 #include "blocks.h"
-#include "debug.h"
+#include "logs.h"
 #include "screen.h"
 
 struct blocks_game *pgame;
@@ -412,7 +412,7 @@ static int destroy_lines(void)
 		pgame->level++;
 		update_tick_speed();
 
-		debug_ingame_log("Level up! Speed up!");
+		logs_to_game("Level up! Speed up!");
 	}
 
 	/* Number of lines destroyed in move */
@@ -433,10 +433,10 @@ static int destroy_lines(void)
 
 	/* We lose our difficulty multipliers on easy moves */
 	if (destroyed == 4) {
-		debug_ingame_log("Tetris!");
+		logs_to_game("Tetris!");
 		difficult++;
 	} else if (CURRENT_BLOCK()->t_spin) {
-		debug_ingame_log("T spin!");
+		logs_to_game("T spin!");
 		difficult++;
 	} else {
 		difficult = 0;

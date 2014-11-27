@@ -16,30 +16,40 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include <stdlib.h>
-#include <string.h>
+#ifndef LOGS_H_
+#define LOGS_H_
+
+#include <stdio.h>
 #include <sys/queue.h>
 
-#include "log_queue.h"
+#ifdef DEBUG
+#define debug(M, ...)	 logs_to_file("[DEBUG] " M, ##__VA_ARGS__)
+#else
+#define debug(M, ...)
+#endif
 
-int log_queue_add_entry(const char *msg)
-{
-	int msg_len = -1;
-	struct log_entry *np = calloc(1, sizeof *np);
-	if (!np)
-		return -1;
+#define log_err(M, ...)  do { \
+	logs_to_file("[ERR] " M " (%s:%d)", \
+		##__VA_ARGS__, __FILE__, __LINE__); \
+	fflush(NULL); \
+	} while(0)
 
-	msg_len = strlen(msg)+1;
+#define log_warn(M, ...) logs_to_file("[WARN] " M " (%s:%d)", ##__VA_ARGS__, \
+		__FILE__, __LINE__)
 
-	np->msg = malloc(msg_len);
-	if (!np->msg) {
-		free(np);
-		return -1;
-	}
+#define log_info(M, ...) logs_to_file("[INFO] " M " (%s:%d)", ##__VA_ARGS__, \
+		__FILE__, __LINE__)
 
-	strncpy(np->msg, msg, msg_len);
+LIST_HEAD(log_entry_head, log_entry) entry_head;
+struct log_entry {
+	char *msg;
+	LIST_ENTRY(log_entry) entries;
+};
 
-	LIST_INSERT_HEAD(&entry_head, np, entries);
+void logs_init(void);
+void logs_cleanup(void);
 
-	return msg_len;
-}
+void logs_to_game(const char *, ...);
+void logs_to_file(const char *, ...);
+
+#endif /* LOGS_H_ */

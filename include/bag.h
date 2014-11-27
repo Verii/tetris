@@ -19,12 +19,6 @@
 #ifndef BAG_H_
 #define BAG_H_
 
-#include <string.h>
-#include <stdlib.h>
-
-#include "blocks.h"
-#include "debug.h"
-
 /* This is the "Random Generator" algorithm.
  * Create a 'bag' of all seven pieces, then one by one remove an element from
  * the bag. Refill the bag when it's empty.

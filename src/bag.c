@@ -16,8 +16,11 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#include <stdlib.h>
 #include <string.h>
 
+#include "blocks.h"
+#include "logs.h"
 #include "bag.h"
 
 #define DIRTY_BIT 0x80
