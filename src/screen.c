@@ -120,24 +120,29 @@ void screen_draw_menu(void)
 	memset(psave, 0, sizeof *psave);
 
 	/* TODO place holder name, get from user later */
-	strlcpy(psave->id, "Lorem Ipsum", sizeof psave->id);
+	strlcpy(psave->id, getenv("USER"), sizeof psave->id);
 
 	psave->file_loc = calloc(1, buf_len);
-	if (psave->file_loc == NULL) {
+	if (!psave->file_loc) {
 		log_err("Out of memory");
 		exit(EXIT_FAILURE);
 	}
 
+	/* Set location of DB file on disk.
+	 * We already know that $HOME is safe from the environment.
+	 * Technically, the user could redefine the HOME variable in the short time
+	 * since the previous access. But if that was to happen, all they would get
+	 * is a single-session save.
+	 */
+	snprintf(psave->file_loc, buf_len, "%s/.local/share/tetris/saves",
+			getenv("HOME"));
+
 	/* Create an in-memory DB when debugging so we don't mess
 	 * with our saves
 	 */
-	snprintf(psave->file_loc, buf_len,
-#if defined(DEBUG) || !defined(NDEBUG)
-		":memory:"
-#else
-		"%s/.local/share/tetris/saves", getenv("HOME")
+#ifdef DEBUG
+	strncpy(psave->file_loc, ":memory:", buf_len);
 #endif
-		);
 
 	/* Start the game paused if we can resume from an old save */
 	if (db_resume_state() > 0) {
