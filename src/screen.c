@@ -131,11 +131,10 @@ void screen_draw_menu(void)
 		exit(EXIT_FAILURE);
 	}
 
-	/* Set location of DB file on disk.
-	 * We already know that $HOME is safe from the environment.
-	 * Technically, the user could redefine the HOME variable in the short time
-	 * since the previous access. But if that was to happen, all they would get
-	 * is a single-session save.
+	/* Set location of DB file on disk.  We already know that $HOME is safe
+	 * from the environment.  Technically, the user could redefine the HOME
+	 * variable in the short time since the previous access. But if that
+	 * was to happen, all they would get is a single-session save.
 	 */
 	snprintf(psave->file_loc, buf_len, "%s/.local/share/tetris/saves",
 			getenv("HOME"));
@@ -201,6 +200,15 @@ void screen_draw_game(void)
 	 * the middle vertically.
 	 */
 	if (pgame->pause) {
+		wattrset(board, COLOR_PAIR(5) | A_BOLD);
+
+		mvwprintw(board, TEXT_Y_OFF+1, TEXT_X_OFF+7,
+				"%7d", pgame->level);
+		mvwprintw(board, TEXT_Y_OFF+2, TEXT_X_OFF+7,
+				"%7d", pgame->score);
+		mvwprintw(board, TEXT_Y_OFF+3, TEXT_X_OFF+7,
+				"%7d", pgame->pause_ticks);
+
 		wattrset(board, COLOR_PAIR(1) | A_BOLD);
 		mvwprintw(board, (BLOCKS_MAX_ROWS -6) /2 +GAME_Y_OFF,
 				 (BLOCKS_MAX_COLUMNS -2) /2 -1 +GAME_X_OFF,
@@ -226,12 +234,6 @@ void screen_draw_game(void)
 	/* Draw the Game board */
 	/***********************/
 
-	wattrset(board, COLOR_PAIR(5) | A_BOLD);
-
-	mvwprintw(board, TEXT_Y_OFF+1, TEXT_X_OFF+7, "%7d", pgame->level);
-	mvwprintw(board, TEXT_Y_OFF+2, TEXT_X_OFF+7, "%7d", pgame->score);
-	mvwprintw(board, TEXT_Y_OFF+3, TEXT_X_OFF+7, "%7d", pgame->pause_ticks);
-
 	wattrset(board, COLOR_PAIR(1));
 
 	/* Draw the background of the board. Dot every other column */
@@ -240,14 +242,15 @@ void screen_draw_game(void)
 				" . . . . .");
 
 	/* Draw the Ghost block on the bottom of the board, if the user wants. */
-	/* We draw this before we draw the pieces so that the falling block covers
-	 * the outline of the ghost block. */
+	/* We draw this before we draw the pieces so that the falling block
+	 * covers the outline of the ghost block. */
 	if (pgame->ghosts && ghost_block) {
-		wattrset(board, A_DIM|COLOR_PAIR(ghost_block->type %sizeof(colors) +1));
+		wattrset(board, A_DIM|COLOR_PAIR(ghost_block->type
+				%sizeof(colors) +1));
 		for (i = 0; i < LEN(ghost_block->p); i++) {
 			mvwprintw(board,
-				ghost_block->p[i].y +GAME_Y_OFF +ghost_block->row_off -2,
-				ghost_block->p[i].x +GAME_X_OFF +ghost_block->col_off +1,
+				ghost_block->p[i].y +ghost_block->row_off +GAME_Y_OFF-2,
+				ghost_block->p[i].x +ghost_block->col_off +GAME_X_OFF+1,
 				BLOCK_CHAR);
 		}
 	}

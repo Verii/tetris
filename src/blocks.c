@@ -444,11 +444,10 @@ static int destroy_lines(void)
 }
 
 /*
- * Setup the game structure for use.
- * Here we create the initial game pieces for the game (5 'next' pieces, plus
- * the current piece and the 'hold' piece(total 7 game pieces).
- * We also allocate memory for the board colors, and set some initial
- * variables.
+ * Setup the game structure for use.  Here we create the initial game pieces
+ * for the game (5 'next' pieces, plus the current piece and the 'hold'
+ * piece(total 7 game pieces).  We also allocate memory for the board colors,
+ * and set some initial variables.
  */
 int blocks_init(void)
 {
@@ -477,10 +476,7 @@ int blocks_init(void)
 
 	LIST_INIT(&pgame->blocks_head);
 
-	/* We need a head of the list to properly add new blocks, so manually
-	 * add the head. Then use a loop to add the rest of the starting
-	 * blocks.
-	 */
+	/* Create and add each block to the linked list */
 	for (i = 0; i < NEXT_BLOCKS_LEN +2; i++) {
 		struct blocks *last, *np = malloc(sizeof *np);
 		if (!np) {
@@ -490,7 +486,10 @@ int blocks_init(void)
 
 		randomize_block(np);
 
-		/* Manually add the head, then continue adding the others */
+		/* We need a head of the list to properly add new blocks, so
+		 * manually add the head. Then use a loop to add the rest of
+		 * the starting blocks.
+		 */
 		if (i == 0) {
 			LIST_INSERT_HEAD(&pgame->blocks_head, np, entries);
 			continue;
@@ -587,6 +586,7 @@ void *blocks_loop(void *vp)
 
 		if (pgame->pause && pgame->pause_ticks) {
 #ifndef DEBUG
+			/* Don't tick down when we build in DEBUG */
 			pgame->pause_ticks--;
 #endif
 			goto draw_game;
@@ -629,15 +629,13 @@ void *blocks_loop(void *vp)
  * User input. Hopefully self explanatory.
  *
  * Input keys are currently:
- * 	F1 pause
- * 	F3 quit
- *
- * 	wasdqe
+ * 	- P pause
+ * 	- Q save/quit
+ * 	- G toggle ghost
  * 	- w hard drops a piece to the bottom.
- * 	- a/d move left/right respectively.
+ * 	- ad move left/right respectively.
  * 	- s soft drops one row.
  * 	- qe rotate counter clockwise/clockwise repectively.
- *
  * 	- space is used to hold the currently falling block.
  */
 void *blocks_input(void *vp)
