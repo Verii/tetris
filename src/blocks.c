@@ -461,6 +461,8 @@ int blocks_init(void)
 		exit(EXIT_FAILURE);
 	}
 
+	bag_random_generator();
+
 	pthread_mutex_init(&pgame->lock, NULL);
 
 	pgame->level = 1;
