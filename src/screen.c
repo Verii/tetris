@@ -30,7 +30,6 @@
 /* Hold/Next Pieces are draw to the left of the Game */
 #define PIECES_Y_OFF 4
 #define PIECES_X_OFF 3
-
 #define PIECES_CHAR "x"
 
 #define BOARD_Y_OFF 1
@@ -49,7 +48,7 @@ static const char colors[] = { COLOR_WHITE, COLOR_RED, COLOR_GREEN,
 	COLOR_YELLOW, COLOR_BLUE, COLOR_MAGENTA, COLOR_CYAN
 };
 
-void screen_init(void)
+int screen_init(void)
 {
 	log_info("Initializing ncurses context");
 	initscr();
@@ -80,7 +79,16 @@ void screen_init(void)
 
 	board_opp = text;
 
+	/* Try to resume the last played game.
+	 * If we can, pause the game.
+	 */
+	if (db_resume_state() > 0) {
+		pgame->pause = true;
+	}
+
 	refresh();
+
+	return 1;
 }
 
 void screen_cleanup(void)
@@ -93,45 +101,6 @@ void screen_cleanup(void)
 
 	clear();
 	endwin();
-}
-
-void screen_draw_menu(void)
-{
-	const size_t buf_len = 256;
-
-	memset(psave, 0, sizeof *psave);
-
-	/* TODO place holder name, get from user later */
-	strlcpy(psave->id, getenv("USER"), sizeof psave->id);
-
-	psave->file_loc = calloc(1, buf_len);
-	if (!psave->file_loc) {
-		log_err("Out of memory");
-		exit(EXIT_FAILURE);
-	}
-
-	/* Set location of DB file on disk.  We already know that $HOME is safe
-	 * from the environment.  Technically, the user could redefine the HOME
-	 * variable in the short time since the previous access. But if that
-	 * was to happen, all they would get is a single-session save.
-	 */
-	snprintf(psave->file_loc, buf_len, "%s/.local/share/tetris/saves",
-			getenv("HOME"));
-
-	/* Create an in-memory DB when debugging so we don't mess
-	 * with our saves
-	 */
-#ifdef DEBUG
-	strncpy(psave->file_loc, ":memory:", buf_len);
-	return; // Can't resume from an in-memory DB anyway. Don't polute logs.
-#endif
-
-	/* Try to resume the last played game.
-	 * If we can, pause the game.
-	 */
-	if (db_resume_state() > 0) {
-		pgame->pause = true;
-	}
 }
 
 static void draw_text(void)
@@ -167,8 +136,8 @@ static void draw_text(void)
 
 	struct log_entry *np;
 	LIST_FOREACH(np, &entry_head, entries) {
-		/* Display 4 messages, then remove anything left over */
-		if (i < 4) {
+		/* Display 7 messages, then remove anything left over */
+		if (i < 7) {
 			mvwprintw(text, 14+i, 2, "%s", np->msg);
 		} else {
 			struct log_entry *tmp = np;
@@ -233,7 +202,7 @@ static void draw_board(bool self, struct blocks_game *player, WINDOW *win)
 	char player_str[10];
 
 	if (self) {
-		strncpy(player_str, "Player 1", sizeof player_str);
+		strncpy(player_str, pgame->id, sizeof player_str);
 		x_off = 0;
 	} else {
 		strncpy(player_str, "Player 2", sizeof player_str);
@@ -294,8 +263,11 @@ static void draw_board(bool self, struct blocks_game *player, WINDOW *win)
 				 "PAUSED");
 	}
 
+	int player_len = strlen(player_str);
+
 	wattrset(win, COLOR_PAIR(1));
-	mvwprintw(win, BOARD_HEIGHT -1, 2 +x_off, "%s", player_str);
+	mvwprintw(win, BOARD_HEIGHT -1, (BOARD_WIDTH -player_len)/2 +x_off,
+			"%s", player_str);
 
 	if (self == false) {
 		const char *brick_wall[] = {
@@ -332,15 +304,16 @@ void screen_draw_game(void)
 		draw_pieces();
 	}
 
+	/* Draw "Our" board. */
 	draw_board(true, pgame, board);
 
-	/* If we're multiplayer, the opponents board replaces the text */
-	if (pgame->opp) {
+	/* If we're multiplayer, the opponent's board replaces text */
+	if (pgame->opp)
 		draw_board(false, pgame->opp, board_opp);
-	} else {
-		/* Draw score, game controls, timers, logs, etc. */
+
+	/* Draw score, game controls, timers, logs, etc. */
+	else
 		draw_text();
-	}
 
 	doupdate();
 }
@@ -380,7 +353,6 @@ void screen_draw_over(void)
 	refresh();
 
 	db_clean_scores();
-	free(psave->file_loc);
 
 	while (getch() != ' ') ;
 }
