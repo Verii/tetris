@@ -19,7 +19,7 @@
 #ifndef SCREEN_H_
 #define SCREEN_H_
 
-void screen_init(void);
+int screen_init(void);
 void screen_cleanup(void);
 
 /* Update screen */
