@@ -29,6 +29,6 @@
 int try_mkdir(const char *path, mode_t mode);
 
 /* Create all subdirectories in a path */
-int try_mkdir_p(const char *path, mode_t mode);
+int try_mkdir_r(const char *path, mode_t mode);
 
 #endif /* HELPERS_H_ */

@@ -24,8 +24,8 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include "helpers.h"
 #include "logs.h"
+#include "helpers.h"
 
 int try_mkdir(const char *path, mode_t mode)
 {
@@ -58,34 +58,35 @@ int try_mkdir(const char *path, mode_t mode)
 /* Treated like the POSIX `mkdir -p` switch, create all subdirectories in a
  * path.
  */
-int try_mkdir_p(const char *path, mode_t mode)
+int try_mkdir_r(const char *path, mode_t mode)
 {
-	(void) path;
-	(void) mode;
-	return 1;
+	/* Local copy, strtok modifies first argument */
+	char pcpy[256];
 
-	/* TODO
-	 * build the path by parsing the string for '/' characters
-	 */
+	/* subdirectory we're building */
+	char subdir[256];
 
-	/* HOME/.local/share/tetris */
-	char dir[256], *sub_dirs[] = {
-		"/.local",
-		"/share",
-		"/tetris",
-		NULL,
-	};
+	/* next token, save state */
+	char *p, *saveptr;
 
-	for (int i = 0; sub_dirs[i]; i++) {
-		strlcat(dir, sub_dirs[i], sizeof dir);
-		if (try_mkdir(dir, mode) != 1)
-			goto err_subdir;
+	strncpy(pcpy, path, sizeof pcpy);
+	strncpy(subdir, "/", sizeof subdir);
+
+	p = strtok_r(pcpy, "/", &saveptr);
+
+	strncat(subdir, p, sizeof subdir);
+
+	while ((p = strtok_r(NULL, "/", &saveptr)) != NULL) {
+		strncat(subdir, "/", sizeof subdir);
+		strncat(subdir, p, sizeof subdir);
+
+		if (try_mkdir(subdir, mode) != 1)
+			goto err_mkdir_r;
 	}
 
 	return 1;
 
-	err_subdir:
-
-	log_err("Cannot create subdirectories in %s", path);
+err_mkdir_r:
+	log_err("Unable to recursively create directory: %s", path);
 	return -1;
 }
