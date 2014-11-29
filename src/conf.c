@@ -25,6 +25,7 @@
 #include "logs.h"
 #include "helpers.h"
 
+/* Set global compiled-in defaults */
 struct config configuration = {
 	.hostname = CONF_HOSTNAME,
 	.port = CONF_PORT,
@@ -33,13 +34,26 @@ struct config configuration = {
 	.conf_dir = CONF_CONFIG,
 };
 
-int conf_parse(const char *path)
+/* Replaces '~' in a pathname with the user's HOME variable.
+ * TODO make this safer, fail if the user doesn't have HOME
+ * TODO accept "$HOME" also
+ */
+static int conf_replace_home(char *path, size_t len)
 {
-	logs_to_file("Not implemented: %s", path);
-	return 0;
+	char buf[256], *rbuf;
+
+	const char *home_dir = getenv("HOME");
+
+	strncpy(buf, path, sizeof buf);
+	rbuf = strtok(buf, "~");
+
+	memcpy(path, home_dir, len);
+	strlcat(path, rbuf, len);
+
+	return 1;
 }
 
-int conf_init(const char *path)
+static int conf_parse(const char *path)
 {
 	char *home_dir;
 	mode_t mode = S_IRUSR | S_IWUSR | S_IXUSR;
