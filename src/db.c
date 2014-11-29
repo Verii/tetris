@@ -233,8 +233,6 @@ int db_resume_state(void)
 		sqlite3_finalize(delete);
 	}
 
-	log_err("debug. remove me.");
-
 	sqlite3_finalize(stmt);
 	return ret;
 }
