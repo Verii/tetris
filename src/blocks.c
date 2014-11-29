@@ -529,7 +529,7 @@ int blocks_init(void)
 		}
 	}
 
-	log_info("Game successfully initialized\n");
+	log_info("Game successfully initialized");
 
 	return 1;
 }
