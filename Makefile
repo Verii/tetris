@@ -1,7 +1,7 @@
-BIN = blocks
-VERSION = v0.27
-SRC = src/main.c src/bag.c src/blocks.c src/db.c \
-      src/screen.c src/logs.c
+BIN = tetris
+VERSION = v0.28
+SRC = src/main.c src/bag.c src/blocks.c src/db.c src/screen.c \
+      src/logs.c src/conf.c src/helpers.c
 OBJS = ${SRC:.c=.o}
 
 DESTDIR = /usr/local/bin
