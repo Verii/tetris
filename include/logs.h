@@ -28,11 +28,9 @@
 #define debug(M, ...)
 #endif
 
-#define log_err(M, ...)  do { \
-	logs_to_file("[ERR] " M " (%s:%d)", \
-		##__VA_ARGS__, __FILE__, __LINE__); \
-	fflush(NULL); \
-	} while(0)
+#define log_err(M, ...) do { logs_to_file("[ERR] " M " (%s:%d)", \
+			##__VA_ARGS__, __FILE__, __LINE__); \
+		fflush(stderr); } while(0)
 
 #define log_warn(M, ...) logs_to_file("[WARN] " M " (%s:%d)", ##__VA_ARGS__, \
 		__FILE__, __LINE__)
@@ -46,7 +44,7 @@ struct log_entry {
 	LIST_ENTRY(log_entry) entries;
 };
 
-void logs_init(void);
+int logs_init(const char *path);
 void logs_cleanup(void);
 
 void logs_to_game(const char *, ...);
