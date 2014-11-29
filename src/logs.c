@@ -16,13 +16,18 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#include <bsd/string.h>
+
+#include <stdio.h>
 #include <stdarg.h>
 #include <time.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/queue.h>
 
+#include "conf.h"
 #include "logs.h"
+#include "helpers.h"
 
 static void logs_format_message(char **strp, const char *fmt, va_list ap)
 {
@@ -59,9 +64,20 @@ static int logs_add_to_queue(const char *msg)
 	return msg_len;
 }
 
-void logs_init(void)
+int logs_init(const char *path)
 {
+	(void) path;
+
 	LIST_INIT(&entry_head);
+
+	/* redirect stderr to log file.
+	 * open for writing in append mode ~/.local/share/tetris/logs */
+	if (freopen(configuration.log_dir, "a", stderr) == NULL) {
+		log_err("Could not open: %s\n", configuration.log_dir);
+		return -1;
+	}
+
+	return 1;
 }
 
 void logs_cleanup(void)
@@ -74,6 +90,10 @@ void logs_cleanup(void)
 		free(np->msg);
 		free(np);
 	}
+
+	/* Game separator */
+	fprintf(stderr, "--\n");
+	fclose(stderr);
 }
 
 /* Adds log message to a message queue, to be printed in game */
