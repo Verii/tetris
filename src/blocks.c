@@ -51,6 +51,9 @@ static void reset_block(struct blocks *block)
 	block->t_spin = false;
 	block->hold = false;
 
+#define PIECE_XY(X, Y) \
+	block->p[index].x = X; block->p[index++].y = Y;
+
 	/* The piece at (0, 0) is the pivot when we rotate */
 	switch (block->type) {
 	case O_BLOCK:
@@ -481,9 +484,6 @@ int blocks_init(void)
 	pgame->pause_ticks = 1000;
 	pgame->ghosts = true;
 
-	/* XXX For testing screen updates. */
-	pgame->opp = pgame;
-
 	ghost_block = malloc(sizeof *ghost_block);
 	if (!ghost_block) {
 		log_err("No memory for ghost block");
@@ -528,6 +528,8 @@ int blocks_init(void)
 			exit(EXIT_FAILURE);
 		}
 	}
+
+	log_info("Game successfully initialized\n");
 
 	return 1;
 }
@@ -600,10 +602,7 @@ void *blocks_loop(void *vp)
 		pthread_mutex_lock(&pgame->lock);
 
 		if (pgame->pause && pgame->pause_ticks) {
-#ifndef DEBUG
-			/* Don't tick down when we build in DEBUG */
 			pgame->pause_ticks--;
-#endif
 			goto draw_game;
 		}
 
