@@ -3,3 +3,42 @@ Main menu
 Networking
 
 Configuration file
+
+:::
+
+all:
+	more consistent logs.
+	better error handling.
+	Test on different systems.
+
+main.c accept variable saves file location
+main.c accept command line input and replace global variables.
+main.c create network thread.
+
+network.c do it.
+
+conf.c safer.
+conf.c tidy up.
+conf.c accept $HOME.
+conf.c write configuration file parser.
+
+db.c nothing has changed much. Look over again, with new insight and make it
+	better.
+db.c db_get_scores() returns error code, use arguments for linked list.
+db.c refactor SQL statements.
+
+helpers.c make function names more consistent.
+helpers.c cleanup and refactor.
+
+logs.c Try to open user specified log file, if it fails either print to stderr
+	on screen(default), or try to write to default logs file. ???
+
+screen.c re-look into conditional drawing (draw_pieces()), and fix the
+	multiplayer format.
+screen.c menu :( so boring.
+screen.c menu :( so boring.
+screen.c menu :( so boring.
+
+Move to main ?
+	logs.c Try to create the path of the user specified logs file.
+	db.c Try to create path of user specified saves file.
