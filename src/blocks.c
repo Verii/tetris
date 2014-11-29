@@ -304,10 +304,11 @@ static void unwrite_cur_block(void)
 	struct blocks *block;
 	size_t i, x, y;
 
-	if (!CURRENT_BLOCK())
+	if (pgame && pgame->blocks_head && HOLD_BOLD() && CURRENT_BLOCK())
+		block = CURRENT_BLOCK();
+	else
 		return;
 
-	block = CURRENT_BLOCK();
 
 	for (i = 0; i < LEN(block->p); i++) {
 		y = block->row_off + block->p[i].y;
