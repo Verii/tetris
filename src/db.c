@@ -111,7 +111,7 @@ int db_save_score(void)
 
 	len = asprintf(&insert, insert_scores,
 			   pgame->id, pgame->level, pgame->score,
-			   (uint64_t) time(NULL));
+			   time(NULL));
 
 	if (len < 0) {
 		log_err("Out of memory");
@@ -143,7 +143,7 @@ int db_save_state(void)
 
 	len = asprintf(&insert, insert_state,
 			   pgame->id, pgame->score, pgame->lines_destroyed,
-			   pgame->level, (uint64_t) time(NULL));
+			   pgame->level, time(NULL));
 
 	if (len < 0) {
 		log_err("Out of memory");
