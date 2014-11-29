@@ -91,7 +91,7 @@ int main(int argc, char **argv)
 		case 'p':
 			/* change default port number */
 			break;
-	 	case 's':
+		case 's':
 			/* play singleplayer */
 			break;
 		case 'c':
