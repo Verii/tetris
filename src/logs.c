@@ -29,19 +29,6 @@
 #include "logs.h"
 #include "helpers.h"
 
-static void logs_format_message(char **strp, const char *fmt, va_list ap)
-{
-	int ret;
-	ret = vasprintf(strp, fmt, ap);
-
-	if (ret < 0) {
-		*strp = NULL;
-	} else {
-		if ((*strp)[ret-1] == '\n')
-			(*strp)[ret-1] = '\0';
-	}
-}
-
 static int logs_add_to_queue(const char *msg)
 {
 	int msg_len = -1;
@@ -103,7 +90,10 @@ void logs_to_game(const char *fmt, ...)
 	va_list ap;
 
 	va_start(ap, fmt);
-	logs_format_message(&debug_message, fmt, ap);
+
+	if (vasprintf(&debug_message, fmt, ap) < 0)
+		debug_message = NULL;
+
 	va_end(ap);
 
 	if (debug_message)
@@ -117,15 +107,18 @@ void logs_to_game(const char *fmt, ...)
  */
 void logs_to_file(const char *fmt, ...)
 {
+	va_list ap;
 	char *debug_message;
 	time_t s = time(NULL);
 	char date[32];
 
 	strftime(date, sizeof date, "[%F %H:%M]", localtime(&s));
 
-	va_list ap;
 	va_start(ap, fmt);
-	logs_format_message(&debug_message, fmt, ap);
+
+	if (vasprintf(&debug_message, fmt, ap) < 0)
+		debug_message = NULL;
+
 	va_end(ap);
 
 	fprintf(stderr, "%s %s\n", date, debug_message ? debug_message : "");
