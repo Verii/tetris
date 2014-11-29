@@ -26,6 +26,8 @@
 #include <stdint.h>
 #include <sys/queue.h>
 
+#include "helpers.h"
+
 #define PI 3.141592653589L
 
 #define BLOCKS_MAX_COLUMNS	10
@@ -34,12 +36,6 @@
 #define NUM_BLOCKS		7
 #define NEXT_BLOCKS_LEN		5
 
-#define LEN(x) ((sizeof(x))/(sizeof(*x)))
-
-/* Define index yourself. We increment here at each definition */
-#define PIECE_XY(X, Y) \
-	block->p[index].x = (X); block->p[index].y = (Y); index++;
-
 /* First, Second, and Third elements in the linked list */
 #define HOLD_BLOCK() (pgame->blocks_head.lh_first)
 #define CURRENT_BLOCK() (HOLD_BLOCK()->entries.le_next)
@@ -47,7 +43,6 @@
 
 /* Does a block exist at the specified (y, x) coordinate? */
 #define blocks_at_yx(y, x) (pgame->spaces[(y)] & (1 << (x)))
-
 
 enum blocks_block_types {
 	O_BLOCK,
@@ -73,7 +68,6 @@ enum blocks_input_cmd {
  * this structure. Once a block hits another piece, we forget about it; it
  * becomes part of the game board.
  */
-
 struct blocks {
 	uint32_t lock_delay;		/* how long to wait (nsec) */
 	uint8_t soft_drop, hard_drop;	/* number of blocks dropped */
@@ -95,6 +89,7 @@ struct blocks_game {
 	/* These variables are read/written to the database
 	 * when restoring/saving the game state
 	 */
+	char id[16];
 	uint16_t level, lines_destroyed;
 	uint16_t spaces[BLOCKS_MAX_ROWS];	/* bit-field, one per row */
 	uint32_t score;
