@@ -55,73 +55,65 @@ static int conf_replace_home(char *path, size_t len)
 
 static int conf_parse(const char *path)
 {
-	char *home_dir;
-	mode_t mode = S_IRUSR | S_IWUSR | S_IXUSR;
+	FILE *fin = NULL;
 
-	home_dir = getenv("HOME");
+	if (!(fin = fopen(path, "r")))
+		return -1;
 
-	/* This is ugly, but it works. Kind of. */
+	fclose(fin);
+	return 1;
+}
+
+/* Set default global variables, create necessary directories,
+ * read in user specified configuration files.
+ */
+int conf_init(const char *path)
+{
+	/* 0755 */
+	mode_t mode = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
 
 	{
-		char buf[256], *rbuf;
-		strncpy(buf, configuration.log_dir, sizeof buf);
-		rbuf = strtok(buf, "~");
+		/* Find home */
+		conf_replace_home((char *)configuration.log_dir,
+			sizeof configuration.log_dir);
 
-		memcpy((char *)configuration.log_dir, home_dir,
-				sizeof configuration.log_dir);
-		strlcat((char *)configuration.log_dir, rbuf,
-				sizeof configuration.log_dir);
+		/* make sure all directories exist */
+		try_mkdir_r(configuration.log_dir, mode);
 
-		try_mkdir_p(configuration.log_dir, mode);
-
+		/* append logs file name */
 		strlcat((char *)configuration.log_dir, "logs",
-				sizeof configuration.log_dir);
+			sizeof configuration.log_dir);
 	}
 
-
 	{
-		char buf[256], *rbuf;
-		strncpy(buf, configuration.saves_dir, sizeof buf);
-		rbuf = strtok(buf, "~");
+		conf_replace_home((char *)configuration.saves_dir,
+			sizeof configuration.saves_dir);
 
-		memcpy((char *)configuration.saves_dir, home_dir,
-				sizeof configuration.saves_dir);
-		strlcat((char *)configuration.saves_dir, rbuf,
-				sizeof configuration.saves_dir);
-
-		try_mkdir_p(configuration.saves_dir, mode);
+		try_mkdir_r(configuration.saves_dir, mode);
 
 		strlcat((char *)configuration.saves_dir, "saves",
-				sizeof configuration.saves_dir);
+			sizeof configuration.saves_dir);
 	}
-
 
 	{
-		char buf[256], *rbuf;
-		strncpy(buf, configuration.conf_dir, sizeof buf);
-		rbuf = strtok(buf, "~");
-
-		memcpy((char *)configuration.conf_dir, home_dir,
-				sizeof configuration.conf_dir);
-		strlcat((char *)configuration.conf_dir, rbuf,
-				sizeof configuration.conf_dir);
-
-		try_mkdir_p(configuration.conf_dir, mode);
+		conf_replace_home((char *)configuration.conf_dir,
+			sizeof configuration.conf_dir);
 
 		strlcat((char *)configuration.conf_dir, "tetris.conf",
-				sizeof configuration.conf_dir);
+			sizeof configuration.conf_dir);
 	}
 
-	/* User specified configuration file overwrite the default
-	 * configuration file path. */
-	conf_parse(path ? path : configuration.conf_dir);
+	/* Try to read the default compiled-in path for the configuration file,
+	 * but don't fail if we can't find it. The user supplied location will
+	 * overwrite any changes here.
+	 */
+	conf_parse(configuration.conf_dir);
 
-	/* Variables configuration.log_dir, etc. now contain default values */
-	logs_to_file(configuration.hostname);
-	logs_to_file(configuration.port);
-	logs_to_file(configuration.log_dir);
-	logs_to_file(configuration.saves_dir);
-	logs_to_file(configuration.conf_dir);
+	/* User specified configuration file overwrites the default
+	 * configuration file path. This one does fail if it doesn't exist
+	 */
+	if (path && conf_parse(path) != 1)
+		log_err("File \"%s\" does not exist.", path);
 
 	return 1;
 }
