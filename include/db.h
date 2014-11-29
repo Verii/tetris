@@ -26,13 +26,15 @@
 
 #include "blocks.h"
 
-struct db_info {
-	sqlite3 *db;		/* internal handler */
-	char *file_loc;		/* database location on filesystem */
-	char id[16];		/* ID of a game save */
-};
+int db_init(const char *path);
+int db_cleanup(void);
 
-extern struct db_info *psave;
+/* Saves game state to disk. Can be restored at a later time */
+int db_save_state(void);
+int db_resume_state(void);
+
+/* Save game score to disk when the player loses a game */
+int db_save_score(void);
 
 /* Linked list returned to user after db_get_scores() call */
 TAILQ_HEAD(db_results_head, db_results) results_head;
@@ -44,24 +46,10 @@ struct db_results {
 	TAILQ_ENTRY(db_results) entries;
 };
 
-int db_init(void);
-int db_cleanup(void);
-
-/* Saves game state to disk. Can be restored at a later time */
-int db_save_state(void);
-int db_resume_state(void);
-
-/* Save game score to disk when the player loses a game */
-int db_save_score(void);
-
 /* Returns a linked list to (n) highscores in the database */
-struct db_results *db_get_scores(size_t);
+struct db_results *db_get_scores(size_t n);
 
 /* Cleanup memory */
-#define db_clean_scores() while (results_head.tqh_first) { \
-		struct db_results *tmp_ = results_head.tqh_first; \
-		TAILQ_REMOVE (&results_head, tmp_, entries); \
-		free(tmp_); \
-	}
+void db_clean_scores(void);
 
-#endif				/* DB_H_ */
+#endif	/* DB_H_ */
