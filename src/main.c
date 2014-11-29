@@ -19,10 +19,6 @@
 /* Non-standard BSD extensions */
 #include <bsd/string.h>
 
-#include <sys/stat.h>
-#include <sys/types.h>
-
-#include <errno.h>
 #include <locale.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -31,29 +27,13 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "db.h"
+#include "conf.h"
+#include "logs.h"
 #include "blocks.h"
 #include "screen.h"
-#include "logs.h"
-#include "db.h"
 
-/* We can exit() at any point and still safely cleanup */
-static void cleanup(void)
-{
-	screen_cleanup();
-	blocks_cleanup();
-	logs_cleanup();
-
-	/* Game separator */
-	fprintf(stderr, "--\n");
-	fclose(stderr);
-
-	printf("Thanks for playing Blocks-%s!\n", VERSION);
-}
-
-static void usage(void)
-{
-
-	const char *LICENSE =
+static const char *LICENSE =
 "Copyright (C) 2014 James Smith <james@apertum.org>\n\n"
 "This program is free software; you can redistribute it and/or modify\n"
 "it under the terms of the GNU General Public License as published by\n"
@@ -64,10 +44,28 @@ static void usage(void)
 "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n"
 "GNU General Public License for more details.\n";
 
+
+/* We can exit() at any point and still safely cleanup */
+static void cleanup(void)
+{
+	screen_cleanup();
+//	network_cleanup();
+	db_cleanup();
+	blocks_cleanup();
+	logs_cleanup();
+
+	printf("Thanks for playing Tetris-%s!\n", VERSION);
+}
+
+static void usage(void)
+{
 	extern const char *__progname;
+
 	fprintf(stderr, "%s\nBuilt on %s at %s\n"
 		"%s-%s usage:\n\t"
 		"[-u] usage\n\t"
+		"[-c path] path to use for configuration file\n\t"
+		"[-s] don't connect to server (single player)\n\t"
 		"[-h host] hostname to connect to\n\t"
 		"[-p port] port to connect to\n",
 		LICENSE, __DATE__, __TIME__, __progname, VERSION);
@@ -75,114 +73,29 @@ static void usage(void)
 	exit(EXIT_FAILURE);
 }
 
-static int try_mkdir(const char *path, mode_t mode)
-{
-	struct stat sb;
-
-	errno = 0;
-	if (stat(path, &sb) == 0 && S_ISDIR(sb.st_mode) &&
-		(sb.st_mode & mode) == mode)
-		return 1;
-
-	/* Try to create directory if it doesn't exist */
-	if (errno == ENOENT) {
-		if (mkdir(path, mode) == -1) {
-			perror(path);
-			return -1;
-		}
-	}
-
-	/* Adjust permissions if dir exists but can't be read */
-	if ((sb.st_mode & mode) != mode) {
-		if (chmod(path, mode) == -1) {
-			perror(path);
-			return -1;
-		}
-	}
-
-	return 1;
-}
-
-static void init(void)
-{
-	LIST_INIT(&entry_head);
-
-	/* Most file systems limit the size of filenames to 255 octets */
-	char *home_env, game_dir[256];
-	mode_t mode = S_IRUSR | S_IWUSR | S_IXUSR;
-
-	/* Get user HOME environment variable. Fail if we can't trust the
-	 * environment, like if the setuid bit is set on the executable.
-	 */
-	if ((home_env = secure_getenv("HOME")) != NULL) {
-		strlcpy(game_dir, home_env, sizeof game_dir);
-	} else {
-		fprintf(stderr, "Environment variable $HOME does not exist, "
-				"or it is not what you think it is.\n");
-		exit(EXIT_FAILURE);
-	}
-
-	/* HOME/.local/share/tetris */
-	char *dirs[] = {
-		"/.local",
-		"/share",
-		"/tetris",
-		NULL,
-	};
-
-	for (int i = 0; dirs[i]; i++) {
-		strlcat(game_dir, dirs[i], sizeof game_dir);
-		if (try_mkdir(game_dir, mode) < 0)
-			goto err_subdir;
-	}
-
-	/* redirect stderr to log file.
-	 * open for writing in append mode ~/.local/share/tetris/logs */
-	strlcat(game_dir, "/logs", sizeof game_dir);
-	if (freopen(game_dir, "a", stderr) == NULL) {
-		fprintf(stderr, "Could not open: %s\n", game_dir);
-		exit(EXIT_FAILURE);
-	}
-
-	srand(time(NULL));
-
-	/* Create game context */
-	if (blocks_init() > 0) {
-		printf("Game successfully initialized\n");
-		printf("Appending logs to file: %s.\n", game_dir);
-	} else {
-		printf("Failed to initialize game\n");
-		exit(EXIT_FAILURE);
-	}
-
-	/* create ncurses display */
-	screen_init();
-
-	return;
-
- err_subdir:
-	fprintf(stderr, "Unable to create sub directories. Cannot continue\n");
-	exit(EXIT_FAILURE);
-}
-
 int main(int argc, char **argv)
 {
 	setlocale(LC_ALL, "");
-
-//	char *host, *port;
+	srand(time(NULL));
 
 	/* Quit if we're not attached to a tty */
 	if (!isatty(fileno(stdin)))
 		exit(EXIT_FAILURE);
 
 	int ch;
-	while ((ch = getopt(argc, argv, "uh:p:")) != -1) {
+	while ((ch = getopt(argc, argv, "c:uh:p:s")) != -1) {
 		switch(ch) {
 		case 'h':
-			printf("%s\n", optarg);
+			/* change default host name */
 			break;
 		case 'p':
-			printf("%s\n", optarg);
+			/* change default port number */
+			break;
+	 	case 's':
+			/* play singleplayer */
+			break;
+		case 'c':
+			/* update search location for configuration file */
 			break;
 		case 'u':
 		default:
@@ -191,16 +104,42 @@ int main(int argc, char **argv)
 		}
 	}
 
-	init();
+	/* This function creates and defines global variables accessed by each
+	 * of the subsystem init() functions. Unless non-NULL is passed to an
+	 * init function, it will proceed with either the default, compiled-in
+	 * value, or use the global value as read in from the configuration
+	 * file.
+	 *
+	 * If a valid string is passed to one of the init subsystems, then that
+	 * string takes precedence, even over the configuration file.
+	 *
+	 * So if we start the game as `blocks -h example.com -p 100`, and the
+	 * configuration file specifies singleplayer, we will still try to play
+	 * multiplayer.
+	 */
+	conf_init(NULL);
+
+	if ((logs_init(NULL) != 1) ||
+	    (blocks_init() != 1) ||
+	    (db_init(NULL) != 1) ||
+//	    (network_init(host, port) != 1) ||
+	    (screen_init() != 1))
+		exit(EXIT_FAILURE);
+
 	atexit(cleanup);
 
 	pthread_t input_loop;
 	pthread_create(&input_loop, NULL, blocks_input, NULL);
 
+//	pthread_t network_loop;
+//	pthread_create(&network_loop, NULL, network_input, NULL);
+
+	/* Enter game main loop */
 	blocks_loop(NULL);
 
 	/* when blocks_loop returns, kill the input thread and cleanup */
 	pthread_cancel(input_loop);
+//	pthread_cancel(network_loop);
 
 	/* Print scores, tell user they're a loser, etc. */
 	screen_draw_over();
