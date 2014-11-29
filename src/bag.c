@@ -103,10 +103,6 @@ void bag_random_generator(void) {
 		bag_bag7[i] = avail_blocks[get_elm-1];
 		avail_blocks[get_elm-1] = DIRTY_BIT;
 	}
-
-	debug("Creating new bag.");
-	for (size_t i = 0; i < NUM_BLOCKS; i++)
-		debug("block %d, type %d", i, bag_bag7[i]);
 }
 
 int bag_next_piece(void) {
