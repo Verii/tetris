@@ -1,5 +1,5 @@
 BIN = tetris
-VERSION = v0.28
+VERSION = v0.29
 SRC = src/main.c src/bag.c src/blocks.c src/db.c src/screen.c \
       src/logs.c src/conf.c src/helpers.c
 OBJS = ${SRC:.c=.o}
