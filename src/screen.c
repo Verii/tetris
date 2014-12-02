@@ -327,6 +327,9 @@ void screen_draw_over(void)
 {
 	debug("Drawing game over screen");
 
+	if (!pgame->lose)
+		return;
+
 	clear();
 	attrset(COLOR_PAIR(1));
 	box(stdscr, 0, 0);
@@ -335,18 +338,13 @@ void screen_draw_over(void)
 	mvprintw(2, 3, "Rank\tName\t\tLevel\tScore\tDate");
 	mvprintw(LINES -2, 1, "Press Space to quit.");
 
-	if (pgame->lose) {
-		db_save_score();
-	} else {
-		db_save_state();
-		return;
-	}
-
 	/* Print score board when you lose a game */
 	struct db_results *res = NULL;
 
-	if (db_get_scores(&res, 10) != 1)
+	if (db_get_scores(&res, 10) != 1) {
+		db_clean_scores();
 		return;
+	}
 
 	while (res) {
 		char *date = ctime(&res->date);

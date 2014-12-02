@@ -146,6 +146,12 @@ int main(int argc, char **argv)
 	pthread_cancel(input_loop);
 //	pthread_cancel(network_loop);
 
+	if (pgame->lose) {
+		db_save_score();
+	} else {
+		db_save_state();
+	}
+
 	/* Print scores, tell user they're a loser, etc. */
 	screen_draw_over();
 
