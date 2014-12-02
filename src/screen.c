@@ -50,7 +50,7 @@ static const char colors[] = { COLOR_WHITE, COLOR_RED, COLOR_GREEN,
 
 int screen_init(void)
 {
-	log_info("Initializing ncurses context");
+	debug("Initializing ncurses context");
 	initscr();
 
 	cbreak();
@@ -93,7 +93,7 @@ int screen_init(void)
 
 void screen_cleanup(void)
 {
-	log_info("Cleaning ncurses context");
+	debug("Cleaning ncurses context");
 
 	delwin(board);
 	delwin(pieces);
@@ -205,7 +205,9 @@ static void draw_board(bool self, struct blocks_game *player, WINDOW *win)
 		strncpy(player_str, pgame->id, sizeof player_str);
 		x_off = 0;
 	} else {
-		strncpy(player_str, "Player 2", sizeof player_str);
+		strncpy(player_str,
+			pgame->opp->id ? pgame->opp->id : "Player 2",
+			sizeof player_str);
 		x_off = 16;
 	}
 
@@ -228,12 +230,14 @@ static void draw_board(bool self, struct blocks_game *player, WINDOW *win)
 	/* We draw this before we draw the pieces so that the falling block
 	 * covers the outline of the ghost block. */
 	if (player->ghosts && ghost_block) {
-		wattrset(win, A_DIM|COLOR_PAIR(ghost_block->type %sizeof(colors) +1));
+		wattrset(win, A_DIM|
+			COLOR_PAIR(ghost_block->type %sizeof(colors) +1));
+
 		for (i = 0; i < LEN(ghost_block->p); i++) {
 			mvwprintw(win,
-				ghost_block->p[i].y +ghost_block->row_off -2,
-				ghost_block->p[i].x +ghost_block->col_off +1 +x_off,
-				PIECES_CHAR);
+			    ghost_block->p[i].y +ghost_block->row_off -2,
+			    ghost_block->p[i].x +ghost_block->col_off +1 +x_off,
+			    PIECES_CHAR);
 		}
 	}
 
@@ -307,7 +311,7 @@ void screen_draw_game(void)
 	/* Draw "Our" board. */
 	draw_board(true, pgame, board);
 
-	/* If we're multiplayer, the opponent's board replaces text */
+	/* If we're multiplayer, the opponent's board replaces the text */
 	if (pgame->opp)
 		draw_board(false, pgame->opp, board_opp);
 
@@ -321,7 +325,7 @@ void screen_draw_game(void)
 /* Game over screen */
 void screen_draw_over(void)
 {
-	log_info("Game over");
+	debug("Drawing game over screen");
 
 	clear();
 	attrset(COLOR_PAIR(1));
@@ -339,20 +343,26 @@ void screen_draw_over(void)
 	}
 
 	/* Print score board when you lose a game */
-	struct db_results *res = db_get_scores(10);
+	struct db_results *res = NULL;
+
+	if (db_get_scores(&res, 10) != 1)
+		return;
+
 	while (res) {
 		char *date = ctime(&res->date);
 		static unsigned char count = 0;
 
 		count++;
-		mvprintw(count + 2, 4, "%2d.\t%-16s%-5d\t%-5d\t%.*s", count,
-			 res->id, res->level, res->score, strlen(date) - 1,
-			 date);
+		mvprintw(count +2, 4, "%2d.\t%-16s%-5d\t%-5d\t%.*s", count,
+			 res->id ? res->id : "unknown",
+			 res->level, res->score,
+			 strlen(date) -1, date);
+
 		res = res->entries.tqe_next;
 	}
-	refresh();
 
 	db_clean_scores();
 
+	refresh();
 	while (getch() != ' ') ;
 }
