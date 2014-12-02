@@ -47,7 +47,7 @@ struct db_results {
 };
 
 /* Returns a linked list to (n) highscores in the database */
-struct db_results *db_get_scores(size_t n);
+int db_get_scores(struct db_results **res, size_t n);
 
 /* Cleanup memory */
 void db_clean_scores(void);
