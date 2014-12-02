@@ -44,7 +44,6 @@ static const char *LICENSE =
 "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n"
 "GNU General Public License for more details.\n";
 
-
 /* We can exit() at any point and still safely cleanup */
 static void cleanup(void)
 {
@@ -83,8 +82,11 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 
 	int ch;
-	while ((ch = getopt(argc, argv, "c:uh:p:s")) != -1) {
+	while ((ch = getopt(argc, argv, "c:h:p:su")) != -1) {
 		switch(ch) {
+		case 'c':
+			/* update search location for configuration file */
+			break;
 		case 'h':
 			/* change default host name */
 			break;
@@ -93,9 +95,6 @@ int main(int argc, char **argv)
 			break;
 		case 's':
 			/* play singleplayer */
-			break;
-		case 'c':
-			/* update search location for configuration file */
 			break;
 		case 'u':
 		default:
@@ -125,6 +124,12 @@ int main(int argc, char **argv)
 //	    (network_init(host, port) != 1) ||
 	    (screen_init() != 1))
 		exit(EXIT_FAILURE);
+
+	log_info("Turn on debugging flags for more output.");
+
+	/* Initial screen update. blocks_loop() will sleep for ~1 second before
+	 * updating the screen. */
+	screen_draw_game();
 
 	atexit(cleanup);
 
