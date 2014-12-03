@@ -1,10 +1,10 @@
-Main menu
+*Main menu
 
-Networking
+*Networking
 
-Configuration file
+*Configuration file
 
-:::
+***
 
 all:
 	more consistent logs.
@@ -24,7 +24,6 @@ conf.c write configuration file parser.
 
 db.c nothing has changed much. Look over again, with new insight and make it
 	better.
-db.c db_get_scores() returns error code, use arguments for linked list.
 db.c refactor SQL statements.
 
 helpers.c make function names more consistent.
