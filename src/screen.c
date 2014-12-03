@@ -226,21 +226,6 @@ static void draw_board(bool self, struct blocks_game *player, WINDOW *win)
 	for (i = 2; i < BLOCKS_MAX_ROWS; i++)
 		mvwprintw(win, i -2, x_off +1, " . . . . .");
 
-	/* Draw the Ghost block on the bottom of the board, if the user wants */
-	/* We draw this before we draw the pieces so that the falling block
-	 * covers the outline of the ghost block. */
-	if (player->ghosts && ghost_block) {
-		wattrset(win, A_DIM|
-			COLOR_PAIR(ghost_block->type %sizeof(colors) +1));
-
-		for (i = 0; i < LEN(ghost_block->p); i++) {
-			mvwprintw(win,
-			    ghost_block->p[i].y +ghost_block->row_off -2,
-			    ghost_block->p[i].x +ghost_block->col_off +1 +x_off,
-			    PIECES_CHAR);
-		}
-	}
-
 	/* Draw the game board, minus the two hidden rows above the game */
 	for (i = 2; i < BLOCKS_MAX_ROWS; i++) {
 		if (player->spaces[i] == 0)
@@ -254,6 +239,19 @@ static void draw_board(bool self, struct blocks_game *player, WINDOW *win)
 					(player->colors[i][j] %sizeof(colors))
 					+1));
 			mvwprintw(win, i -2, j +1 +x_off, PIECES_CHAR);
+		}
+	}
+
+	/* Draw the Ghost block on the bottom of the board, if the user wants */
+	if (player->ghosts && ghost_block) {
+		wattrset(win, A_DIM|
+			COLOR_PAIR(ghost_block->type %sizeof(colors) +1));
+
+		for (i = 0; i < LEN(ghost_block->p); i++) {
+			mvwprintw(win,
+			    ghost_block->p[i].y +ghost_block->row_off -2,
+			    ghost_block->p[i].x +ghost_block->col_off +1 +x_off,
+			    PIECES_CHAR);
 		}
 	}
 
