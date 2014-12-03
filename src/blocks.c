@@ -120,18 +120,11 @@ static void randomize_block(struct blocks *block)
 /* translate pieces in block horizontally. */
 static int translate_block(struct blocks *block, enum blocks_input_cmd cmd)
 {
-	int bounds_x, bounds_y;
-	int dir = 1;
-	size_t i;
-
-	if (!block)
-		return -1;
-
-	if (cmd == MOVE_LEFT)
-		dir = -1;
+	int dir = (cmd == MOVE_LEFT) ? -1 : 1; // 1 is right, -1 is left
 
 	/* Check each piece for a collision */
-	for (i = 0; i < LEN(block->p); i++) {
+	for (size_t i = 0; i < LEN(block->p); i++) {
+		int bounds_x, bounds_y;
 		bounds_x = block->p[i].x + block->col_off + dir;
 		bounds_y = block->p[i].y + block->row_off;
 
@@ -150,23 +143,15 @@ static int translate_block(struct blocks *block, enum blocks_input_cmd cmd)
 /* rotate pieces in blocks by either 90^ or -90^ around (0, 0) pivot */
 static int rotate_block(struct blocks *block, enum blocks_input_cmd cmd)
 {
-	int new_x, new_y;
-	int bounds_x, bounds_y;
-	int dir = 1;
-	size_t i;
-
-	if (!block)
-		return -1;
-
 	/* Don't rotate O block */
 	if (block->type == O_BLOCK)
 		return 1;
 
-	if (cmd == ROT_LEFT)
-		dir = -1;
+	int dir = (cmd == ROT_LEFT) ? -1 : 1; // -1 is LEFT, 1 is RIGHT
 
 	/* Check each piece for a collision before we write any changes */
-	for (i = 0; i < LEN(block->p); i++) {
+	for (size_t i = 0; i < LEN(block->p); i++) {
+		int bounds_x, bounds_y;
 		bounds_x = block->p[i].y * (-dir) + block->col_off;
 		bounds_y = block->p[i].x * (dir) + block->row_off;
 
@@ -179,7 +164,8 @@ static int rotate_block(struct blocks *block, enum blocks_input_cmd cmd)
 	}
 
 	/* No collisions, so update the block position. */
-	for (i = 0; i < LEN(block->p); i++) {
+	for (size_t i = 0; i < LEN(block->p); i++) {
+		int new_x, new_y;
 		new_x = block->p[i].y * (-dir);
 		new_y = block->p[i].x * (dir);
 
@@ -223,12 +209,8 @@ static int try_wall_kick(struct blocks *block, enum blocks_input_cmd cmd)
  */
 static int drop_block(struct blocks *block)
 {
-	size_t i, bounds_x, bounds_y;
-
-	if (!pgame || !block)
-		return -1;
-
-	for (i = 0; i < LEN(block->p); i++) {
+	for (size_t i = 0; i < LEN(block->p); i++) {
+		size_t bounds_x, bounds_y;
 		bounds_y = block->p[i].y + block->row_off + 1;
 		bounds_x = block->p[i].x + block->col_off;
 
@@ -251,7 +233,6 @@ static void update_tick_speed(void)
 {
 	double speed = 1.0f;
 
-	/* See tests/level-curve.c */
 	speed += atan((double)pgame->level / 5.0) * 2 / PI * 3;
 	pgame->nsec = (uint32_t) ((double)1E9 / speed) - 1;
 }
@@ -301,16 +282,10 @@ static void update_ghost_block(void)
  */
 static void unwrite_cur_block(void)
 {
-	struct blocks *block;
-	size_t i, x, y;
+	struct blocks *block = CURRENT_BLOCK();
 
-	if (pgame && pgame->blocks_head && HOLD_BOLD() && CURRENT_BLOCK())
-		block = CURRENT_BLOCK();
-	else
-		return;
-
-
-	for (i = 0; i < LEN(block->p); i++) {
+	for (size_t i = 0; i < LEN(block->p); i++) {
+		size_t x, y;
 		y = block->row_off + block->p[i].y;
 		x = block->col_off + block->p[i].x;
 
@@ -325,16 +300,10 @@ static void unwrite_cur_block(void)
  */
 static void write_cur_block(void)
 {
-	struct blocks *block;
+	struct blocks *block = CURRENT_BLOCK();
 	int px[4], py[4];
-	size_t i;
 
-	if (!CURRENT_BLOCK())
-		return;
-
-	block = CURRENT_BLOCK();
-
-	for (i = 0; i < LEN(block->p); i++) {
+	for (size_t i = 0; i < LEN(block->p); i++) {
 		py[i] = block->row_off + block->p[i].y;
 		px[i] = block->col_off + block->p[i].x;
 
@@ -344,7 +313,7 @@ static void write_cur_block(void)
 	}
 
 	/* pgame->spaces is an array of bit fields, 1 per row */
-	for (i = 0; i < LEN(block->p); i++) {
+	for (size_t i = 0; i < LEN(block->p); i++) {
 		/* Set the bit where the block exists */
 		pgame->spaces[py[i]] |= (1 << px[i]);
 		pgame->colors[py[i]][px[i]] = block->type;
@@ -365,9 +334,8 @@ static void write_cur_block(void)
  */
 static int destroy_lines(void)
 {
-	uint32_t full_row;
+	/* Lines destroyed this turn. <= 4. */
 	uint8_t destroyed = 0;
-	size_t i, j;
 
 	/* point modifier, "difficult" line clears earn more over time.
 	 * a tetris (4 line clears) counts for 1 difficult move.
@@ -375,13 +343,6 @@ static int destroy_lines(void)
 	 * difficult values >1 boost points by 3/2
 	 */
 	static size_t difficult = 0;
-	uint32_t point_mod = 0;
-
-	/* Fill in all bits below bit BLOCKS_MAX_COLUMNS. Row populations are
-	 * stored in a bit field, so we can check for a full row by comparing
-	 * it to this value.
-	 */
-	full_row = (1 << BLOCKS_MAX_COLUMNS) -1;
 
 	/* The first two rows are 'above' the game, that's where the new blocks
 	 * come into existence. We lose if there's ever a block there. */
@@ -392,22 +353,25 @@ static int destroy_lines(void)
 	 * we check in reverse to ease moving the rows down when we find a full
 	 * row. Ignore the top two rows, which we checked above.
 	 */
-	for (i = BLOCKS_MAX_ROWS -1; i >= 2; i--) {
+	for (size_t i = BLOCKS_MAX_ROWS -1; i >= 2; i--) {
+
+		/* Fill in all bits below bit BLOCKS_MAX_COLUMNS. Row
+		 * populations are stored in a bit field, so we can check for a
+		 * full row by comparing it to this value.
+		 */
+		uint32_t full_row = (1 << BLOCKS_MAX_COLUMNS) -1;
 
 		if (pgame->spaces[i] != full_row)
 			continue;
 
 		/* Move lines above destroyed line down */
-		for (j = i; j > 0; j--)
+		for (size_t j = i; j > 0; j--)
 			pgame->spaces[j] = pgame->spaces[j - 1];
 
 		/* Lines are moved down, so we recheck this row. */
 		i++;
 		destroyed++;
 	}
-
-	if (destroyed == 0)
-		goto get_points;
 
 	/* Check for level up, Increase speed */
 	pgame->lines_destroyed += destroyed;
@@ -418,6 +382,11 @@ static int destroy_lines(void)
 
 		logs_to_game("Level up! Speed up!");
 	}
+
+	uint32_t point_mod = 0;
+
+	if (destroyed == 0)
+		goto get_points;
 
 	/* Number of lines destroyed in move */
 	switch (destroyed) {
@@ -435,7 +404,6 @@ static int destroy_lines(void)
 			break;
 	}
 
-	/* We lose our difficulty multipliers on easy moves */
 	if (destroyed == 4) {
 		logs_to_game("Tetris!");
 		difficult++;
@@ -443,6 +411,7 @@ static int destroy_lines(void)
 		logs_to_game("T spin!");
 		difficult++;
 	} else {
+		/* We lose our difficulty multipliers on easy moves */
 		difficult = 0;
 	}
 
@@ -452,7 +421,7 @@ static int destroy_lines(void)
 
 	get_points:
 
-	pgame->score += point_mod * pgame->level
+	pgame->score += (point_mod * pgame->level)
 		+ CURRENT_BLOCK()->soft_drop
 		+ (CURRENT_BLOCK()->hard_drop * 2);
 
@@ -467,13 +436,11 @@ static int destroy_lines(void)
  */
 int blocks_init(void)
 {
-	size_t i;
-
 	log_info("Initializing game data");
 	pgame = calloc(1, sizeof *pgame);
 	if (!pgame) {
 		log_err("Out of memory");
-		exit(EXIT_FAILURE);
+		return -1;
 	}
 
 	bag_random_generator();
@@ -493,8 +460,8 @@ int blocks_init(void)
 	LIST_INIT(&pgame->blocks_head);
 
 	/* Create and add each block to the linked list */
-	for (i = 0; i < NEXT_BLOCKS_LEN +2; i++) {
-		struct blocks *last, *np = malloc(sizeof *np);
+	for (size_t i = 0; i < NEXT_BLOCKS_LEN +2; i++) {
+		struct blocks *np = malloc(sizeof *np);
 		if (!np) {
 			log_err("Out of memory");
 			exit(EXIT_FAILURE);
@@ -502,31 +469,16 @@ int blocks_init(void)
 
 		randomize_block(np);
 
-		/* We need a head of the list to properly add new blocks, so
-		 * manually add the head. Then use a loop to add the rest of
-		 * the starting blocks.
-		 */
-		if (i == 0) {
-			LIST_INSERT_HEAD(&pgame->blocks_head, np, entries);
-			continue;
-		}
-
-		/* Skip to end of list */
-		for (last = HOLD_BLOCK();
-		     last->entries.le_next;
-		     last = last->entries.le_next)
-			;
-
-		LIST_INSERT_AFTER(last, np, entries);
+		LIST_INSERT_HEAD(&pgame->blocks_head, np, entries);
 	}
 
 	/* Allocate memory for colors */
-	for (i = 0; i < BLOCKS_MAX_ROWS; i++) {
-		pgame->colors[i] = malloc(BLOCKS_MAX_COLUMNS *
+	for (size_t i = 0; i < BLOCKS_MAX_ROWS; i++) {
+		pgame->colors[i] = calloc(BLOCKS_MAX_COLUMNS,
 					  sizeof(*pgame->colors[i]));
 		if (!pgame->colors[i]) {
 			log_err("Out of memory");
-			exit(EXIT_FAILURE);
+			return -1;
 		}
 	}
 
@@ -550,9 +502,10 @@ int blocks_cleanup()
 
 	pthread_mutex_destroy(&pgame->lock);
 
+	struct blocks *np;
+
 	/* Remove each piece in the linked list */
-	while (HOLD_BLOCK()) {
-		struct blocks *np = HOLD_BLOCK();
+	while ((np = pgame->blocks_head.lh_first)) {
 		LIST_REMOVE(np, entries);
 		free(np);
 	}
@@ -658,8 +611,9 @@ void *blocks_input(void *vp)
 	(void) vp; /* unused */
 	
 	int ch;
+	struct blocks *tmp;
 
-	if (!CURRENT_BLOCK())
+	if (!pgame)
 		return NULL;
 
 	while ((ch = getch())) {
@@ -672,6 +626,7 @@ void *blocks_input(void *vp)
 			pgame->ghosts = !pgame->ghosts;
 			goto draw_game;
 		case 'P':
+			fflush(NULL);
 			pgame->pause = !pgame->pause;
 			goto draw_game;
 		case 'O':
@@ -697,15 +652,12 @@ void *blocks_input(void *vp)
 		case 'S':
 			if (drop_block(CURRENT_BLOCK()))
 				CURRENT_BLOCK()->soft_drop++;
-			else
-				CURRENT_BLOCK()->lock_delay = 1E9 -1;
 			break;
 		case 'W':
 			/* drop the block to the bottom of the game */
 			while (drop_block(CURRENT_BLOCK()))
 				CURRENT_BLOCK()->hard_drop++;
 
-			/* XXX */
 			CURRENT_BLOCK()->lock_delay = 1E9 -1;
 			break;
 		case 'Q':
@@ -720,9 +672,7 @@ void *blocks_input(void *vp)
 				try_wall_kick(CURRENT_BLOCK(), ROT_RIGHT);
 			}
 			break;
-		case ' ': {
-			struct blocks *tmp;
-
+		case ' ':
 			/* We can hold each block exactly once */
 			if (CURRENT_BLOCK()->hold == true)
 				break;
@@ -740,9 +690,7 @@ void *blocks_input(void *vp)
 
 			reset_block(HOLD_BLOCK());
 			HOLD_BLOCK()->hold = true;
-
 			break;
-			}
 		}
 
 		update_ghost_block();
@@ -750,8 +698,7 @@ void *blocks_input(void *vp)
 		/* then rewrite it */
 		write_cur_block();
 
-		draw_game:
-
+	draw_game:
 		screen_draw_game();
 		pthread_mutex_unlock(&pgame->lock);
 	}
