@@ -534,11 +534,14 @@ void *blocks_loop(void *vp)
 {
 	(void) vp; /* unused*/
 
-	int hit;
-	struct timespec ts;
+	if (!pgame)
+		return NULL;
 
-	ts.tv_sec = 0;
-	ts.tv_nsec = 0;
+	int bottom = 0;
+	struct timespec ts = {
+		.tv_sec = 0,
+		.tv_nsec = 0,
+	};
 
 	/* When we read in from the database, it sets the current level
 	 * for the game. Update the tick delay so we resume at proper
@@ -548,6 +551,9 @@ void *blocks_loop(void *vp)
 
 	while (1) {
 		ts.tv_nsec = pgame->nsec;
+		if (pgame->pause)
+			ts.tv_nsec = 1E9 -1;
+
 		nanosleep(&ts, NULL);
 
 		if (pgame->lose || pgame->quit)
@@ -565,21 +571,31 @@ void *blocks_loop(void *vp)
 
 		unwrite_cur_block();
 
-		hit = drop_block(CURRENT_BLOCK());
-
+		bottom = drop_block(CURRENT_BLOCK());
 		update_ghost_block();
 
 		write_cur_block();
 
-		if (hit == 0) {
-			destroy_lines();
-			update_cur_block();
-		} else if (hit < 0) {
-			exit(EXIT_FAILURE);
+		if (CURRENT_BLOCK()->lock_delay) {
+			screen_draw_game();
+			pthread_mutex_unlock(&pgame->lock);
+
+			ts.tv_nsec = CURRENT_BLOCK()->lock_delay;
+			nanosleep(&ts, NULL);
+
+			pthread_mutex_lock(&pgame->lock);
 		}
 
-		draw_game:
+		if (!bottom) {
+			destroy_lines();
+			update_cur_block();
+		}
 
+		unwrite_cur_block();
+		update_ghost_block();
+		write_cur_block();
+
+	draw_game:
 		screen_draw_game();
 		pthread_mutex_unlock(&pgame->lock);
 	}
