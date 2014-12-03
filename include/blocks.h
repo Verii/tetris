@@ -21,14 +21,11 @@
 #ifndef BLOCKS_H_
 #define BLOCKS_H_
 
-#include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/queue.h>
 
 #include "helpers.h"
-
-#define PI 3.141592653589L
 
 #define BLOCKS_MAX_COLUMNS	10
 #define BLOCKS_MAX_ROWS		22

@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#define PI 3.141592653589L
 #define LEN(x) ((sizeof(x))/(sizeof(*x)))
 
 int try_mkdir(const char *path, mode_t mode);
