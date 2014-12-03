@@ -148,12 +148,10 @@ int main(int argc, char **argv)
 
 	if (pgame->lose) {
 		db_save_score();
+		screen_draw_over();
 	} else {
 		db_save_state();
 	}
-
-	/* Print scores, tell user they're a loser, etc. */
-	screen_draw_over();
 
 	return 0;
 }
