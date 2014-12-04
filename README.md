@@ -1,18 +1,30 @@
-# Falling blocks game
+# Tetris
 
 ## Building
-This program links with sqlite3 (3.8+).
-We now also link with libbsd. Specifically for two functions: strlcpy, strlcat.
-Any POSIX compliant pthreads implementation should work fine.
-I use GCC 4.8.x for building.
-Different version may report misc. errors during the build. Patches are welcome
+To pull in dependencies:
+
+    git submodule init
+    git submodule update
+
+To build:
+
+    make (or `make debug`)
+
+To install:
+    make install (or not)
+
+## Dependencies, Libraries
+-libbsd
+-libsqlite3 (3.8+)
+-libncurses (Or compliant implementations)
+-libpthread
 
 ## Contributions
-To help with the understanding of this program(it's quite simple), you should
-first read the overviews in docs/files/\* to get an idea of what does what.
-src/main.c is also a good place to start.
+I guess send me code if you want to. As long as it complies to GPL or
+BSD/MIT I'm okay with it.
 
 ## License
+Copyright (C) 2014 James Smith <james@apertum.org>
 Read the LICENSE file.
 
 ![screenshot3](assets/screenshot3.png "falling blocks game3")
