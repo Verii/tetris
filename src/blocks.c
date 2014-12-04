@@ -551,8 +551,12 @@ void *blocks_loop(void *vp)
 
 	while (1) {
 		ts.tv_nsec = pgame->nsec;
-		if (pgame->pause)
-			ts.tv_nsec = 1E9 -1;
+		ts.tv_sec = 0;
+
+		if (pgame->pause) {
+			ts.tv_nsec = 0;
+			ts.tv_sec = 1;
+		}
 
 		nanosleep(&ts, NULL);
 
@@ -566,8 +570,24 @@ void *blocks_loop(void *vp)
 			goto draw_game;
 		}
 
-		/* Unpause the game if we're out of pause ticks */
+		/* Unpause the game if we're out of pause time */
 		pgame->pause = (pgame->pause && pgame->pause_ticks);
+
+		/* XXX
+		 * Look into this again.
+		 */
+
+		if (CURRENT_BLOCK()->lock_delay) {
+			screen_draw_game();
+			pthread_mutex_unlock(&pgame->lock);
+
+			/* Allow user input for lock_delay */
+			ts.tv_sec = 0;
+			ts.tv_nsec = CURRENT_BLOCK()->lock_delay;
+			nanosleep(&ts, NULL);
+
+			pthread_mutex_lock(&pgame->lock);
+		}
 
 		unwrite_cur_block();
 
@@ -576,24 +596,14 @@ void *blocks_loop(void *vp)
 
 		write_cur_block();
 
-		if (CURRENT_BLOCK()->lock_delay) {
-			screen_draw_game();
-			pthread_mutex_unlock(&pgame->lock);
-
-			ts.tv_nsec = CURRENT_BLOCK()->lock_delay;
-			nanosleep(&ts, NULL);
-
-			pthread_mutex_lock(&pgame->lock);
-		}
-
 		if (!bottom) {
 			destroy_lines();
 			update_cur_block();
-		}
 
-		unwrite_cur_block();
-		update_ghost_block();
-		write_cur_block();
+			unwrite_cur_block();
+			update_ghost_block();
+			write_cur_block();
+		}
 
 	draw_game:
 		screen_draw_game();
