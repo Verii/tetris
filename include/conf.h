@@ -44,9 +44,12 @@
 struct config {
 	const char hostname[128];
 	const char port[16];
-	const char log_dir[256];
-	const char saves_dir[256];
-	const char conf_dir[256];
+
+	/* slightly misleading, this is the file. NOT the directory */
+	/* Filename is appended to each entry */
+	const char log_dir[256]; // "logs"
+	const char saves_dir[256]; // "saves"
+	const char conf_dir[256]; // "tetris.conf"
 };
 
 extern struct config configuration;
