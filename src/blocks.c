@@ -275,26 +275,6 @@ static void update_ghost_block(void)
 }
 
 /*
- * Remove the currently falling block from the board.
- * NOT THE LINKED LIST. The block still exists in memory. We are literally just
- * erasing the bits from the actual game board. This is used before operating
- * on a game piece(e.g. before rotation or translation).
- */
-static void unwrite_cur_block(void)
-{
-	struct blocks *block = CURRENT_BLOCK();
-
-	for (size_t i = 0; i < LEN(block->p); i++) {
-		size_t x, y;
-		y = block->row_off + block->p[i].y;
-		x = block->col_off + block->p[i].x;
-
-		/* Remove the bit where the block exists */
-		pgame->spaces[y] &= ~(1 << x);
-	}
-}
-
-/*
  * Inverse of the above. We write the pieces to the game board.
  * Used after operations on a block(e.g. rotation or translation).
  */
@@ -589,32 +569,20 @@ void *blocks_loop(void *vp)
 			pthread_mutex_lock(&pgame->lock);
 		}
 
-		unwrite_cur_block();
-
 		bottom = drop_block(CURRENT_BLOCK());
-		update_ghost_block();
-
-		write_cur_block();
 
 		if (!bottom) {
+			write_cur_block();
 			destroy_lines();
 			update_cur_block();
-
-			unwrite_cur_block();
-			update_ghost_block();
-			write_cur_block();
 		}
+
+		update_ghost_block();
 
 	draw_game:
 		screen_draw_game();
 		pthread_mutex_unlock(&pgame->lock);
 	}
-
-	/* remove the current piece from the board, when we write to the
-	 * database it would otherwise save the location of a block in mid-air.
-	 * We can't restore from blocks like that, so just remove it.
-	 */
-	unwrite_cur_block();
 
 	return NULL;
 }
@@ -663,9 +631,6 @@ void *blocks_input(void *vp)
 
 		if (pgame->pause)
 			goto draw_game;
-
-		/* remove the current piece from the board */
-		unwrite_cur_block();
 
 		/* modify it */
 		switch (toupper(ch)) {
@@ -720,9 +685,6 @@ void *blocks_input(void *vp)
 		}
 
 		update_ghost_block();
-
-		/* then rewrite it */
-		write_cur_block();
 
 	draw_game:
 		screen_draw_game();

@@ -241,6 +241,14 @@ static void draw_board(bool self, struct blocks_game *player, WINDOW *win)
 		}
 	}
 
+	for (i = 0; i < LEN(CURRENT_BLOCK()->p); i++) {
+		struct blocks *np = CURRENT_BLOCK();
+		mvwprintw(win,
+		    np->p[i].y +np->row_off -2,
+		    np->p[i].x +np->col_off +1 +x_off,
+		    PIECES_CHAR);
+	}
+
 	/* Draw the Ghost block on the bottom of the board, if the user wants */
 	if (player->ghosts && ghost_block) {
 		wattrset(win, A_DIM|
