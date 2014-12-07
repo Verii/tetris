@@ -70,7 +70,7 @@ static int conf_replace_home(char *path, size_t len)
 
 static int conf_parse(const char *path)
 {
-	char *fbuf = NULL;
+	char *pbuf = NULL, *fbuf = NULL;
 	size_t len = 0;
 
 	logs_to_file("Trying to parse configuration file: %s", path);
@@ -80,9 +80,48 @@ static int conf_parse(const char *path)
 		return -1;
 	}
 
-	printf("%s\n", fbuf);
+	pbuf = fbuf;
 
-	free(fbuf);
+#if 0
+	/* Valid keys in configuration file */
+	struct keys {
+		const char *p;
+		const char *key;
+	} tokens[] = {
+//		{ configuration.user,		"username"},
+//		{ configuration.pass,		"password"},
+		{ configuration.hostname,	"hostname"},
+		{ configuration.port,		"port"},
+		{ configuration.log_dir,	"logfile"},
+		{ configuration.saves_dir,	"dbfile"},
+		{ NULL, NULL }
+	};
+
+	while (getnextline(&pbuf, len) != EOF) {
+		char *ident = NULL, *val = NULL;
+
+		if (sscanf(pbuf, " %ms = \"%ms\" ", &ident, &val) != 2)
+			goto again;
+
+		for (size_t i = 0; tokens[i].key; i++) {
+			char *pstr;
+			if ((pstr = strstr(tokens[i].key, ident))) {
+				strncpy((char *) tokens[i].p, val,
+					sizeof tokens[i].p);
+				break;
+			}
+
+			logs_to_file("Key: \"%s\" is not implemented", ident);
+		}
+
+	again:
+		free(ident);
+		free(val);
+	}
+#endif
+
+	free(pbuf);
+//	free(fbuf);
 
 	return 1;
 }
