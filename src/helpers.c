@@ -41,7 +41,7 @@ int try_mkdir(const char *path, mode_t mode)
 	/* Try to create directory if it doesn't exist */
 	if (errno == ENOENT) {
 		if (mkdir(path, mode) == -1) {
-			perror(path);
+			log_err("mkdir: %s", strerror(errno));
 			return -1;
 		}
 	}
@@ -49,7 +49,7 @@ int try_mkdir(const char *path, mode_t mode)
 	/* Adjust permissions if dir exists but can't be read */
 	if ((sb.st_mode & mode) != mode) {
 		if (chmod(path, mode) == -1) {
-			perror(path);
+			log_err("chmod: %s", strerror(errno));
 			return -1;
 		}
 	}
@@ -62,14 +62,9 @@ int try_mkdir(const char *path, mode_t mode)
  */
 int try_mkdir_r(const char *path, mode_t mode)
 {
-	/* Local copy, strtok modifies first argument */
-	char pcpy[256];
-
-	/* subdirectory we're building */
-	char subdir[256];
-
-	/* next token, save state */
-	char *p, *saveptr;
+	char pcpy[256];		/* Local copy, strtok modifies first argument */
+	char subdir[256];	/* subdirectory we're building */
+	char *p, *saveptr;	/* next token, save state */
 
 	strncpy(pcpy, path, sizeof pcpy);
 	strncpy(subdir, "/", sizeof subdir);
