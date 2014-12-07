@@ -16,13 +16,15 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include <bsd/string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-
-#include <errno.h>
-#include <stdio.h>
 #include <unistd.h>
+#include <fcntl.h>
+
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
 
 #include "logs.h"
 #include "helpers.h"
@@ -88,5 +90,51 @@ int try_mkdir_r(const char *path, mode_t mode)
 
 err_mkdir_r:
 	log_err("Unable to recursively create directory: %s", path);
+	return -1;
+}
+
+int file_into_buf(const char *path, char **buf, size_t *len)
+{
+	off_t n = -1;
+	int fd = -1;
+
+	fd = open(path, O_RDONLY);
+
+	if (fd == -1) {
+		log_err("open: %s", strerror(errno));
+		goto cleanup;
+	}
+
+	/* Get length of file. Is stat() or lseek() better here?
+	 * I would guess stat() would query the FS for the size, and lseek
+	 * steps through one byte at a time until it finds EOF?
+	 */
+	if ((n = lseek(fd, 0, SEEK_END)) == -1) {
+		log_err("lseek: %s", strerror(errno));
+		goto cleanup;
+	}
+
+	lseek(fd, 0, SEEK_SET);
+
+	*len = n;
+
+	*buf = malloc(n);
+	if (*buf == NULL) {
+		log_err("malloc: %s", strerror(errno));
+		goto cleanup;
+	}
+
+	read(fd, *buf, n);
+	close(fd);
+
+	return 1;
+
+cleanup:
+	if (*buf != NULL)
+		free(*buf);
+
+	if (fd != -1)
+		close(fd);
+
 	return -1;
 }

@@ -32,4 +32,7 @@ int try_mkdir(const char *path, mode_t mode);
 /* Create all subdirectories in a path */
 int try_mkdir_r(const char *path, mode_t mode);
 
+/* Read the entire contents of path into buffer */
+int file_into_buf(const char *path, char **buf, size_t *len);
+
 #endif /* HELPERS_H_ */
