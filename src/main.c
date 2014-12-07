@@ -81,8 +81,11 @@ int main(int argc, char **argv)
 	setlocale(LC_ALL, "");
 	srand(time(NULL));
 
-	char *conffile, *hostname, *port, *logfile, *savefile;
-	conffile = hostname = port = logfile = savefile = NULL;
+	bool cflag, hflag, lflag, pflag, sflag;
+	cflag = hflag = lflag = pflag = sflag = false;
+
+	char conffile[256], hostname[256], port[16];
+	char logfile[256], savefile[256];
 
 	/* Quit if we're not attached to a tty */
 	if (!isatty(fileno(stdin)))
@@ -93,58 +96,33 @@ int main(int argc, char **argv)
 		switch(ch) {
 		case 'c':
 			/* update location for configuration file */
-			conffile = malloc(256);
-			if (!conffile) {
-				log_err("Out of memory");
-				exit(EXIT_FAILURE);
-			}
-
+			cflag = true;
 			strncpy(conffile, optarg, 256);
-			conffile[255] = '\0';
+			conffile[sizeof conffile -1] = '\0';
 			break;
 		case 'h':
 			/* change default host name */
-			hostname = malloc(128);
-			if (!hostname) {
-				log_err("Out of memory");
-				exit(EXIT_FAILURE);
-			}
-
+			hflag = true;
 			strncpy(hostname, optarg, 128);
-			hostname[127] = '\0';
+			hostname[sizeof hostname -1] = '\0';
 			break;
 		case 'l':
 			/* logfile location */
-			logfile = malloc(256);
-			if (!logfile) {
-				log_err("Out of memory");
-				exit(EXIT_FAILURE);
-			}
-
+			lflag = true;
 			strncpy(logfile, optarg, 256);
-			logfile[255] = '\0';
+			logfile[sizeof logfile -1] = '\0';
 			break;
 		case 'p':
 			/* change default port number */
-			port = malloc(16);
-			if (!port) {
-				log_err("Out of memory");
-				exit(EXIT_FAILURE);
-			}
-
+			pflag = true;
 			strncpy(port, optarg, 16);
-			logfile[15] = '\0';
+			logfile[sizeof port -1] = '\0';
 			break;
 		case 's':
 			/* db location */
-			savefile = malloc(256);
-			if (!savefile) {
-				log_err("Out of memory");
-				exit(EXIT_FAILURE);
-			}
-
+			sflag = true;
 			strncpy(savefile, optarg, 256);
-			logfile[255] = '\0';
+			logfile[sizeof savefile -1] = '\0';
 			break;
 		case 'u':
 		default:
@@ -166,19 +144,15 @@ int main(int argc, char **argv)
 	 * configuration file specifies singleplayer, we will still try to play
 	 * multiplayer.
 	 */
-	if (conf_init(conffile) != 1)
+	if (conf_init(cflag? conffile: NULL) != 1)
 		exit(EXIT_FAILURE);
 
-	if ((logs_init(logfile) != 1) ||
+	if ((logs_init(lflag? logfile: NULL) != 1) ||
 	    (blocks_init() != 1) ||
 	    (db_init(savefile) != 1) ||
-//	    (network_init(hostname, port) != 1) ||
+//	    (network_init(hflag? hostname: NULL, pflag? port: NULL) != 1) ||
 	    (screen_init() != 1))
 		exit(EXIT_FAILURE);
-
-	free(conffile);
-	free(logfile);	free(savefile);
-	free(hostname);	free(port);
 
 	atexit(cleanup);
 
