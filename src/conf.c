@@ -73,7 +73,7 @@ static int conf_parse(const char *path)
 	char *pbuf = NULL, *fbuf = NULL;
 	size_t len = 0;
 
-	logs_to_file("Trying to parse configuration file: %s", path);
+	logs_to_file("Config file: %s", path);
 
 	if (file_into_buf(path, &fbuf, &len) != 1) {
 		log_err("File \"%s\" does not exist.", path);
