@@ -65,7 +65,6 @@ static int conf_replace_home(char *path, size_t len)
 
 static int conf_parse(const char *path)
 {
-	const char *pbuf;
 	char *fbuf = NULL;
 	size_t i, len = 0;
 
@@ -91,6 +90,7 @@ static int conf_parse(const char *path)
 		{ NULL, 0, NULL }
 	};
 
+	const char *pbuf = NULL;
 	while (getnextline(fbuf, len, &pbuf) != EOF && pbuf != NULL) {
 		char *key = NULL, *val = NULL, *pstr;
 
