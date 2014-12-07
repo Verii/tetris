@@ -16,10 +16,15 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include <bsd/string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
 
 #include "conf.h"
 #include "logs.h"
@@ -34,33 +39,51 @@ struct config configuration = {
 	.conf_dir = CONF_CONFIG,
 };
 
-/* Replaces '~' in a pathname with the user's HOME variable.
- * TODO make this safer, fail if the user doesn't have HOME
- * TODO accept "$HOME" also
- */
+/* Replaces '~' in a pathname with the user's HOME variable.  */
 static int conf_replace_home(char *path, size_t len)
 {
 	char buf[256], *rbuf;
 
+	if (path == NULL || len <= 0)
+		return -1;
+
 	const char *home_dir = getenv("HOME");
 
+	if (home_dir == NULL)
+		return -1;
+
 	strncpy(buf, path, sizeof buf);
+	buf[sizeof(buf) -1] = '\0';
+
+	/* Look for ~ to replace with home_dir
+	 * If '~' does not exist in the string we try to replace HOME with
+	 * home_dir. If neither exist we fail.
+	 */
 	rbuf = strtok(buf, "~");
+	/* TODO check for HOME */
 
 	memcpy(path, home_dir, len);
-	strlcat(path, rbuf, len);
+	strncat(path, rbuf, len);
 
 	return 1;
 }
 
 static int conf_parse(const char *path)
 {
-	FILE *fin = NULL;
+	char *fbuf = NULL;
+	size_t len = 0;
 
-	if (!(fin = fopen(path, "r")))
+	logs_to_file("Trying to parse configuration file: %s", path);
+
+	if (file_into_buf(path, &fbuf, &len) != 1) {
+		log_err("File \"%s\" does not exist.", path);
 		return -1;
+	}
 
-	fclose(fin);
+	printf("%s\n", fbuf);
+
+	free(fbuf);
+
 	return 1;
 }
 
