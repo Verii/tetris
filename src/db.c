@@ -67,7 +67,7 @@ int db_init(const char *path)
 {
 	int status;
 
-	db_path = path ? path : configuration.saves_dir;
+	db_path = path ? path : conf.saves_loc.val;
 
 	debug("Opening database: %s", db_path);
 

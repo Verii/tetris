@@ -41,18 +41,21 @@
 #define CONF_CONFIG "~/.config/tetris/"
 #endif
 
-struct config {
-	const char hostname[128];
-	const char port[16];
-
-	/* slightly misleading, this is the file. NOT the directory */
-	/* Filename is appended to each entry */
-	const char log_dir[256]; // "logs"
-	const char saves_dir[256]; // "saves"
-	const char conf_dir[256]; // "tetris.conf"
+struct conf_simpleString_ {
+	char *val;
+	size_t len;
 };
 
-extern struct config configuration;
+struct config {
+	struct conf_simpleString_ hostname;
+	struct conf_simpleString_ port;
+
+	struct conf_simpleString_ logs_loc; /* ~/.local/share/tetris/logs */
+	struct conf_simpleString_ saves_loc; /* ~/.local/share/tetris/saves */
+	struct conf_simpleString_ conf_loc; /* ~/.config/tetris/tetris.conf */
+};
+
+extern struct config conf;
 
 /* Read in the specified path. If path is NULL, read in the compiled in default
  * path.

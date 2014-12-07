@@ -67,10 +67,10 @@ int logs_init(const char *path)
 	}
 
 	/* Fallback to global define */
-	if (freopen(configuration.log_dir, "a+", stderr) != NULL)
+	if (freopen(conf.logs_loc.val, "a+", stderr) != NULL)
 		return 1;
 
-	log_err("freopen: %s: %s", strerror(errno), configuration.log_dir);
+	log_err("freopen: %s: %s", strerror(errno), conf.logs_loc.val);
 
 	return -1;
 }

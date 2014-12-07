@@ -30,26 +30,18 @@
 #include "logs.h"
 #include "helpers.h"
 
-/* Set global compiled-in defaults */
-struct config configuration = {
-	.hostname = CONF_HOSTNAME,
-	.port = CONF_PORT,
-	.log_dir = CONF_LOGS,
-	.saves_dir = CONF_SAVES,
-	.conf_dir = CONF_CONFIG,
-};
+struct config conf;
 
 /* Replaces '~' in a pathname with the user's HOME variable.  */
 static int conf_replace_home(char *path, size_t len)
 {
+	char *home_dir;
 	char buf[256], *rbuf;
 
 	if (path == NULL || len <= 0)
 		return -1;
 
-	const char *home_dir = getenv("HOME");
-
-	if (home_dir == NULL)
+	if ((home_dir = getenv("HOME")) == NULL)
 		return -1;
 
 	strncpy(buf, path, sizeof buf);
@@ -57,9 +49,12 @@ static int conf_replace_home(char *path, size_t len)
 
 	/* Look for ~ to replace with home_dir
 	 * If '~' does not exist in the string we try to replace HOME with
-	 * home_dir. If neither exist we fail.
+	 * home_dir. If neither exist we return.
 	 */
 	rbuf = strtok(buf, "~");
+	if (rbuf == NULL)
+		return 1;
+
 	/* TODO check for HOME */
 
 	memcpy(path, home_dir, len);
@@ -70,8 +65,9 @@ static int conf_replace_home(char *path, size_t len)
 
 static int conf_parse(const char *path)
 {
-	char *pbuf = NULL, *fbuf = NULL;
-	size_t len = 0;
+	const char *pbuf;
+	char *fbuf = NULL;
+	size_t i, len = 0;
 
 	logs_to_file("Config file: %s", path);
 
@@ -80,50 +76,96 @@ static int conf_parse(const char *path)
 		return -1;
 	}
 
-	pbuf = fbuf;
-
-#if 0
 	/* Valid keys in configuration file */
 	struct keys {
-		const char *p;
+		char *p;
+		size_t len;
 		const char *key;
 	} tokens[] = {
-//		{ configuration.user,		"username"},
-//		{ configuration.pass,		"password"},
-		{ configuration.hostname,	"hostname"},
-		{ configuration.port,		"port"},
-		{ configuration.log_dir,	"logfile"},
-		{ configuration.saves_dir,	"dbfile"},
-		{ NULL, NULL }
+//		{ conf.user.val,	conf.user.len,		"username"},
+//		{ conf.pass.val,	conf.pass.len,		"password"},
+		{ conf.hostname.val,	conf.hostname.len,	"hostname"},
+		{ conf.port.val,	conf.port.len,		"port"},
+		{ conf.logs_loc.val,	conf.logs_loc.len,	"logfile"},
+		{ conf.saves_loc.val,	conf.saves_loc.len,	"dbfile"},
+		{ NULL, 0, NULL }
 	};
 
-	while (getnextline(&pbuf, len) != EOF) {
-		char *ident = NULL, *val = NULL;
+	while (getnextline(fbuf, len, &pbuf) != EOF && pbuf != NULL) {
+		char *key = NULL, *val = NULL, *pstr;
 
-		if (sscanf(pbuf, " %ms = \"%ms\" ", &ident, &val) != 2)
+		if (sscanf(pbuf, " %ms = %ms ", &key, &val) != 2)
 			goto again;
 
-		for (size_t i = 0; tokens[i].key; i++) {
-			char *pstr;
-			if ((pstr = strstr(tokens[i].key, ident))) {
-				strncpy((char *) tokens[i].p, val,
-					sizeof tokens[i].p);
+		logs_to_file("Found key = \"%s\", value = \"%s\"", key, val);
+
+		/* Remove enclosing double quotes, and fail if the value is not
+		 * enclosed in double quotes.
+		 */
+		if (val[0] != '"')
+			goto again;
+		i = 1;
+		while (val[i] != '"' && val[i] != '\0')
+			i++;
+		val[i] = '\0';
+
+		/* Apply changes to global variables */
+		for (i = 0; tokens[i].key; i++) {
+			if ((pstr = strstr(tokens[i].key, key))) {
+				strncpy(tokens[i].p, &val[1], tokens[i].len);
 				break;
 			}
-
-			logs_to_file("Key: \"%s\" is not implemented", ident);
 		}
 
+		if (tokens[i].key == NULL)
+			logs_to_file("Key: \"%s\" is not implemented", key);
+
 	again:
-		free(ident);
+		free(key);
 		free(val);
 	}
+
+	free(fbuf);
+
+	conf_replace_home(conf.logs_loc.val, conf.logs_loc.len);
+	conf_replace_home(conf.saves_loc.val, conf.saves_loc.len);
+
+#ifdef DEBUG
+	for (i = 0; tokens[i].p; i++)
+		logs_to_file("%s", tokens[i].p);
 #endif
 
-	free(pbuf);
-//	free(fbuf);
+	return 1;
+}
+
+static int _init_memory(void)
+{
+#define initMem(LOC, LEN, DEF) do { \
+		LOC.len = LEN; \
+		LOC.val = malloc(LEN);\
+		if (LOC.val == NULL) \
+			goto error; \
+		strncpy(LOC.val, DEF, LEN); \
+		LOC.val[LEN-1] = '\0'; \
+	} while (0);
+
+	memset(&conf, 0, sizeof conf);
+
+	initMem(conf.hostname, 256, CONF_HOSTNAME);
+	initMem(conf.port, 16, CONF_PORT);
+	initMem(conf.logs_loc, 256, CONF_LOGS);
+	initMem(conf.saves_loc, 256, CONF_SAVES);
+	initMem(conf.conf_loc, 256, CONF_CONFIG);
 
 	return 1;
+
+error:
+	free(conf.hostname.val);
+	free(conf.port.val);
+	free(conf.logs_loc.val);
+	free(conf.saves_loc.val);
+	free(conf.conf_loc.val);
+	return -1;
 }
 
 /* Set default global variables, create necessary directories,
@@ -134,32 +176,31 @@ int conf_init(const char *path)
 	/* 0755 */
 	const mode_t mode = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
 
-	/* ~/.local/share/tetris */
-	conf_replace_home((char *)configuration.log_dir,
-		sizeof configuration.log_dir);
-	try_mkdir_r(configuration.log_dir, mode);
-	strncat((char *)configuration.log_dir, "logs",
-		sizeof configuration.log_dir);
+	if (_init_memory() != 1) {
+		log_err("Out of memory");
+		return -1;
+	}
 
 	/* ~/.local/share/tetris */
-	conf_replace_home((char *)configuration.saves_dir,
-		sizeof configuration.saves_dir);
-	try_mkdir_r(configuration.saves_dir, mode);
-	strncat((char *)configuration.saves_dir, "saves",
-		sizeof configuration.saves_dir);
+	conf_replace_home(conf.logs_loc.val, conf.logs_loc.len);
+	try_mkdir_r(conf.logs_loc.val, mode);
+	strncat(conf.logs_loc.val, "logs", conf.logs_loc.len);
+
+	/* ~/.local/share/tetris */
+	conf_replace_home(conf.saves_loc.val, conf.saves_loc.len);
+	try_mkdir_r(conf.saves_loc.val, mode);
+	strncat(conf.saves_loc.val, "saves", conf.saves_loc.len);
 
 	/* ~/.config/tetris */
-	conf_replace_home((char *)configuration.conf_dir,
-		sizeof configuration.conf_dir);
-	try_mkdir_r(configuration.conf_dir, mode);
-	strncat((char *)configuration.conf_dir, "tetris.conf",
-		sizeof configuration.conf_dir);
+	conf_replace_home(conf.conf_loc.val, conf.conf_loc.len);
+	try_mkdir_r(conf.conf_loc.val, mode);
+	strncat(conf.conf_loc.val, "tetris.conf", conf.conf_loc.len);
 
 	/* Try to read the default compiled-in path for the configuration file,
 	 * but don't fail if we can't find it. The user supplied location will
 	 * overwrite any changes here.
 	 */
-	conf_parse(configuration.conf_dir);
+	conf_parse(conf.conf_loc.val);
 
 	/* User specified configuration file overwrites the default
 	 * configuration file path. This one does fail if it doesn't exist.
