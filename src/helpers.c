@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <ctype.h>
 
 #include "logs.h"
 #include "helpers.h"
@@ -132,4 +133,34 @@ cleanup:
 		close(fd);
 
 	return -1;
+}
+
+/* Give pack a pointer to a location in the buffer of the next line. */
+int getnextline(const char *buf, size_t len, const char **pbuf)
+{
+	static size_t offset = 0;
+	if (*pbuf == NULL)
+		offset = 0;
+
+	if (buf == NULL || len == 0) {
+		*pbuf = NULL;
+		return EOF;
+	}
+
+	/* Give back NULL, and return EOF if we run past the buffer */
+	if (offset >= len) {
+		*pbuf = NULL;
+		return EOF;
+	}
+
+	/* Find first whitespace character */
+	while (!isspace(buf[offset++]) && offset < len)
+		;
+
+	/* Find last whitespace character */
+	while (isspace(buf[offset++]) && offset < len)
+		;
+
+	*pbuf = &buf[offset-1];
+	return offset;
 }

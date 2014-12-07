@@ -35,4 +35,15 @@ int try_mkdir_r(const char *path, mode_t mode);
 /* Read the entire contents of path into buffer */
 int file_into_buf(const char *path, char **buf, size_t *len);
 
+/* Find the next line in a buffer of length len, maintain the buffer offset
+ * between calls in the offset variable.
+ *
+ * Returns the next line in the pointer pbuf. This is just a pointer to a
+ * location in the buffer. pbuf is NULL if we run past the end of the buffer,
+ * and we return EOF also.
+ *
+ * Find beginning of a line that isn't whitespace(newline, space, tab, etc.)
+ */
+int getnextline(const char *buf, size_t len, const char **pbuf);
+
 #endif /* HELPERS_H_ */
