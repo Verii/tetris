@@ -16,9 +16,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-/* Non-standard BSD extensions */
-#include <bsd/string.h>
-
 #include <locale.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -32,17 +29,6 @@
 #include "logs.h"
 #include "blocks.h"
 #include "screen.h"
-
-static const char *LICENSE =
-"Copyright (C) 2014 James Smith <james@apertum.org>\n\n"
-"This program is free software; you can redistribute it and/or modify\n"
-"it under the terms of the GNU General Public License as published by\n"
-"the Free Software Foundation; either version 2 of the License, or\n"
-"(at your option) any later version.\n\n"
-"This program is distributed in the hope that it will be useful,\n"
-"but WITHOUT ANY WARRANTY; without even the implied warranty of\n"
-"MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n"
-"GNU General Public License for more details.\n";
 
 /* We can exit() at any point and still safely cleanup */
 static void cleanup(void)
@@ -59,15 +45,33 @@ static void cleanup(void)
 static void usage(void)
 {
 	extern const char *__progname;
+	const char *help =
+	"Copyright (C) 2014 James Smith <james@apertum.org>\n\n"
+	"This program is free software; you can redistribute it and/or modify\n"
+	"it under the terms of the GNU General Public License as published by\n"
+	"the Free Software Foundation; either version 2 of the License, or\n"
+	"(at your option) any later version.\n\n"
+	"This program is distributed in the hope that it will be useful,\n"
+	"but WITHOUT ANY WARRANTY; without even the implied warranty of\n"
+	"MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n"
+	"GNU General Public License for more details.\n\n"
+	"%s version %s\n"
+	"Built on %s at %s\n\n"
+	"Defaults:\n\t"
+	"Hostname: \"%s\"\tPort: \"%s\"\n\t"
+	"Log directory: \"%s\"\n\t"
+	"Save directory: \"%s\"\n\t"
+	"Configuration directory: \"%s\"\n\n"
+	"Usage:\n\t"
+	"[-u] usage\n\t"
+	"[-c file] path to use for configuration file\n\t"
+	"[-s file] location to save database\n\t"
+	"[-l file] location to write logs\n\t"
+	"[-h host] hostname to connect to\n\t"
+	"[-p port] port to connect to\n";
 
-	fprintf(stderr, "%s\nBuilt on %s at %s\n"
-		"%s-%s usage:\n\t"
-		"[-u] usage\n\t"
-		"[-c path] path to use for configuration file\n\t"
-		"[-s] don't connect to server (single player)\n\t"
-		"[-h host] hostname to connect to\n\t"
-		"[-p port] port to connect to\n",
-		LICENSE, __DATE__, __TIME__, __progname, VERSION);
+	fprintf(stderr, help, __progname, VERSION, __DATE__, __TIME__,
+		CONF_HOSTNAME, CONF_PORT, CONF_LOGS, CONF_SAVES, CONF_CONFIG);
 
 	exit(EXIT_FAILURE);
 }
@@ -77,24 +81,70 @@ int main(int argc, char **argv)
 	setlocale(LC_ALL, "");
 	srand(time(NULL));
 
+	char *conffile, *hostname, *port, *logfile, *savefile;
+	conffile = hostname = port = logfile = savefile = NULL;
+
 	/* Quit if we're not attached to a tty */
 	if (!isatty(fileno(stdin)))
 		exit(EXIT_FAILURE);
 
 	int ch;
-	while ((ch = getopt(argc, argv, "c:h:p:su")) != -1) {
+	while ((ch = getopt(argc, argv, "c:h:l:p:s:u")) != -1) {
 		switch(ch) {
 		case 'c':
-			/* update search location for configuration file */
+			/* update location for configuration file */
+			conffile = malloc(256);
+			if (!conffile) {
+				log_err("Out of memory");
+				exit(EXIT_FAILURE);
+			}
+
+			strncpy(conffile, optarg, 256);
+			conffile[255] = '\0';
 			break;
 		case 'h':
 			/* change default host name */
+			hostname = malloc(128);
+			if (!hostname) {
+				log_err("Out of memory");
+				exit(EXIT_FAILURE);
+			}
+
+			strncpy(hostname, optarg, 128);
+			hostname[127] = '\0';
+			break;
+		case 'l':
+			/* logfile location */
+			logfile = malloc(256);
+			if (!logfile) {
+				log_err("Out of memory");
+				exit(EXIT_FAILURE);
+			}
+
+			strncpy(logfile, optarg, 256);
+			logfile[255] = '\0';
 			break;
 		case 'p':
 			/* change default port number */
+			port = malloc(16);
+			if (!port) {
+				log_err("Out of memory");
+				exit(EXIT_FAILURE);
+			}
+
+			strncpy(port, optarg, 16);
+			logfile[15] = '\0';
 			break;
 		case 's':
-			/* play singleplayer */
+			/* db location */
+			savefile = malloc(256);
+			if (!savefile) {
+				log_err("Out of memory");
+				exit(EXIT_FAILURE);
+			}
+
+			strncpy(savefile, optarg, 256);
+			logfile[255] = '\0';
 			break;
 		case 'u':
 		default:
@@ -116,14 +166,21 @@ int main(int argc, char **argv)
 	 * configuration file specifies singleplayer, we will still try to play
 	 * multiplayer.
 	 */
-	conf_init(NULL);
+	if (conf_init(conffile) != 1)
+		exit(EXIT_FAILURE);
 
-	if ((logs_init(NULL) != 1) ||
+	if ((logs_init(logfile) != 1) ||
 	    (blocks_init() != 1) ||
-	    (db_init(NULL) != 1) ||
-//	    (network_init(host, port) != 1) ||
+	    (db_init(savefile) != 1) ||
+//	    (network_init(hostname, port) != 1) ||
 	    (screen_init() != 1))
 		exit(EXIT_FAILURE);
+
+	free(conffile);
+	free(logfile);	free(savefile);
+	free(hostname);	free(port);
+
+	atexit(cleanup);
 
 	log_info("Turn on debugging flags for more output.");
 
@@ -131,20 +188,21 @@ int main(int argc, char **argv)
 	 * updating the screen. */
 	screen_draw_game();
 
-	atexit(cleanup);
+	pthread_t pinput_loop/*, pnet_loop*/;
 
-	pthread_t input_loop;
-	pthread_create(&input_loop, NULL, blocks_input, NULL);
+	pthread_create(&pinput_loop, NULL, blocks_input, NULL);
+	pthread_detach(pinput_loop);
 
-//	pthread_t network_loop;
-//	pthread_create(&network_loop, NULL, network_input, NULL);
+	/*
+	pthread_create(&pnet_loop, NULL, network_loop, NULL);
+	pthread_detach(pnet_loop);
+	*/
 
 	/* Enter game main loop */
 	blocks_loop(NULL);
 
 	/* when blocks_loop returns, kill the input thread and cleanup */
-	pthread_cancel(input_loop);
-//	pthread_cancel(network_loop);
+//	pthread_cancel(pinput_loop);
 
 	if (pgame->lose) {
 		db_save_score();
