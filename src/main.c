@@ -149,7 +149,7 @@ int main(int argc, char **argv)
 
 	if ((logs_init(lflag? logfile: NULL) != 1) ||
 	    (blocks_init() != 1) ||
-	    (db_init(savefile) != 1) ||
+	    (db_init(sflag? savefile: NULL) != 1) ||
 //	    (network_init(hflag? hostname: NULL, pflag? port: NULL) != 1) ||
 	    (screen_init() != 1))
 		exit(EXIT_FAILURE);
