@@ -16,7 +16,6 @@ To install:
 
 ## Dependencies, Libraries
 
--libbsd  
 -libsqlite3 (3.8+)  
 -libncurses (Or compliant implementations)  
 -libpthread  
