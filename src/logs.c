@@ -16,8 +16,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include <bsd/string.h>
-
+#include <errno.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <time.h>
@@ -29,6 +28,9 @@
 #include "logs.h"
 #include "helpers.h"
 
+/* Internal function.
+ * Wrapper, adds new message to head of linked list
+ */
 static int logs_add_to_queue(const char *msg)
 {
 	int msg_len = -1;
@@ -51,6 +53,7 @@ static int logs_add_to_queue(const char *msg)
 	return msg_len;
 }
 
+/* Try to open file provided by user for writing. */
 int logs_init(const char *path)
 {
 	const char *loc;
@@ -74,6 +77,7 @@ int logs_init(const char *path)
 	return 1;
 }
 
+/* Remove elements in linked list, close logfile. */
 void logs_cleanup(void)
 {
 	struct log_entry *np;
@@ -85,7 +89,7 @@ void logs_cleanup(void)
 		free(np);
 	}
 
-	/* Game separator */
+	/* Visual Game separator */
 	fprintf(stderr, "--\n");
 	fclose(stderr);
 }
