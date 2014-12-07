@@ -56,25 +56,23 @@ static int logs_add_to_queue(const char *msg)
 /* Try to open file provided by user for writing. */
 int logs_init(const char *path)
 {
-	const char *loc;
-
-	/* user supplied location overrides default
-	 * We must have read/write access, and the directory must already
-	 * exist.
-	 */
-	loc = path ? path : configuration.log_dir;
-
 	LIST_INIT(&entry_head);
 
-	/* redirect stderr to log file.
-	 * open for writing in append mode ~/.local/share/tetris/logs
-	 */
-	if (freopen(loc, "a", stderr) == NULL) {
-		log_err("Could not open: %s\n", loc);
-		return -1;
+	/* Try first user supplied log file. */
+	if (path) {
+		if (freopen(path, "a+", stderr) != NULL)
+			return 1;
+		else
+			log_err("freopen: %s: %s", strerror(errno), path);
 	}
 
-	return 1;
+	/* Fallback to global define */
+	if (freopen(configuration.log_dir, "a+", stderr) != NULL)
+		return 1;
+
+	log_err("freopen: %s: %s", strerror(errno), configuration.log_dir);
+
+	return -1;
 }
 
 /* Remove elements in linked list, close logfile. */
