@@ -93,38 +93,28 @@ static int conf_parse(const char *path)
 int conf_init(const char *path)
 {
 	/* 0755 */
-	mode_t mode = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
+	const mode_t mode = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
 
-	{
-		/* Find home */
-		conf_replace_home((char *)configuration.log_dir,
-			sizeof configuration.log_dir);
+	/* ~/.local/share/tetris */
+	conf_replace_home((char *)configuration.log_dir,
+		sizeof configuration.log_dir);
+	try_mkdir_r(configuration.log_dir, mode);
+	strncat((char *)configuration.log_dir, "logs",
+		sizeof configuration.log_dir);
 
-		/* make sure all directories exist */
-		try_mkdir_r(configuration.log_dir, mode);
+	/* ~/.local/share/tetris */
+	conf_replace_home((char *)configuration.saves_dir,
+		sizeof configuration.saves_dir);
+	try_mkdir_r(configuration.saves_dir, mode);
+	strncat((char *)configuration.saves_dir, "saves",
+		sizeof configuration.saves_dir);
 
-		/* append logs file name */
-		strlcat((char *)configuration.log_dir, "logs",
-			sizeof configuration.log_dir);
-	}
-
-	{
-		conf_replace_home((char *)configuration.saves_dir,
-			sizeof configuration.saves_dir);
-
-		try_mkdir_r(configuration.saves_dir, mode);
-
-		strlcat((char *)configuration.saves_dir, "saves",
-			sizeof configuration.saves_dir);
-	}
-
-	{
-		conf_replace_home((char *)configuration.conf_dir,
-			sizeof configuration.conf_dir);
-
-		strlcat((char *)configuration.conf_dir, "tetris.conf",
-			sizeof configuration.conf_dir);
-	}
+	/* ~/.config/tetris */
+	conf_replace_home((char *)configuration.conf_dir,
+		sizeof configuration.conf_dir);
+	try_mkdir_r(configuration.conf_dir, mode);
+	strncat((char *)configuration.conf_dir, "tetris.conf",
+		sizeof configuration.conf_dir);
 
 	/* Try to read the default compiled-in path for the configuration file,
 	 * but don't fail if we can't find it. The user supplied location will
@@ -133,10 +123,10 @@ int conf_init(const char *path)
 	conf_parse(configuration.conf_dir);
 
 	/* User specified configuration file overwrites the default
-	 * configuration file path. This one does fail if it doesn't exist
+	 * configuration file path. This one does fail if it doesn't exist.
 	 */
 	if (path && conf_parse(path) != 1)
-		log_err("File \"%s\" does not exist.", path);
+		return -1;
 
 	return 1;
 }
