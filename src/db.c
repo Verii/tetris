@@ -16,7 +16,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include <bsd/string.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -202,8 +201,9 @@ int db_resume_state(void)
 
 	if (sqlite3_step(stmt) == SQLITE_ROW) {
 		if (sqlite3_column_text(stmt, 0))
-			strlcpy(pgame->id, (const char *)
+			strncpy(pgame->id, (const char *)
 				sqlite3_column_text(stmt, 0), sizeof pgame->id);
+		pgame->id[sizeof(pgame->id) -1] = '\0';
 
 		pgame->score		= sqlite3_column_int(stmt, 1);
 		pgame->lines_destroyed	= sqlite3_column_int(stmt, 2);
@@ -275,9 +275,9 @@ int db_get_scores(struct db_results **res, size_t results)
 		}
 
 		memset(np->id, 0, sizeof np->id);
-		strlcpy(np->id, (const char *)
+		strncpy(np->id, (const char *)
 			sqlite3_column_text(stmt, 0), sizeof np->id);
-		np->id[sizeof(np->id) - 1] = '\0';
+		np->id[sizeof(np->id) -1] = '\0';
 
 		np->level	= sqlite3_column_int(stmt, 1);
 		np->score	= sqlite3_column_int(stmt, 2);
