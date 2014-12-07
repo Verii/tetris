@@ -139,6 +139,7 @@ cleanup:
 int getnextline(const char *buf, size_t len, const char **pbuf)
 {
 	static size_t offset = 0;
+
 	if (*pbuf == NULL)
 		offset = 0;
 
@@ -154,11 +155,11 @@ int getnextline(const char *buf, size_t len, const char **pbuf)
 	}
 
 	/* Find first whitespace character */
-	while (!isspace(buf[offset++]) && offset < len)
+	while (offset < len && !isspace(buf[offset++]))
 		;
 
 	/* Find last whitespace character */
-	while (isspace(buf[offset++]) && offset < len)
+	while (offset < len && isspace(buf[offset++]))
 		;
 
 	*pbuf = &buf[offset-1];
