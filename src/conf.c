@@ -33,7 +33,7 @@
 struct config conf;
 
 /* Replaces '~' in a pathname with the user's HOME variable.  */
-static int conf_replace_home(char *path, size_t len)
+static int replace_home(char *path, size_t len)
 {
 	char *home_dir;
 	char buf[256], *rbuf;
@@ -127,8 +127,8 @@ static int conf_parse(const char *path)
 
 	free(fbuf);
 
-	conf_replace_home(conf.logs_loc.val, conf.logs_loc.len);
-	conf_replace_home(conf.saves_loc.val, conf.saves_loc.len);
+	replace_home(conf.logs_loc.val, conf.logs_loc.len);
+	replace_home(conf.saves_loc.val, conf.saves_loc.len);
 
 #ifdef DEBUG
 	for (i = 0; tokens[i].p; i++)
@@ -138,6 +138,8 @@ static int conf_parse(const char *path)
 	return 1;
 }
 
+/* Create memory for global variables and set their default values. */
+/* TODO replace this with a string sent to the parser for global values. */
 static int _init_memory(void)
 {
 #define initMem(LOC, LEN, DEF) do { \
@@ -182,17 +184,17 @@ int conf_init(const char *path)
 	}
 
 	/* ~/.local/share/tetris */
-	conf_replace_home(conf.logs_loc.val, conf.logs_loc.len);
+	replace_home(conf.logs_loc.val, conf.logs_loc.len);
 	try_mkdir_r(conf.logs_loc.val, mode);
 	strncat(conf.logs_loc.val, "logs", conf.logs_loc.len);
 
 	/* ~/.local/share/tetris */
-	conf_replace_home(conf.saves_loc.val, conf.saves_loc.len);
+	replace_home(conf.saves_loc.val, conf.saves_loc.len);
 	try_mkdir_r(conf.saves_loc.val, mode);
 	strncat(conf.saves_loc.val, "saves", conf.saves_loc.len);
 
 	/* ~/.config/tetris */
-	conf_replace_home(conf.conf_loc.val, conf.conf_loc.len);
+	replace_home(conf.conf_loc.val, conf.conf_loc.len);
 	try_mkdir_r(conf.conf_loc.val, mode);
 	strncat(conf.conf_loc.val, "tetris.conf", conf.conf_loc.len);
 
@@ -209,4 +211,13 @@ int conf_init(const char *path)
 		return -1;
 
 	return 1;
+}
+
+int conf_cleanup(void)
+{
+	free(conf.hostname.val);
+	free(conf.port.val);
+	free(conf.logs_loc.val);
+	free(conf.saves_loc.val);
+	free(conf.conf_loc.val);
 }

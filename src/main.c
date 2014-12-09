@@ -38,6 +38,7 @@ static void cleanup(void)
 	db_cleanup();
 	blocks_cleanup();
 	logs_cleanup();
+	conf_cleanup();
 
 	printf("Thanks for playing Tetris-%s!\n", VERSION);
 }

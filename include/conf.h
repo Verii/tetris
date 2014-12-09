@@ -41,18 +41,17 @@
 #define CONF_CONFIG "~/.config/tetris/"
 #endif
 
-struct conf_simpleString_ {
-	char *val;
-	size_t len;
-};
-
 struct config {
-	struct conf_simpleString_ hostname;
-	struct conf_simpleString_ port;
 
-	struct conf_simpleString_ logs_loc; /* ~/.local/share/tetris/logs */
-	struct conf_simpleString_ saves_loc; /* ~/.local/share/tetris/saves */
-	struct conf_simpleString_ conf_loc; /* ~/.config/tetris/tetris.conf */
+	struct {
+		char *val;
+		size_t len;
+	}
+		hostname,	/* localhost */
+		port,		/* 10024 */
+		logs_loc,	/* ~/.local/share/tetris/logs */
+		saves_loc,	/* ~/.local/share/tetris/saves */
+		conf_loc;	/* ~/.config/tetris/tetris.conf */
 };
 
 extern struct config conf;
@@ -61,5 +60,7 @@ extern struct config conf;
  * path.
  */
 int conf_init(const char *path);
+
+int conf_cleanup(void);
 
 #endif /* CONF_H_ */
