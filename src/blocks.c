@@ -33,7 +33,6 @@
 #include "screen.h"
 
 struct blocks_game *pgame;
-struct blocks *ghost_block;
 
 /*
  * Resets the block to its default positional state
@@ -241,8 +240,7 @@ static void update_tick_speed(void)
  * To prevent an additional free/malloc we recycle the allocated memory.
  *
  * First remove it from its current state, causing the next block to 'fall'
- * into place. Then we randomize it(WHICH WIPES ALL DATA, INCLUDING PREVIOUS
- * POINTERS) and reinstall it at the end of the list.
+ * into place. Then we randomize it and reinstall it at the end of the list.
  */
 static void update_cur_block(void)
 {
@@ -263,21 +261,16 @@ static void update_cur_block(void)
 
 static void update_ghost_block(void)
 {
-	if (!ghost_block || !pgame->ghosts)
-		return;
+	pgame->ghost->row_off = CURRENT_BLOCK()->row_off;
+	pgame->ghost->col_off = CURRENT_BLOCK()->col_off;
+	pgame->ghost->type = CURRENT_BLOCK()->type;
+	memcpy(pgame->ghost->p, CURRENT_BLOCK()->p, sizeof pgame->ghost->p);
 
-	ghost_block->row_off = CURRENT_BLOCK()->row_off;
-	ghost_block->col_off = CURRENT_BLOCK()->col_off;
-	ghost_block->type = CURRENT_BLOCK()->type;
-	memcpy(ghost_block->p, CURRENT_BLOCK()->p, sizeof ghost_block->p);
-
-	while (drop_block(ghost_block)) ;
+	while (drop_block(pgame->ghost))
+		;
 }
 
-/*
- * Inverse of the above. We write the pieces to the game board.
- * Used after operations on a block(e.g. rotation or translation).
- */
+/* Write the current block to the game board.  */
 static void write_cur_block(void)
 {
 	struct blocks *block = CURRENT_BLOCK();
@@ -303,37 +296,24 @@ static void write_cur_block(void)
 /*
  * We first check each row for a full line, and shift all rows above this down.
  * We currently implement naive gravity.
- *
- * We do a bit of logic to add points to the game. Line clears which are
- * considered difficult(as per the Tetris Guidlines) will yield more points by
- * a factor of 3/2 during consecutive moves.
- *
- * We also update the level here. Which currently only affects the speed of the
- * falling blocks, and counts as a multiplier for points(i.e. level 2 will
- * yield (points *2)). The level increments when we destroy (level *2) +2 lines.
  */
 static int destroy_lines(void)
 {
+	uint8_t i, j;
+
 	/* Lines destroyed this turn. <= 4. */
 	uint8_t destroyed = 0;
-
-	/* point modifier, "difficult" line clears earn more over time.
-	 * a tetris (4 line clears) counts for 1 difficult move.
-	 *
-	 * difficult values >1 boost points by 3/2
-	 */
-	static size_t difficult = 0;
 
 	/* The first two rows are 'above' the game, that's where the new blocks
 	 * come into existence. We lose if there's ever a block there. */
 	if (pgame->spaces[0] || pgame->spaces[1])
-		pgame->lose = true; // We still get points for the turn, though
+		pgame->lose = true;
 
 	/* Check each row for a full line,
 	 * we check in reverse to ease moving the rows down when we find a full
 	 * row. Ignore the top two rows, which we checked above.
 	 */
-	for (size_t i = BLOCKS_MAX_ROWS -1; i >= 2; i--) {
+	for (i = BLOCKS_MAX_ROWS -1; i >= 2; i--) {
 
 		/* Fill in all bits below bit BLOCKS_MAX_COLUMNS. Row
 		 * populations are stored in a bit field, so we can check for a
@@ -345,13 +325,34 @@ static int destroy_lines(void)
 			continue;
 
 		/* Move lines above destroyed line down */
-		for (size_t j = i; j > 0; j--)
-			pgame->spaces[j] = pgame->spaces[j - 1];
+		for (j = i; j > 0; j--)
+			pgame->spaces[j] = pgame->spaces[j -1];
 
 		/* Lines are moved down, so we recheck this row. */
 		i++;
 		destroyed++;
 	}
+
+	return destroyed;
+}
+
+/* Get points based on number of lines destroyed, or if 0, get points based on
+ * how far the block fell.
+ *
+ * We do a bit of logic to add points to the game. Line clears which are
+ * considered difficult(as per the Tetris Guidlines) will yield more points by
+ * a factor of 3/2 during consecutive moves.
+ *
+ * We also update the level here. Which currently only affects the speed of the
+ * falling blocks, and counts as a multiplier for points(i.e. level 2 will
+ * yield (points *2)). The level increments when we destroy (level *2) +2 lines.
+ */
+static void get_points(uint8_t destroyed)
+{
+	size_t point_mod = 0;
+
+	if (destroyed == 0)
+		goto done;
 
 	/* Check for level up, Increase speed */
 	pgame->lines_destroyed += destroyed;
@@ -363,12 +364,9 @@ static int destroy_lines(void)
 		logs_to_game("Level up! Speed up!");
 	}
 
-	uint32_t point_mod = 0;
-
-	if (destroyed == 0)
-		goto get_points;
-
-	/* Number of lines destroyed in move */
+	/* Number of lines destroyed in move
+	 * Point values from the Tetris Guidlines
+	 */
 	switch (destroyed) {
 		case 1:
 			point_mod = 100;
@@ -383,6 +381,13 @@ static int destroy_lines(void)
 			point_mod = 800;
 			break;
 	}
+
+	/* point modifier, "difficult" line clears earn more over time.
+	 * a tetris (4 line clears) counts for 1 difficult move.
+	 *
+	 * difficult values >1 boost points by 3/2
+	 */
+	static size_t difficult = 0;
 
 	if (destroyed == 4) {
 		logs_to_game("Tetris!");
@@ -399,13 +404,10 @@ static int destroy_lines(void)
 	if (difficult > 1)
 		point_mod = (point_mod * 3) /2;
 
-	get_points:
-
+done:
 	pgame->score += (point_mod * pgame->level)
 		+ CURRENT_BLOCK()->soft_drop
 		+ (CURRENT_BLOCK()->hard_drop * 2);
-
-	return destroyed;
 }
 
 /*
@@ -432,8 +434,8 @@ int blocks_init(void)
 	pgame->pause_ticks = 1000;
 	pgame->ghosts = true;
 
-	ghost_block = malloc(sizeof *ghost_block);
-	if (!ghost_block) {
+	pgame->ghost = malloc(sizeof *pgame->ghost);
+	if (!pgame->ghost) {
 		log_err("No memory for ghost block");
 	}
 
@@ -517,7 +519,6 @@ void *blocks_loop(void *vp)
 	if (!pgame)
 		return NULL;
 
-	int bottom = 0;
 	struct timespec ts = {
 		.tv_sec = 0,
 		.tv_nsec = 0,
@@ -569,11 +570,12 @@ void *blocks_loop(void *vp)
 			pthread_mutex_lock(&pgame->lock);
 		}
 
-		bottom = drop_block(CURRENT_BLOCK());
-
-		if (!bottom) {
+		if (!drop_block(CURRENT_BLOCK())) {
 			write_cur_block();
-			destroy_lines();
+
+			int destroyed = destroy_lines();
+			get_points(destroyed);
+
 			update_cur_block();
 		}
 

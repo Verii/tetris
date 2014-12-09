@@ -102,6 +102,7 @@ struct blocks_game {
 
 	pthread_mutex_t lock;
 	LIST_HEAD(blocks_head, blocks) blocks_head;	/* list of blocks */
+	struct blocks *ghost;
 };
 
 extern struct blocks_game	*pgame;
