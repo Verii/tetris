@@ -61,6 +61,6 @@ extern struct config conf;
  */
 int conf_init(const char *path);
 
-int conf_cleanup(void);
+void conf_cleanup(void);
 
 #endif /* CONF_H_ */

@@ -17,6 +17,7 @@
  */
 
 #include <ncurses.h>
+#include <ncursesw/ncurses.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,7 +30,7 @@
 /* Hold/Next Pieces are draw to the left of the Game */
 #define PIECES_Y_OFF 4
 #define PIECES_X_OFF 3
-#define PIECES_CHAR "x"
+#define PIECES_CHAR WACS_BLOCK
 
 #define BOARD_Y_OFF 1
 #define BOARD_X_OFF 18
@@ -174,7 +175,7 @@ static void draw_pieces(void)
 
 	for (i = 0; i < LEN(np->p); i++) {
 		wattrset(pieces, A_BOLD | COLOR_PAIR(np->type +1));
-		mvwprintw(pieces, np->p[i].y +2,
+		mvwadd_wch(pieces, np->p[i].y +2,
 				np->p[i].x +3, PIECES_CHAR);
 	}
 
@@ -183,7 +184,7 @@ static void draw_pieces(void)
 	while (np) {
 		for (i = 0; i < LEN(np->p); i++) {
 			wattrset(pieces, A_BOLD | COLOR_PAIR(np->type +1));
-			mvwprintw(pieces, np->p[i].y +2 +(count*3),
+			mvwadd_wch(pieces, np->p[i].y +2 +(count*3),
 					np->p[i].x +9, PIECES_CHAR);
 		}
 
@@ -237,14 +238,14 @@ static void draw_board(bool self, struct blocks_game *player, WINDOW *win)
 			wattrset(win, A_BOLD | COLOR_PAIR(
 					(player->colors[i][j] %sizeof(colors))
 					+1));
-			mvwprintw(win, i -2, j +1 +x_off, PIECES_CHAR);
+			mvwadd_wch(win, i -2, j +1 +x_off, PIECES_CHAR);
 		}
 	}
 
 	for (i = 0; i < LEN(CURRENT_BLOCK()->p); i++) {
 		struct blocks *np = CURRENT_BLOCK();
 
-		mvwprintw(win,
+		mvwadd_wch(win,
 		    np->p[i].y +np->row_off -2,
 		    np->p[i].x +np->col_off +1 +x_off,
 		    PIECES_CHAR);
@@ -257,7 +258,7 @@ static void draw_board(bool self, struct blocks_game *player, WINDOW *win)
 		wattrset(win, A_DIM| COLOR_PAIR(np->type %sizeof(colors) +1));
 
 		for (i = 0; i < LEN(np->p); i++) {
-			mvwprintw(win,
+			mvwadd_wch(win,
 			    np->p[i].y +np->row_off -2,
 			    np->p[i].x +np->col_off +1 +x_off,
 			    PIECES_CHAR);

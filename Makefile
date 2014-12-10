@@ -11,7 +11,7 @@ CPPFLAGS = -D_GNU_SOURCE -DVERSION=\"${VERSION}\" -DNDEBUG -I./include
 DEBUG = -g -Og -DDEBUG
 CFLAGS = -std=c99 -Wall -Wextra -Werror -Os
 
-LDFLAGS = -lm -lncurses -lpthread -lsqlite3
+LDFLAGS = -lm -lncursesw -lpthread -lsqlite3
 
 .PREFIX:
 .PREFIX: .c .o

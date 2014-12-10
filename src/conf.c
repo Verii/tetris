@@ -213,7 +213,7 @@ int conf_init(const char *path)
 	return 1;
 }
 
-int conf_cleanup(void)
+void conf_cleanup(void)
 {
 	free(conf.hostname.val);
 	free(conf.port.val);
