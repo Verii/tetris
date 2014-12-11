@@ -163,9 +163,26 @@ int main(int argc, char **argv)
 
 	atexit(cleanup);
 
+	/* Have the kernel create a timer for our process.
+	 * This early version creates a static timer. If you're reading this
+	 * then I'm currently working on lots of different things, but it will
+	 * -- when finished -- be virtually indistinguishable from the
+	 *  thread-based model. Except that this model will let me do what I
+	 *  want much easier.
+	 *
+	 *  TODO
+	 *  * Timer delay dependent on game level
+	 *  * Event loop uses pselect() to wait for input from user
+	 *  * Move this event code to new file events.c
+	 *
+	 */
 	struct sigevent evp;
 	memset(&evp, 0, sizeof evp);
 
+	/* This model actually suffers from the same problem as the previous
+	 * one. In the future, to solve the locking problem, I will have to
+	 * write a scheduler.
+	 */
 	evp.sigev_notify = SIGEV_THREAD;
 	evp.sigev_notify_function = blocks_tick;
 	evp.sigev_value.sival_ptr = (void *)pgame;
@@ -179,6 +196,9 @@ int main(int argc, char **argv)
 	};
 
 	timer_settime(timerid, 0, &timer, NULL);
+
+	screen_draw_game(pgame);
+	blocks_update_ghost_block(pgame, pgame->ghost);
 
 	while (1) {
 		int ch;
