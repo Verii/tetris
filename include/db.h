@@ -30,11 +30,11 @@ int db_init(const char *path);
 int db_cleanup(void);
 
 /* Saves game state to disk. Can be restored at a later time */
-int db_save_state(void);
-int db_resume_state(void);
+int db_save_state(struct blocks_game *);
+int db_resume_state(struct blocks_game *);
 
 /* Save game score to disk when the player loses a game */
-int db_save_score(void);
+int db_save_score(struct blocks_game *);
 
 /* Linked list returned to user after db_get_scores() call */
 TAILQ_HEAD(db_results_head, db_results) results_head;

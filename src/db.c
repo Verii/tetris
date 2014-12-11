@@ -88,7 +88,7 @@ int db_cleanup(void)
 	return 1;
 }
 
-int db_save_score(void)
+int db_save_score(struct blocks_game *pgame)
 {
 	sqlite3_stmt *stmt;
 	char *insert = NULL;
@@ -127,7 +127,7 @@ int db_save_score(void)
 	return 1;
 }
 
-int db_save_state(void)
+int db_save_state(struct blocks_game *pgame)
 {
 	sqlite3_stmt *stmt;
 	char *insert, *data = NULL;
@@ -184,7 +184,7 @@ int db_save_state(void)
 
 /* Queries database for newest game state information and copies it to pgame.
  */
-int db_resume_state(void)
+int db_resume_state(struct blocks_game *pgame)
 {
 	sqlite3_stmt *stmt, *delete;
 	int ret, rowid, i, j;
