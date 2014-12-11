@@ -17,12 +17,14 @@
  */
 
 #include <locale.h>
-#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include <time.h>
 #include <unistd.h>
+
+#include <ncurses.h>
 
 #include "db.h"
 #include "conf.h"
@@ -30,13 +32,15 @@
 #include "blocks.h"
 #include "screen.h"
 
+static struct blocks_game *pgame;
+
 /* We can exit() at any point and still safely cleanup */
 static void cleanup(void)
 {
 	screen_cleanup();
 //	network_cleanup();
 	db_cleanup();
-	blocks_cleanup();
+	blocks_cleanup(pgame);
 	logs_cleanup();
 	conf_cleanup();
 
@@ -149,41 +153,48 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 
 	if ((logs_init(lflag? logfile: NULL) != 1) ||
-	    (blocks_init() != 1) ||
+	    (blocks_init(&pgame) != 1) ||
 	    (db_init(sflag? savefile: NULL) != 1) ||
 //	    (network_init(hflag? hostname: NULL, pflag? port: NULL) != 1) ||
 	    (screen_init() != 1))
 		exit(EXIT_FAILURE);
 
+	db_resume_state(pgame);
+
 	atexit(cleanup);
 
-	log_info("Turn on debugging flags for more output.");
+	struct sigevent evp;
+	memset(&evp, 0, sizeof evp);
 
-	/* Initial screen update. blocks_loop() will sleep for ~1 second before
-	 * updating the screen. */
-	screen_draw_game();
+	evp.sigev_notify = SIGEV_THREAD;
+	evp.sigev_notify_function = blocks_tick;
+	evp.sigev_value.sival_ptr = (void *)pgame;
 
-	pthread_t pinput_loop/*, pnet_loop*/;
+	timer_t timerid;
+	timer_create(CLOCK_MONOTONIC, &evp, &timerid);
 
-	pthread_create(&pinput_loop, NULL, blocks_input, NULL);
-	pthread_detach(pinput_loop);
+	struct itimerspec timer = {
+		.it_interval = { .tv_sec = 1, .tv_nsec = 0 },
+		.it_value = { .tv_sec = 2, .tv_nsec = 0 }
+	};
 
-	/*
-	pthread_create(&pnet_loop, NULL, network_loop, NULL);
-	pthread_detach(pnet_loop);
-	*/
+	timer_settime(timerid, 0, &timer, NULL);
 
-	/* Enter game main loop */
-	blocks_loop(NULL);
+	while (1) {
+		int ch;
+		ch = getch();
+		blocks_input(pgame, ch);
+		screen_draw_game(pgame);
 
-	/* when blocks_loop returns, kill the input thread and cleanup */
-//	pthread_cancel(pinput_loop);
+		if (pgame->quit || pgame->lose || pgame->win)
+			break;
+	}
 
 	if (pgame->lose) {
-		db_save_score();
+		db_save_score(pgame);
 		screen_draw_over();
 	} else {
-		db_save_state();
+		db_save_state(pgame);
 	}
 
 	return 0;

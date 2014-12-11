@@ -21,11 +21,18 @@
 #ifndef BLOCKS_H_
 #define BLOCKS_H_
 
+#include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/queue.h>
 
 #include "helpers.h"
+
+/* Forward declarations, because we have a definition dependency */
+struct blocks;
+struct blocks_game;
+enum blocks_block_types;
+enum blocks_input_cmd;
 
 #define BLOCKS_MAX_COLUMNS	10
 #define BLOCKS_MAX_ROWS		22
@@ -34,12 +41,15 @@
 #define NEXT_BLOCKS_LEN		5
 
 /* First, Second, and Third elements in the linked list */
-#define HOLD_BLOCK() (pgame->blocks_head.lh_first)
-#define CURRENT_BLOCK() (HOLD_BLOCK()->entries.le_next)
-#define FIRST_NEXT_BLOCK() (CURRENT_BLOCK()->entries.le_next)
+#define HOLD_BLOCK(G) ((G)->blocks_head.lh_first)
+#define CURRENT_BLOCK(G) (HOLD_BLOCK((G))->entries.le_next)
+#define FIRST_NEXT_BLOCK(G) (CURRENT_BLOCK((G))->entries.le_next)
 
 /* Does a block exist at the specified (y, x) coordinate? */
-#define blocks_at_yx(y, x) (pgame->spaces[(y)] & (1 << (x)))
+#define blocks_at_yx(G, Y, X) (G->spaces[(Y)] & (1 << (X)))
+
+/* Returns 1 if we've won, and sets win field to true. */
+typedef int (*blocks_win_condition)(struct blocks_game *);
 
 enum blocks_block_types {
 	O_BLOCK,
@@ -61,7 +71,7 @@ enum blocks_input_cmd {
 	HOLD,
 };
 
-/* Only the state-dependent 7 blocks(cur, hold, 5 next blocks) are stored in
+/* Only 7 blocks(cur, hold, 5 next blocks) are stored in
  * this structure. Once a block hits another piece, we forget about it; it
  * becomes part of the game board.
  */
@@ -92,32 +102,68 @@ struct blocks_game {
 	uint32_t score;
 
 	uint8_t *colors[BLOCKS_MAX_ROWS];	/* 1-to-1 with board */
-	uint16_t pause_ticks;		/* total pause ticks per game */
 	uint32_t nsec;			/* tick delay in nanoseconds */
 	bool pause;			/* game pause? */
-	bool lose, quit;		/* quit? lose? */
-	bool ghosts;			/* Draw the ghost block? */
+	bool lose, quit, win;		/* quit? lose? win? */
 
-	struct blocks_game *opp;	/* Don't get too excited */
-
-	pthread_mutex_t lock;
 	LIST_HEAD(blocks_head, blocks) blocks_head;	/* list of blocks */
-	struct blocks *ghost;
+	blocks_win_condition	check_win;
+
+	bool ghosts;			/* Draw the ghost block? */
+	struct blocks		*ghost;
 };
 
-extern struct blocks_game	*pgame;
-extern struct blocks		*ghost_block;
+/* Functions to modify the currently falling block:
+ * translate, rotate, wall kicks, gravity(userinput, real)
+ */
+int blocks_translate(struct blocks_game *, struct blocks *, enum blocks_input_cmd);
+int blocks_rotate(struct blocks_game *, struct blocks *, enum blocks_input_cmd);
+int blocks_wall_kick(struct blocks_game *, struct blocks *, enum blocks_input_cmd);
+int blocks_fall(struct blocks_game *, struct blocks *);
+
+/* Called if translate(), rotate(), or wall_kick() suceeds */
+void blocks_update_ghost_block(struct blocks_game *, struct blocks *);
+
+/* Update tick speed reduces time between gravity events.
+ * Update cur block removes the currently falling block from the linked list
+ * 	and sets the current block to the next block in the list.
+ * Update ghost block copies the memory from the current block, then moves it
+ * 	to the bottom of the game.
+ * Write current block writes the block to the board.
+ */
+void blocks_update_tick_speed(struct blocks_game *);
+void blocks_update_cur_block(struct blocks_game *);
+void blocks_write_block(struct blocks_game *, struct blocks *);
+
+int blocks_set_win_condition(struct blocks_game *, blocks_win_condition);
+
+/* destroy lines is called after a block hits the bottom. It returns the number
+ * of lines destroyed [0-4].
+ * update points gives points to the game, it accepts the number of lines
+ * destroyed as its argument. (fails if lines is not between [1-4]).
+ */
+int blocks_destroy_lines(struct blocks_game *);
+void blocks_update_points(struct blocks_game *, uint8_t);
 
 /* Create game state */
-int blocks_init(void);
+int blocks_init(struct blocks_game **);
 
 /* Free memory */
-int blocks_cleanup(void);
+int blocks_cleanup(struct blocks_game *);
 
-/* Main loop, doesn't return until game is over */
-void *blocks_loop(void *);
+/* Control gravity, etc. */
+void blocks_tick(union sigval);
 
-/* Input loop */
-void *blocks_input(void *);
+/* Process key command in ch and modify game */
+int blocks_input(struct blocks_game *, int ch);
+
+
+/* Game modes, we win when the game mode returns 1 */
+
+/* Classic tetris, game goes on until we lose */
+int blocks_never_win(struct blocks_game *);
+
+/* TODO Get the highest score with only 40 lines */
+int blocks_40_lines(struct blocks_game *);
 
 #endif				/* BLOCKS_H_ */
