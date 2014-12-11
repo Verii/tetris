@@ -416,20 +416,22 @@ int blocks_set_win_condition(struct blocks_game *pgame, blocks_win_condition wc)
 }
 
 /* Default game mode, we never win. Game continues until we die. */
-static int blocks_never_win(struct blocks_game *pgame)
+int blocks_never_win(struct blocks_game *pgame)
 {
 	(void) pgame;
 	return 0;
 }
 
-static int blocks_40_lines(struct blocks_game *pgame)
+int blocks_40_lines(struct blocks_game *pgame)
 {
 	/* This doesn't currently work, because lines_destroyed is how many
 	 * lines we've removed since our last level up.
 	 * TODO
 	 */
-	if (pgame->lines_destroyed >= 40)
+	if (pgame->lines_destroyed >= 40) {
+		pgame->win = true;
 		return 1;
+	}
 
 	return 0;
 }
