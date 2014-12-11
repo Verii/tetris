@@ -19,11 +19,13 @@
 #ifndef SCREEN_H_
 #define SCREEN_H_
 
+#include "blocks.h"
+
 int screen_init(void);
 void screen_cleanup(void);
 
 /* Update screen */
-void screen_draw_game(void);
+void screen_draw_game(struct blocks_game *);
 
 /* Game over! prints high scores if the player lost */
 void screen_draw_over(void);

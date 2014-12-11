@@ -79,13 +79,6 @@ int screen_init(void)
 
 	board_opp = text;
 
-	/* Try to resume the last played game.
-	 * If we can, pause the game.
-	 */
-	if (db_resume_state() > 0) {
-		pgame->pause = true;
-	}
-
 	refresh();
 
 	return 1;
@@ -103,7 +96,7 @@ void screen_cleanup(void)
 	endwin();
 }
 
-static void draw_text(void)
+static void draw_text(struct blocks_game *pgame)
 {
 	size_t i = 0;
 
@@ -113,7 +106,6 @@ static void draw_text(void)
 
 	mvwprintw(text, 1, 1, "Level");
 	mvwprintw(text, 2, 1, "Score");
-	mvwprintw(text, 3, 1, "Pause");
 
 	mvwprintw(text, 5, 1, "Controls");
 	mvwprintw(text, 6 , 2, "Pause [p]");
@@ -129,7 +121,6 @@ static void draw_text(void)
 	wattrset(text, COLOR_PAIR(5));
 	mvwprintw(text, 1, 7, "%7d", pgame->level);
 	mvwprintw(text, 2, 7, "%7d", pgame->score);
-	mvwprintw(text, 3, 7, "%7d", pgame->pause_ticks);
 
 	/* Print in-game logs/messages */
 	wattrset(text, COLOR_PAIR(3));
@@ -161,7 +152,7 @@ static void draw_text(void)
 }
 
 /* Draw the Hold and Next blocks listing on the side of the game. */
-static void draw_pieces(void)
+static void draw_pieces(struct blocks_game *pgame)
 {
 	struct blocks *np;
 	size_t i, count = 0;
@@ -171,7 +162,7 @@ static void draw_pieces(void)
 	wattrset(pieces, COLOR_PAIR(1));
 
 	box(pieces, 0, 0);
-	np = HOLD_BLOCK();
+	np = HOLD_BLOCK(pgame);
 
 	for (i = 0; i < LEN(np->p); i++) {
 		wattrset(pieces, A_BOLD | COLOR_PAIR(np->type +1));
@@ -179,7 +170,7 @@ static void draw_pieces(void)
 				np->p[i].x +3, PIECES_CHAR);
 	}
 
-	np = FIRST_NEXT_BLOCK();
+	np = FIRST_NEXT_BLOCK(pgame);
 
 	while (np) {
 		for (i = 0; i < LEN(np->p); i++) {
@@ -195,7 +186,7 @@ static void draw_pieces(void)
 	wnoutrefresh(pieces);
 }
 
-static void draw_board(bool self, struct blocks_game *player, WINDOW *win)
+static void draw_board(bool self, struct blocks_game *pgame, WINDOW *win)
 {
 	size_t i, j, x_off;
 
@@ -205,9 +196,11 @@ static void draw_board(bool self, struct blocks_game *player, WINDOW *win)
 		strncpy(player_str, pgame->id, sizeof player_str);
 		x_off = 0;
 	} else {
+#if 0
 		strncpy(player_str,
 			pgame->opp->id ? pgame->opp->id : "Player 2",
 			sizeof player_str);
+#endif
 		x_off = 16;
 	}
 
@@ -228,22 +221,22 @@ static void draw_board(bool self, struct blocks_game *player, WINDOW *win)
 
 	/* Draw the game board, minus the two hidden rows above the game */
 	for (i = 2; i < BLOCKS_MAX_ROWS; i++) {
-		if (player->spaces[i] == 0)
+		if (pgame->spaces[i] == 0)
 			continue;
 
 		for (j = 0; j < BLOCKS_MAX_COLUMNS; j++) {
-			if (!blocks_at_yx(i, j))
+			if (!blocks_at_yx(pgame, i, j))
 				continue;
 
 			wattrset(win, A_BOLD | COLOR_PAIR(
-					(player->colors[i][j] %sizeof(colors))
+					(pgame->colors[i][j] %sizeof(colors))
 					+1));
 			mvwadd_wch(win, i -2, j +1 +x_off, PIECES_CHAR);
 		}
 	}
 
-	for (i = 0; i < LEN(CURRENT_BLOCK()->p); i++) {
-		struct blocks *np = CURRENT_BLOCK();
+	for (i = 0; i < LEN(CURRENT_BLOCK(pgame)->p); i++) {
+		struct blocks *np = CURRENT_BLOCK(pgame);
 
 		mvwadd_wch(win,
 		    np->p[i].y +np->row_off -2,
@@ -252,8 +245,8 @@ static void draw_board(bool self, struct blocks_game *player, WINDOW *win)
 	}
 
 	/* Draw the Ghost block on the bottom of the board, if the user wants */
-	if (player->ghosts && player->ghost) {
-		struct blocks *np = player->ghost;
+	if (pgame->ghosts && pgame->ghost) {
+		struct blocks *np = pgame->ghost;
 
 		wattrset(win, A_DIM| COLOR_PAIR(np->type %sizeof(colors) +1));
 
@@ -268,7 +261,7 @@ static void draw_board(bool self, struct blocks_game *player, WINDOW *win)
 	/* Center the text horizontally, place the text slightly above
 	 * the middle vertically.
 	 */
-	if (player->pause) {
+	if (pgame->pause) {
 		wattrset(win, A_BOLD | COLOR_PAIR(1));
 		mvwprintw(win, (BLOCKS_MAX_ROWS -2) /2 -1,
 				 (BLOCKS_MAX_COLUMNS -2) /2 -1 +x_off,
@@ -298,7 +291,7 @@ static void draw_board(bool self, struct blocks_game *player, WINDOW *win)
 	wnoutrefresh(win);
 }
 
-void screen_draw_game(void)
+void screen_draw_game(struct blocks_game *pgame)
 {
 	static size_t hash_pieces = 0;
 
@@ -306,26 +299,19 @@ void screen_draw_game(void)
 	 * always hash differently if the blocks have changed.
 	 */
 	size_t tmp_hash_pieces =
-		(CURRENT_BLOCK()->type << 16) +
-		(FIRST_NEXT_BLOCK()->type << 8) +
-		FIRST_NEXT_BLOCK()->entries.le_next->type;
+		(CURRENT_BLOCK(pgame)->type << 16) +
+		(FIRST_NEXT_BLOCK(pgame)->type << 8) +
+		(FIRST_NEXT_BLOCK(pgame)->entries.le_next->type);
 
 	/* Redraw the blocks if they've changed since last we checked. */
 	if (hash_pieces != tmp_hash_pieces) {
 		hash_pieces = tmp_hash_pieces;
-		draw_pieces();
+		draw_pieces(pgame);
 	}
 
 	/* Draw "Our" board. */
 	draw_board(true, pgame, board);
-
-	/* If we're multiplayer, the opponent's board replaces the text */
-	if (pgame->opp)
-		draw_board(false, pgame->opp, board_opp);
-
-	/* Draw score, game controls, timers, logs, etc. */
-	else
-		draw_text();
+	draw_text(pgame);
 
 	doupdate();
 }
@@ -334,9 +320,6 @@ void screen_draw_game(void)
 void screen_draw_over(void)
 {
 	debug("Drawing game over screen");
-
-	if (!pgame->lose)
-		return;
 
 	clear();
 	attrset(COLOR_PAIR(1));
