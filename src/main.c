@@ -24,8 +24,6 @@
 #include <time.h>
 #include <unistd.h>
 
-#include <ncurses.h>
-
 #include "db.h"
 #include "conf.h"
 #include "logs.h"
