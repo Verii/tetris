@@ -1,5 +1,5 @@
 BIN = tetris
-VERSION = v0.33
+VERSION = v0.40
 SRC = src/main.c src/bag.c src/blocks.c src/db.c src/screen.c \
       src/logs.c src/conf.c src/helpers.c
 OBJS = ${SRC:.c=.o}
@@ -11,7 +11,7 @@ CPPFLAGS = -D_GNU_SOURCE -DVERSION=\"${VERSION}\" -DNDEBUG -I./include
 DEBUG = -g -Og -DDEBUG
 CFLAGS = -std=c99 -Wall -Wextra -Werror -Os
 
-LDFLAGS = -lm -lncursesw -lpthread -lsqlite3
+LDFLAGS = -lm -lncursesw -lrt -lsqlite3
 
 .PREFIX:
 .PREFIX: .c .o
