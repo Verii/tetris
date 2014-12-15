@@ -29,8 +29,12 @@
 #include "logs.h"
 #include "blocks.h"
 #include "screen.h"
+#include "events.h"
 
-static struct blocks_game *pgame;
+struct blocks_game *pgame;
+
+extern void timer_handler(int);
+extern int input_handler(union events_value);
 
 /* We can exit() at any point and still safely cleanup */
 static void cleanup(void)
@@ -161,52 +165,25 @@ int main(int argc, char **argv)
 
 	atexit(cleanup);
 
-	/* Have the kernel create a timer for our process.
-	 * This early version creates a static timer. If you're reading this
-	 * then I'm currently working on lots of different things, but it will
-	 * -- when finished -- be virtually indistinguishable from the
-	 *  thread-based model. Except that this model will let me do what I
-	 *  want much easier.
-	 *
-	 *  TODO
-	 *  * Timer delay dependent on game level
-	 *  * Event loop uses pselect() to wait for input from user
-	 *  * Move this event code to new file events.c
-	 *
-	 */
-	struct sigevent evp;
-	memset(&evp, 0, sizeof evp);
-
-	/* This model actually suffers from the same problem as the previous
-	 * one. In the future, to solve the locking problem, I will have to
-	 * write a scheduler.
-	 */
-	evp.sigev_notify = SIGEV_THREAD;
-	evp.sigev_notify_function = blocks_tick;
-	evp.sigev_value.sival_ptr = (void *)pgame;
-
-	timer_t timerid;
-	timer_create(CLOCK_MONOTONIC, &evp, &timerid);
-
-	struct itimerspec timer = {
-		.it_interval = { .tv_sec = 1, .tv_nsec = 0 },
-		.it_value = { .tv_sec = 2, .tv_nsec = 0 }
-	};
-
-	timer_settime(timerid, 0, &timer, NULL);
-
-	screen_draw_game(pgame);
 	blocks_update_ghost_block(pgame, pgame->ghost);
+	screen_draw_game(pgame);
 
-	while (1) {
-		int ch;
-		ch = getch();
-		blocks_input(pgame, ch);
-		screen_draw_game(pgame);
+	struct timespec ts_tick;
+	ts_tick.tv_sec = 1;
+	ts_tick.tv_nsec = 0;
 
-		if (pgame->quit || pgame->lose || pgame->win)
-			break;
-	}
+	struct sigaction sa_tick;
+	sa_tick.sa_flags = 0;
+	sa_tick.sa_handler = timer_handler;
+	sigemptyset(&sa_tick.sa_mask);
+
+	/* Create timer */
+	events_add_timer_event(ts_tick, sa_tick, SIGRTMIN+2);
+
+	/* Add events to event loop */
+	events_add_input_event(fileno(stdin), input_handler);
+
+	events_main_loop();
 
 	if (pgame->lose) {
 		db_save_score(pgame);

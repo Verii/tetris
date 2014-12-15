@@ -113,6 +113,9 @@ struct blocks_game {
 	struct blocks		*ghost;
 };
 
+/* event loop checks if this variable is set, then calls tick function */
+volatile sig_atomic_t blocks_do_update;
+
 /* Functions to modify the currently falling block:
  * translate, rotate, wall kicks, gravity(userinput, real)
  */
@@ -152,7 +155,7 @@ int blocks_init(struct blocks_game **);
 int blocks_cleanup(struct blocks_game *);
 
 /* Control gravity, etc. */
-void blocks_tick(union sigval);
+void blocks_tick(struct blocks_game *);
 
 /* Process key command in ch and modify game */
 int blocks_input(struct blocks_game *, int ch);

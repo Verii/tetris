@@ -29,7 +29,6 @@
 #include "bag.h"
 #include "blocks.h"
 #include "logs.h"
-#include "screen.h"
 
 /* Private helper functions */
 
@@ -523,10 +522,8 @@ int blocks_cleanup(struct blocks_game *pgame)
  * reaches the bottom. Indirectly creates new blocks, and updates points,
  * level, etc.
  */
-void blocks_tick(union sigval vp)
+void blocks_tick(struct blocks_game *pgame)
 {
-	struct blocks_game *pgame = (struct blocks_game *)vp.sival_ptr;
-
 	if (pgame->pause || pgame->lose || pgame->quit || pgame->win)
 		return;
 
@@ -546,8 +543,6 @@ void blocks_tick(union sigval vp)
 
 	if (pgame->check_win)
 		pgame->check_win(pgame);
-
-	screen_draw_game(pgame);
 }
 
 /*
@@ -555,17 +550,20 @@ void blocks_tick(union sigval vp)
  *
  * Input keys are currently:
  * 	- P pause
- * 	- Q save/quit
+ * 	- O save/quit
  * 	- G toggle ghost
- * 	- w hard drops a piece to the bottom.
- * 	- ad move left/right respectively.
- * 	- s soft drops one row.
- * 	- qe rotate counter clockwise/clockwise repectively.
- * 	- space is used to hold the currently falling block.
+ * 	- W hard drops a piece to the bottom.
+ * 	- [AD] move left/right respectively.
+ * 	- S soft drops one row.
+ * 	- [QE] rotate counter clockwise/clockwise repectively.
+ * 	- (space) is used to hold the currently falling block.
  */
 int blocks_input(struct blocks_game *pgame, int ch)
 {
 	struct blocks *tmp;
+
+	if (pgame->quit || pgame->lose || pgame->win)
+		return -1;
 
 	switch (toupper(ch)) {
 	case 'G':
@@ -575,9 +573,8 @@ int blocks_input(struct blocks_game *pgame, int ch)
 		pgame->pause = !pgame->pause;
 		break;
 	case 'O':
-		pgame->pause = false;
 		pgame->quit = true;
-		break;
+		return -1;
 	}
 
 	switch (toupper(ch)) {

@@ -55,7 +55,6 @@ int screen_init(void)
 
 	cbreak();
 	noecho();
-	nonl();
 	keypad(stdscr, TRUE);
 	curs_set(0);
 
@@ -252,6 +251,8 @@ static void draw_board(bool self, struct blocks_game *pgame, WINDOW *win)
 	/* Draw the falling block to the board */
 	for (i = 0; i < LEN(CURRENT_BLOCK(pgame)->p); i++) {
 		struct blocks *np = CURRENT_BLOCK(pgame);
+
+		wattrset(win, A_DIM| COLOR_PAIR(np->type %sizeof(colors) +1));
 
 		mvwadd_wch(win,
 		    np->p[i].y +np->row_off -2,
