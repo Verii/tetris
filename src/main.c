@@ -33,12 +33,10 @@
 
 struct blocks_game *pgame;
 
-extern void timer_handler(int);
-extern int input_handler(union events_value);
-
 /* We can exit() at any point and still safely cleanup */
 static void cleanup(void)
 {
+	events_cleanup();
 	screen_cleanup();
 //	network_cleanup();
 	db_cleanup();
@@ -88,15 +86,15 @@ int main(int argc, char **argv)
 	setlocale(LC_ALL, "");
 	srand(time(NULL));
 
+	/* Quit if we're not attached to a tty */
+	if (!isatty(fileno(stdin)))
+		exit(EXIT_FAILURE);
+
 	bool cflag, hflag, lflag, pflag, sflag;
 	cflag = hflag = lflag = pflag = sflag = false;
 
 	char conffile[256], hostname[256], port[16];
 	char logfile[256], savefile[256];
-
-	/* Quit if we're not attached to a tty */
-	if (!isatty(fileno(stdin)))
-		exit(EXIT_FAILURE);
 
 	int ch;
 	while ((ch = getopt(argc, argv, "c:h:l:p:s:u")) != -1) {
@@ -169,8 +167,9 @@ int main(int argc, char **argv)
 	screen_draw_game(pgame);
 
 	struct timespec ts_tick;
-	ts_tick.tv_sec = 1;
-	ts_tick.tv_nsec = 0;
+	ts_tick.tv_sec = 0;
+	ts_tick.tv_nsec = pgame->nsec;
+	log_err("%d", pgame->nsec);
 
 	struct sigaction sa_tick;
 	sa_tick.sa_flags = 0;

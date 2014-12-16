@@ -35,5 +35,14 @@ int events_add_output_event(int fd, events_callback cb);
 
 int events_add_timer_event(struct timespec, struct sigaction, int sig);
 void events_main_loop(void);
+void events_cleanup(void);
+
+/* Right, so admittedly this is pretty sloppy. There are global defines
+ * everywhere and the logical flow is just all over the place.
+ *
+ * TODO make this pretty.
+ */
+void timer_handler(int);
+int input_handler(union events_value ev);
 
 #endif /* EVENTS_H_ */

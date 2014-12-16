@@ -29,6 +29,8 @@
 #include "logs.h"
 #include "events.h"
 
+extern struct blocks_game *pgame;
+static timer_t timerid;
 static sigset_t ignore_mask;
 static fd_set master_read;
 static uint8_t fd_max;
@@ -37,7 +39,7 @@ static struct events {
 	int fd;
 	events_callback cb;
 	union events_value val;
-} events[4];
+} events[2];
 
 void timer_handler(int sig)
 {
@@ -48,34 +50,55 @@ int input_handler(union events_value ev)
 {
 	int ret;
 
-	debug("Input Handler");
-
-	extern struct blocks_game *pgame;
 	ret = blocks_input(pgame, ev.val_int);
 	screen_draw_game(pgame);
+
+	return ret;
 }
 
+static int events_reset_timer(timer_t td, struct timespec ts)
+{
+	struct itimerspec timer_ts;
+	timer_ts.it_interval.tv_sec = ts.tv_sec;
+	timer_ts.it_interval.tv_nsec = ts.tv_nsec;
+	timer_ts.it_value.tv_sec = ts.tv_sec;
+	timer_ts.it_value.tv_nsec = ts.tv_nsec;
+
+	if (timer_settime(td, 0, &timer_ts, NULL) != 0) {
+		perror("timer_settime()");
+		return -1;
+	}
+
+	return 1;
+}
+
+
+/* Game is over when this function returns
+ *
+ * We wait for user input on stdin and the network socket(if available).
+ * We also handle interrupts in the form of signals from POSIX timers.
+ */
 void events_main_loop(void)
 {
-	int ret, num_events, success;
+	int ps_ret, num_events, success;
 	fd_set read_fds;
 
 	sigset_t empty_mask;
 	sigemptyset(&empty_mask);
 
 	while (1) {
-		num_events = 0;
 		success = 0;
-
+		num_events = 0;
 		read_fds = master_read;
 
-		ret = pselect(fd_max+1, &read_fds, NULL, NULL,
+		errno = 0;
+		ps_ret = pselect(fd_max+1, &read_fds, NULL, NULL,
 				NULL, &empty_mask);
 
-		if (ret == -1 && errno != EINTR) {
+		if (ps_ret == -1 && errno != EINTR) {
 			perror("pselect()");
 			continue;
-		} else if (ret == 0) {
+		} else if (ps_ret == 0) {
 			continue;
 		}
 
@@ -85,10 +108,17 @@ void events_main_loop(void)
 			extern struct blocks_game *pgame;
 			blocks_tick(pgame);
 			screen_draw_game(pgame);
+
+			/* Update tick timer */
+			struct timespec ts;
+			ts.tv_sec = 0;
+			ts.tv_nsec = pgame->nsec;
+
+			events_reset_timer(timerid, ts);
 		}
 
 		for (size_t i = 0; i < LEN(events); i++) {
-			if (num_events >= ret || events[i].cb == NULL)
+			if (num_events >= ps_ret || events[i].cb == NULL)
 				break;
 
 			if (!FD_ISSET(i, &read_fds))
@@ -103,12 +133,10 @@ void events_main_loop(void)
 			success = events[i].cb(events[i].val);
 		}
 
+		/* Quit the game if one of the callbacks returns -1 */
 		if (success < 0)
-			goto completed;
+			break;
 	}
-
-completed:
-	return;
 }
 
 int events_add_timer_event(struct timespec ts, struct sigaction sa, int sig)
@@ -118,7 +146,6 @@ int events_add_timer_event(struct timespec ts, struct sigaction sa, int sig)
 
 	sigaction(sig, &sa, NULL);
 
-	timer_t timerid;
 	struct sigevent evp;
 	memset(&evp, 0, sizeof evp);
 	evp.sigev_notify = SIGEV_SIGNAL;
@@ -130,10 +157,10 @@ int events_add_timer_event(struct timespec ts, struct sigaction sa, int sig)
 	}
 
 	struct itimerspec timer_ts;
-	memset(&timer_ts, 0, sizeof timer_ts);
 	timer_ts.it_interval.tv_sec = ts.tv_sec;
 	timer_ts.it_interval.tv_nsec = ts.tv_nsec;
-	timer_ts.it_value.tv_sec = 1;
+	timer_ts.it_value.tv_sec = ts.tv_sec;
+	timer_ts.it_value.tv_nsec = ts.tv_nsec;
 
 	if (timer_settime(timerid, 0, &timer_ts, NULL) != 0) {
 		perror("timer_settime()");
@@ -141,6 +168,11 @@ int events_add_timer_event(struct timespec ts, struct sigaction sa, int sig)
 	}
 
 	return 1;
+}
+
+void events_cleanup(void)
+{
+	timer_delete(timerid);
 }
 
 int events_add_input_event(int fd, events_callback cb)
