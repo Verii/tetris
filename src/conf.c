@@ -97,7 +97,7 @@ static int conf_parse(const char *path)
 		if (sscanf(pbuf, " %ms = %ms ", &key, &val) != 2)
 			goto again;
 
-		logs_to_file("Found key = \"%s\", value = \"%s\"", key, val);
+		debug("Found key = \"%s\", value = \"%s\"", key, val);
 
 		/* Remove enclosing double quotes, and fail if the value is not
 		 * enclosed in double quotes.
