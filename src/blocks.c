@@ -180,6 +180,10 @@ int blocks_rotate(struct blocks_game *pgame, struct blocks *block, enum blocks_i
  */
 int blocks_wall_kick(struct blocks_game *pgame, struct blocks *block, enum blocks_input_cmd cmd)
 {
+	/* Try to rotate block the normal way. */
+	if (blocks_rotate(pgame, block, cmd) == 1)
+		return 1;
+
 	/* Try to move left and rotate again. */
 	if (blocks_translate(pgame, block, MOVE_LEFT) == 1) {
 		if (blocks_rotate(pgame, block, cmd) == 1)
@@ -529,10 +533,6 @@ void blocks_tick(struct blocks_game *pgame)
 	if (!blocks_fall(pgame, CURRENT_BLOCK(pgame))) {
 		blocks_write_block(pgame, CURRENT_BLOCK(pgame));
 
-		/* We lose if there's any blocks in the first two rows */
-		if (pgame->spaces[0] || pgame->spaces[1])
-			pgame->lose = true;
-
 		blocks_update_points(pgame, blocks_destroy_lines(pgame));
 		blocks_update_tick_speed(pgame);
 
@@ -595,16 +595,10 @@ int blocks_input(struct blocks_game *pgame, int ch)
 		CURRENT_BLOCK(pgame)->lock_delay = 1E9 -1;
 		break;
 	case 'Q':
-		if (!blocks_rotate(pgame, CURRENT_BLOCK(pgame), ROT_LEFT))
-		{
-			blocks_wall_kick(pgame, CURRENT_BLOCK(pgame), ROT_LEFT);
-		}
+		blocks_wall_kick(pgame, CURRENT_BLOCK(pgame), ROT_LEFT);
 		break;
 	case 'E':
-		if (!blocks_rotate(pgame, CURRENT_BLOCK(pgame), ROT_RIGHT))
-		{
-			blocks_wall_kick(pgame, CURRENT_BLOCK(pgame), ROT_RIGHT);
-		}
+		blocks_wall_kick(pgame, CURRENT_BLOCK(pgame), ROT_RIGHT);
 		break;
 	case ' ':
 		/* We can hold each block exactly once */
