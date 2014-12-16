@@ -229,8 +229,8 @@ void blocks_update_tick_speed(struct blocks_game *pgame)
 {
 	double speed = 1.0f;
 
-	speed += atan((double)pgame->level / 5.0) * 2 / PI * 3;
-	pgame->nsec = (uint32_t) ((double)1E9 / speed) - 1;
+	speed += atan(pgame->level / 5.0) * 2 / PI * 3;
+	pgame->nsec = 1E9 /speed -1;
 }
 
 /*
@@ -451,14 +451,13 @@ int blocks_init(struct blocks_game **pmem)
 
 	struct blocks_game *pgame = *pmem;
 
+	bag_random_generator();
 	blocks_set_win_condition(pgame, blocks_never_win);
 
-	bag_random_generator();
-
 	pgame->level = 1;
-	pgame->nsec = 1E9 - 1;
-	pgame->ghosts = true;
+	blocks_update_tick_speed(pgame);
 
+	pgame->ghosts = true;
 	pgame->ghost = malloc(sizeof *pgame->ghost);
 	if (!pgame->ghost) {
 		log_err("No memory for ghost block");
@@ -471,7 +470,7 @@ int blocks_init(struct blocks_game **pmem)
 		struct blocks *np = malloc(sizeof *np);
 		if (!np) {
 			log_err("Out of memory");
-			exit(EXIT_FAILURE);
+			return -1;
 		}
 
 		randomize_block(np);
