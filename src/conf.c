@@ -71,7 +71,7 @@ static int conf_parse(const char *path)
 	logs_to_file("Config file: %s", path);
 
 	if (file_into_buf(path, &fbuf, &len) != 1) {
-		log_err("File \"%s\" does not exist.", path);
+		log_warn("File \"%s\" does not exist.", path);
 		return -1;
 	}
 
@@ -209,6 +209,8 @@ int conf_init(const char *path)
 	 */
 	if (path && conf_parse(path) != 1)
 		return -1;
+
+	atexit(conf_cleanup);
 
 	return 1;
 }

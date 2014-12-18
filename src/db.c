@@ -77,15 +77,15 @@ int db_init(const char *path)
 		return -1;
 	}
 
+	atexit(db_cleanup);
+
 	return 1;
 }
 
-int db_cleanup(void)
+void db_cleanup(void)
 {
 	debug("Closing database %s", db_path);
-
 	sqlite3_close(db_handle);
-	return 1;
 }
 
 int db_save_score(struct blocks_game *pgame)

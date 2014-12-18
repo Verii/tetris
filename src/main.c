@@ -31,22 +31,6 @@
 #include "screen.h"
 #include "events.h"
 
-struct blocks_game *pgame;
-
-/* We can exit() at any point and still safely cleanup */
-static void cleanup(void)
-{
-	events_cleanup();
-	screen_cleanup();
-//	network_cleanup();
-	db_cleanup();
-	blocks_cleanup(pgame);
-	logs_cleanup();
-	conf_cleanup();
-
-	printf("Thanks for playing Tetris-%s!\n", VERSION);
-}
-
 static void usage(void)
 {
 	extern const char *__progname;
@@ -132,6 +116,7 @@ int main(int argc, char **argv)
 		case 'u':
 		default:
 			usage();
+			exit(EXIT_FAILURE);
 			break;
 		}
 	}
@@ -153,23 +138,19 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 
 	if ((logs_init(lflag? logfile: NULL) != 1) ||
-	    (blocks_init(&pgame) != 1) ||
+	    (blocks_init(&pgame) != 1 || pgame == NULL) ||
 	    (db_init(sflag? savefile: NULL) != 1) ||
 //	    (network_init(hflag? hostname: NULL, pflag? port: NULL) != 1) ||
 	    (screen_init() != 1))
 		exit(EXIT_FAILURE);
 
 	db_resume_state(pgame);
-
-	atexit(cleanup);
-
 	blocks_update_ghost_block(pgame, pgame->ghost);
 	screen_draw_game(pgame);
 
 	struct timespec ts_tick;
 	ts_tick.tv_sec = 0;
 	ts_tick.tv_nsec = pgame->nsec;
-	log_err("%d", pgame->nsec);
 
 	struct sigaction sa_tick;
 	sa_tick.sa_flags = 0;
@@ -190,6 +171,8 @@ int main(int argc, char **argv)
 	} else {
 		db_save_state(pgame);
 	}
+
+	blocks_cleanup(pgame);
 
 	return 0;
 }

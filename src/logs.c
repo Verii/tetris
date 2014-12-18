@@ -58,6 +58,8 @@ int logs_init(const char *path)
 {
 	LIST_INIT(&entry_head);
 
+	atexit(logs_cleanup);
+
 	/* Try first user supplied log file. */
 	if (path) {
 		if (freopen(path, "a+", stderr) != NULL)

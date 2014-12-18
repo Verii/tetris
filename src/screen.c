@@ -80,6 +80,8 @@ int screen_init(void)
 
 	refresh();
 
+	atexit(screen_cleanup);
+
 	return 1;
 }
 

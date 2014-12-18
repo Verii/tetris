@@ -16,6 +16,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#include <stdlib.h>
 #include <sys/select.h>
 #include <time.h>
 #include <signal.h>
@@ -56,6 +57,11 @@ int input_handler(union events_value ev)
 	return ret;
 }
 
+void events_cleanup(void)
+{
+	timer_delete(timerid);
+}
+
 static int events_reset_timer(timer_t td, struct timespec ts)
 {
 	struct itimerspec timer_ts;
@@ -82,6 +88,8 @@ void events_main_loop(void)
 {
 	int ps_ret, num_events, success;
 	fd_set read_fds;
+
+	atexit(events_cleanup);
 
 	sigset_t empty_mask;
 	sigemptyset(&empty_mask);
@@ -168,11 +176,6 @@ int events_add_timer_event(struct timespec ts, struct sigaction sa, int sig)
 	}
 
 	return 1;
-}
-
-void events_cleanup(void)
-{
-	timer_delete(timerid);
 }
 
 int events_add_input_event(int fd, events_callback cb)
