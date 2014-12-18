@@ -1,8 +1,16 @@
 BIN = tetris
-VERSION = v0.45
-SRC = src/main.c src/bag.c src/blocks.c src/db.c src/screen.c \
-      src/logs.c src/conf.c src/helpers.c src/events.c
-OBJS = ${SRC:.c=.o}
+VERSION = v0.50
+
+SRC =	src/main.c \
+	src/bag.c \
+	src/blocks.c \
+	src/conf.c \
+	src/db.c \
+	src/events.c \
+	src/helpers.c \
+	src/logs.c \
+	src/network.c \
+	src/screen.c
 
 DESTDIR = /usr/local/bin
 
@@ -19,7 +27,11 @@ LDFLAGS = -lm -lncursesw -lrt -lsqlite3 #-L./lib/ -lsexp
 all:
 	${CC} -o ${BIN} ${CPPFLAGS} ${CFLAGS} ${SRC} ${LDFLAGS}
 
+install: all
+	install -sp -o root -g root --mode=755 -t ${DESTDIR} ${BIN}
+
 ## Build with debugging flags when told to produce .o files.
+OBJS = ${SRC:.c=.o}
 .c.o:
 	${CC} -c $< -o $@ ${CPPFLAGS} ${CFLAGS} ${DEBUG}
 
@@ -30,9 +42,6 @@ sexp:
 	${MAKE} -C sexp/
 	mv sexp/libsexp.a lib/
 	cp -u sexp/sexp.h include/
-
-install: all
-	install -sp -o root -g root --mode=755 -t ${DESTDIR} ${BIN}
 
 clean:
 	${MAKE} -C sexp/ clean
