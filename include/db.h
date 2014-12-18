@@ -27,7 +27,7 @@
 #include "blocks.h"
 
 int db_init(const char *path);
-int db_cleanup(void);
+void db_cleanup(void);
 
 /* Saves game state to disk. Can be restored at a later time */
 int db_save_state(struct blocks_game *);
