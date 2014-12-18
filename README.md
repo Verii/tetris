@@ -16,14 +16,17 @@ To install:
 
 ## Dependencies, Libraries
 
--libsqlite3 (3.8+)  
--libncurses (Or compliant implementations)  
--libpthread  
+-GNU C99/POSIX
+-libsqlite3 (3.8+)
+-libncurses
+-libncursesw (ncurses +wide char support)
+-librt
+-libm
 
 ## Contributions
 
 I guess send me code if you want to. As long as it complies to GPL or
-BSD/MIT I'm okay with it.
+BSD/MIT/ISC I'm okay with it.
 
 ## License
 
