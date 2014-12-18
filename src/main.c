@@ -35,15 +35,15 @@ static void usage(void)
 {
 	extern const char *__progname;
 	const char *help =
-	"Copyright (C) 2014 James Smith <james@apertum.org>\n\n"
-	"This program is free software; you can redistribute it and/or modify\n"
-	"it under the terms of the GNU General Public License as published by\n"
-	"the Free Software Foundation; either version 2 of the License, or\n"
-	"(at your option) any later version.\n\n"
-	"This program is distributed in the hope that it will be useful,\n"
-	"but WITHOUT ANY WARRANTY; without even the implied warranty of\n"
-	"MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n"
-	"GNU General Public License for more details.\n\n"
+  "Copyright (C) 2014 James Smith <james@apertum.org>\n\n"
+  "This program is free software; you can redistribute it and/or modify\n"
+  "it under the terms of the GNU General Public License as published by\n"
+  "the Free Software Foundation; either version 2 of the License, or\n"
+  "(at your option) any later version.\n\n"
+  "This program is distributed in the hope that it will be useful,\n"
+  "but WITHOUT ANY WARRANTY; without even the implied warranty of\n"
+  "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n"
+  "GNU General Public License for more details.\n\n"
 	"%s version %s\n"
 	"Built on %s at %s\n\n"
 	"Defaults:\n\t"
@@ -61,12 +61,16 @@ static void usage(void)
 
 	fprintf(stderr, help, __progname, VERSION, __DATE__, __TIME__,
 		CONF_HOSTNAME, CONF_PORT, CONF_LOGS, CONF_SAVES, CONF_CONFIG);
-
-	exit(EXIT_FAILURE);
 }
 
 int main(int argc, char **argv)
 {
+	struct blocks_game *pgame;
+	bool cflag, hflag, lflag, pflag, sflag;
+	char conffile[256], hostname[256], port[16];
+	char logfile[256], savefile[256];
+	int ch;
+
 	setlocale(LC_ALL, "");
 	srand(time(NULL));
 
@@ -74,13 +78,7 @@ int main(int argc, char **argv)
 	if (!isatty(fileno(stdin)))
 		exit(EXIT_FAILURE);
 
-	bool cflag, hflag, lflag, pflag, sflag;
 	cflag = hflag = lflag = pflag = sflag = false;
-
-	char conffile[256], hostname[256], port[16];
-	char logfile[256], savefile[256];
-
-	int ch;
 	while ((ch = getopt(argc, argv, "c:h:l:p:s:u")) != -1) {
 		switch(ch) {
 		case 'c':
@@ -140,7 +138,7 @@ int main(int argc, char **argv)
 	if ((logs_init(lflag? logfile: NULL) != 1) ||
 	    (blocks_init(&pgame) != 1 || pgame == NULL) ||
 	    (db_init(sflag? savefile: NULL) != 1) ||
-//	    (network_init(hflag? hostname: NULL, pflag? port: NULL) != 1) ||
+	    (network_init(hflag? hostname: NULL, pflag? port: NULL) != 1) ||
 	    (screen_init() != 1))
 		exit(EXIT_FAILURE);
 
