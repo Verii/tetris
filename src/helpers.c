@@ -96,12 +96,16 @@ int file_into_buf(const char *path, char **buf, size_t *len)
 	off_t n = -1;
 	int fd = -1;
 
+	debug("Trying to open: \"%s\"", path);
+
 	fd = open(path, O_RDONLY);
 
 	if (fd == -1) {
-		log_err("open: %s", strerror(errno));
+		log_info("open: %s", strerror(errno));
 		goto cleanup;
 	}
+
+	debug("File opened: %d", fd);
 
 	/* Get length of file. Is stat() or lseek() better here?
 	 * I would guess stat() would query the FS for the size, and lseek
@@ -109,6 +113,13 @@ int file_into_buf(const char *path, char **buf, size_t *len)
 	 */
 	if ((n = lseek(fd, 0, SEEK_END)) == -1) {
 		log_err("lseek: %s", strerror(errno));
+		goto cleanup;
+	}
+
+	debug("File length: %d", n);
+
+	if (n == 0) {
+		log_info("File empty.");
 		goto cleanup;
 	}
 
@@ -128,9 +139,7 @@ int file_into_buf(const char *path, char **buf, size_t *len)
 	return 1;
 
 cleanup:
-	if (*buf != NULL)
-		free(*buf);
-
+	*buf = NULL;
 	if (fd != -1)
 		close(fd);
 
@@ -138,15 +147,13 @@ cleanup:
 }
 
 /* Give pack a pointer to a location in the buffer of the next line. */
-int getnextline(const char *buf, size_t len, const char **pbuf)
+int getnextline(const char *buf, size_t len, char **pbuf)
 {
+	size_t line_len = 0;
 	static size_t offset = 0;
 
-	if (*pbuf == NULL)
+	if (buf == NULL || len == 0 || pbuf == NULL) {
 		offset = 0;
-
-	if (buf == NULL || len == 0) {
-		*pbuf = NULL;
 		return EOF;
 	}
 
@@ -156,14 +163,71 @@ int getnextline(const char *buf, size_t len, const char **pbuf)
 		return EOF;
 	}
 
-	/* Find first whitespace character */
-	while (offset < len && !isspace(buf[offset++]))
-		;
+	/* Find first non-whitespace character */
+	while (offset < len && isspace(buf[offset]))
+		offset++;
 
-	/* Find last whitespace character */
-	while (offset < len && isspace(buf[offset++]))
-		;
+	/* Read in one full line */
+	while ((offset+line_len) < len &&
+		buf[offset+line_len] != '\n' && buf[offset+line_len] != '\r')
+		line_len++;
 
-	*pbuf = &buf[offset-1];
+	*pbuf = calloc(1, line_len +1);
+	if (*pbuf == NULL) {
+		log_err("Out of memory");
+		return -1;
+	}
+
+	/* Take in the line, replace newline or return feed with \0 */
+	strncpy(*pbuf, &buf[offset], line_len);
+	if (line_len > 0)
+		(*pbuf)[line_len] = '\0';
+
+	offset += line_len +1;
+
 	return offset;
+}
+
+/* Replaces '~' in a pathname with the user's HOME variable.  */
+int replace_home(char **path, size_t *buf_len)
+{
+	size_t len;
+	char *home_dir;
+	char *buf;
+
+	if (*path == NULL || *buf_len == 0)
+		return -1;
+
+	if ((home_dir = getenv("HOME")) == NULL)
+		return -1;
+
+	if ((*path)[0] != '~')
+		return 0;
+
+	/* Allocate new buffer large enough to hold modified path */
+	len = strlen(home_dir) + *buf_len +1;
+	buf = malloc(len);
+	if (buf == NULL) {
+		log_err("Out of memory");
+		return -1;
+	}
+
+	/* Store local copy of path variable */
+	strncpy(buf, *path, len);
+	if (len > 0)
+		buf[len-1] = '\0';
+
+	/* Extend buffer to hold new path */
+	*path = realloc(*path, len);
+	*buf_len = len;
+
+	/* Copy path prefix */
+	strncpy(*path, home_dir, len);
+
+	/* Copy remainder of path */
+	strncat(*path, &buf[1], len-strlen(home_dir)-1);
+	(*path)[len -1] = '\0';
+
+	free(buf);
+	return 1;
 }
