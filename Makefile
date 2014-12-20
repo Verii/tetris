@@ -1,5 +1,5 @@
 BIN = tetris
-VERSION = v0.51
+VERSION = v0.52
 
 SRC =	src/main.c \
 	src/bag.c \
