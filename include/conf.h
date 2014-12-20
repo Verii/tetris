@@ -19,47 +19,78 @@
 #ifndef CONF_H_
 #define CONF_H_
 
-/* Define default variables */
+#include <stdbool.h>
 
-#ifndef CONF_HOSTNAME
-#define CONF_HOSTNAME "localhost"
-#endif
-
-#ifndef CONF_PORT
-#define CONF_PORT "10024"
-#endif
-
-#ifndef CONF_LOGS
-#define CONF_LOGS "~/.local/share/tetris/"
-#endif
-
-#ifndef CONF_SAVES
-#define CONF_SAVES "~/.local/share/tetris/"
-#endif
-
-#ifndef CONF_CONFIG
-#define CONF_CONFIG "~/.config/tetris/"
-#endif
-
-struct config {
-
-	struct {
-		char *val;
-		size_t len;
-	}
-		hostname,	/* localhost */
-		port,		/* 10024 */
-		logs_loc,	/* ~/.local/share/tetris/logs */
-		saves_loc,	/* ~/.local/share/tetris/saves */
-		conf_loc;	/* ~/.config/tetris/tetris.conf */
+struct values {
+	char *val;
+	size_t len;
 };
 
-extern struct config conf;
+struct key_bindings {
+	/* Choose to ignore keypress or not */
+	bool enabled;
+
+	/* Registered key */
+	int key;
+
+#if 0
+	/* Callback for keypress */
+	key_cb_func cb;
+
+	union key_cb_val {
+		int val_int;
+		void *val_ptr;
+	};
+#endif
+};
+
+struct config {
+	struct values
+		username,	/* username for matchmaking logins WIP */
+		password,	/* password for matchmaking logins WIP */
+		hostname,	/* localhost */
+		port,		/* 10024 */
+		logs_file,	/* ~/.local/share/tetris/logs */
+		save_file,	/* ~/.local/share/tetris/saves */
+		_conf_file;	/* ~/.config/tetris/tetris.conf */
+
+	struct key_bindings
+		/* Movement keys */
+		move_drop,
+		move_left,
+		move_right,
+		move_down,
+		rotate_left,
+		rotate_right,
+		hold_key,
+		pause_key,
+		quit_key,
+
+		toggle_ghosts,
+		toggle_wallkicks,
+		cycle_gamemodes,
+		talk_key;
+};
 
 /* Read in the specified path. If path is NULL, read in the compiled in default
  * path.
  */
 int conf_init(const char *path);
+
+/* Parse an entire configuration set line by line. */
+int conf_parse(const char *str, size_t len);
+
+/* Return structure containing global variables */
+struct config *conf_get_globals(void);
+
+/* Internal functions, these are called when either a "set" "bind" or "say"
+ * commands in encountered in the configuration file.
+ */
+int conf_command_set(const char *cmd, size_t len);
+int conf_command_unset(const char *cmd, size_t len);
+
+int conf_command_bind(const char *cmd, size_t len);
+int conf_command_say(const char *cmd, size_t len);
 
 void conf_cleanup(void);
 

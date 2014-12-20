@@ -30,6 +30,8 @@
 #include "logs.h"
 #include "helpers.h"
 
+const mode_t perm_mode = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
+
 int try_mkdir(const char *path, mode_t mode)
 {
 	struct stat sb;

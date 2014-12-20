@@ -27,9 +27,12 @@ int network_init(const char *host, const char *port)
 
 	debug("Network Initialization complete.");
 	atexit(network_cleanup);
+
+	return 1;
 }
 
 void network_cleanup(void)
 {
+	debug("Network Cleanup complete.");
 	return;
 }

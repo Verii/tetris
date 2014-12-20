@@ -447,6 +447,7 @@ int blocks_40_lines(struct blocks_game *pgame)
 int blocks_init(struct blocks_game **pmem)
 {
 	log_info("Initializing game data");
+
 	*pmem = calloc(1, sizeof **pmem);
 	if (*pmem == NULL) {
 		log_err("Out of memory");
@@ -492,7 +493,7 @@ int blocks_init(struct blocks_game **pmem)
 		}
 	}
 
-	log_info("Game successfully initialized");
+	debug("Game Initialization complete");
 
 	return 1;
 }
@@ -502,8 +503,6 @@ int blocks_init(struct blocks_game **pmem)
  */
 int blocks_cleanup(struct blocks_game *pgame)
 {
-	log_info("Cleaning game data");
-
 	struct blocks *np;
 
 	/* Remove each piece in the linked list */
@@ -515,7 +514,10 @@ int blocks_cleanup(struct blocks_game *pgame)
 	for (int i = 0; i < BLOCKS_MAX_ROWS; i++)
 		free(pgame->colors[i]);
 
+	free(pgame->ghost);
+
 	free(pgame);
+	debug("Game Cleanup complete");
 
 	return 1;
 }

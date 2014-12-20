@@ -26,7 +26,6 @@
 #include "logs.h"
 #include "blocks.h"
 
-static const char *db_path;
 static sqlite3 *db_handle;
 
 /* Scores: name, level, score, date */
@@ -67,24 +66,50 @@ int db_init(const char *path)
 {
 	int status;
 
-	db_path = path ? path : conf.saves_loc.val;
+	atexit(db_cleanup);
 
-	debug("Opening database: %s", db_path);
+	debug("Database Initialization complete.");
 
-	status = sqlite3_open(db_path, &db_handle);
-	if (status != SQLITE_OK) {
-		log_err("DB cannot be opened. Error occured (%d)", status);
+	if (path) {
+		status = sqlite3_open(path, &db_handle);
+		if (status == SQLITE_OK && db_handle) {
+			return 1;
+		} else {
+			log_warn("DB cannot be opened. (%d)", status);
+			log_info("Falling back to built-in DB file location");
+		}
+	}
+
+	struct config *conf = conf_get_globals();
+	if (conf == NULL) {
 		return -1;
 	}
 
-	atexit(db_cleanup);
+	char *plast = strrchr(conf->save_file.val, '/');
+	*plast = '\0';
+
+	try_mkdir_r(conf->save_file.val, perm_mode);
+	*plast = '/';
+
+	status = sqlite3_open(conf->save_file.val, &db_handle);
+
+	free(conf);
+
+	if (status != SQLITE_OK) {
+		log_err("DB cannot be opened. (%d)", status);
+		return -1;
+	}
 
 	return 1;
 }
 
 void db_cleanup(void)
 {
-	debug("Closing database %s", db_path);
+	debug("Database Cleanup complete.");
+
+	if (db_handle == NULL)
+		return;
+
 	sqlite3_close(db_handle);
 }
 

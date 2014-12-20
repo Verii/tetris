@@ -113,7 +113,6 @@ void events_main_loop(void)
 		if (blocks_do_update > 0) {
 			blocks_do_update = 0;
 
-			extern struct blocks_game *pgame;
 			blocks_tick(pgame);
 			screen_draw_game(pgame);
 

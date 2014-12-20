@@ -27,12 +27,20 @@
 #define PI 3.141592653589L
 #define LEN(x) ((sizeof(x))/(sizeof(*x)))
 
-int try_mkdir(const char *path, mode_t mode);
+/* USER: rwx, GROUP: rwx, OTHER: rx (0755) */
+extern const mode_t perm_mode;
 
-/* Create all subdirectories in a path */
-int try_mkdir_r(const char *path, mode_t mode);
+/* POSIX `mkdir` command */
+int try_mkdir(const char *path, mode_t);
 
-/* Read the entire contents of path into buffer */
+/* Recursively create all subdirectories in a path
+ * POSIX `mkdir -p` command */
+int try_mkdir_r(const char *path, mode_t);
+
+/* Read the contents of *path into buffer
+ * returns buffer in **buf
+ * returns length in *len
+ */
 int file_into_buf(const char *path, char **buf, size_t *len);
 
 /* Find the next line in a buffer of length len, maintain the buffer offset
@@ -40,10 +48,13 @@ int file_into_buf(const char *path, char **buf, size_t *len);
  *
  * Returns the next line in the pointer pbuf. This is just a pointer to a
  * location in the buffer. pbuf is NULL if we run past the end of the buffer,
- * and we return EOF also.
  *
  * Find beginning of a line that isn't whitespace(newline, space, tab, etc.)
  */
-int getnextline(const char *buf, size_t len, const char **pbuf);
+int getnextline(const char *buf, size_t len, char **pbuf);
+
+/* Replace '~' and "HOME" with the user's HOME environment variable.
+ */
+int replace_home(char **, size_t *len);
 
 #endif /* HELPERS_H_ */
