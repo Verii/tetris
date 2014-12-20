@@ -208,7 +208,7 @@ int conf_command_set(const char *cmd, size_t len)
 	size_t i;
 	const char *pfirst, *plast;
 
-	if (strstr(cmd, "set") != cmd)
+	if (len < strlen("set") +2 || strstr(cmd, "set") != cmd)
 		return 0;
 
 	struct {
@@ -229,11 +229,13 @@ int conf_command_set(const char *cmd, size_t len)
 
 	/* Find something like `set username ...` */
 	for (i = 0; i < LEN(tokens_val); i++) {
-		if (strstr(cmd, tokens_val[i].key) == NULL)
+		char *tmp;
+		tmp = strstr(cmd, tokens_val[i].key);
+		if (tmp == NULL)
 			continue;
 
 		mod = tokens_val[i].val;
-		pfirst += strlen(tokens_val[i].key) + strlen("set") +1;
+		pfirst = tmp + strlen(tokens_val[i].key);
 		break;
 	}
 
@@ -252,21 +254,24 @@ int conf_command_set(const char *cmd, size_t len)
 	while (*pfirst != '"' && *pfirst != '\0')
 		pfirst++;
 
-	if (*pfirst == '\0' || *pfirst == '\n')
-		log_warn("Expected value of form: \"value\". Skipping.");
-
-	/* char after first quotation mark */
-	pfirst++;
+	if (*pfirst != '"') {
+		log_warn("Expected value of form: \"string\". Skipping.");
+		return 0;
+	}
 
 	/* Find last quotation or end of line */
-	plast = pfirst;
+	plast = pfirst +1;
 	while (*plast != '"' && *plast != '\0')
 		plast++;
 
-	if (*plast == '\0' || *plast == '\n')
-		log_warn("Expected value of form: \"value\". Skipping.");
+	if (*plast != '"') {
+		log_warn("Expected value of form: \"string\". Skipping.");
+		return 0;
+	}
 
-	mod->len = (plast - pfirst) +1;
+	//realloc here is used so we can parse the same option multiple times
+	//without having to constantly recycle memory when the value changes.
+	mod->len = (plast - pfirst);
 	mod->val = realloc(mod->val, mod->len);
 
 	if (mod->val == NULL) {
@@ -274,7 +279,7 @@ int conf_command_set(const char *cmd, size_t len)
 		return -1;
 	}
 
-	strncpy(mod->val, pfirst, mod->len -1);
+	strncpy(mod->val, pfirst+1, mod->len -1);
 	if (mod->len > 0)
 		mod->val[mod->len -1] = '\0';
 
