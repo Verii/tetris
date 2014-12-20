@@ -22,6 +22,7 @@
 #include <fcntl.h>
 
 #include <string.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
@@ -30,196 +31,299 @@
 #include "logs.h"
 #include "helpers.h"
 
-struct config conf;
+static struct config conf;
 
-/* Replaces '~' in a pathname with the user's HOME variable.  */
-static int replace_home(char *path, size_t len)
-{
-	char *home_dir;
-	char buf[256], *rbuf;
+static const char config_defaults[] =
+	/* Default movement keys */
+	"bind move_drop 'w'\n"
+	"bind move_left 'a'\n"
+	"bind move_down 's'\n"
+	"bind move_right 'd'\n"
+	"bind rotate_left 'q'\n"
+	"bind rotate_right 'e'\n"
+	"bind hold_key ' '\n"
+	"bind pause_key 'p'\n"
+	"bind quit_key 'o'\n"
 
-	if (path == NULL || len <= 0)
-		return -1;
+	/* Ingame toggle options */
+	"bind toggle_ghosts 'g'\n"
+	"bind toggle_wallkicks 'k'\n"
 
-	if ((home_dir = getenv("HOME")) == NULL)
-		return -1;
+	"bind cycle_gamemodes 'm'\n"
+	"bind talk_key 't'\n"
 
-	strncpy(buf, path, sizeof buf);
-	buf[sizeof(buf) -1] = '\0';
+	"set username \"username\"\n"
+	"set password \"password\"\n"
+	"set hostname \"example.com\"\n"
+	"set port \"10024\"\n"
+	"set logs_file \"~/.local/share/tetris/logs\"\n"
+	"set save_file \"~/.local/share/tetris/saves\"\n"
 
-	/* Look for ~ to replace with home_dir
-	 * If '~' does not exist in the string we try to replace HOME with
-	 * home_dir. If neither exist we return.
+	"unset gamemode_classic\n"
+	"set gamemode_TG\n"
+
+	/* Location of default configuration file.
+	 * I guess you could technically put this in your config file if you
+	 * wanted to chain them together.
 	 */
-	rbuf = strtok(buf, "~");
-	if (rbuf == NULL)
-		return 1;
-
-	/* TODO check for HOME */
-
-	memcpy(path, home_dir, len);
-	strncat(path, rbuf, len);
-
-	return 1;
-}
-
-static int conf_parse(const char *path)
-{
-	char *fbuf = NULL;
-	size_t i, len = 0;
-
-	logs_to_file("Config file: %s", path);
-
-	if (file_into_buf(path, &fbuf, &len) != 1) {
-		log_warn("File \"%s\" does not exist.", path);
-		return -1;
-	}
-
-	/* Valid keys in configuration file */
-	struct keys {
-		char *p;
-		size_t len;
-		const char *key;
-	} tokens[] = {
-//		{ conf.user.val,	conf.user.len,		"username"},
-//		{ conf.pass.val,	conf.pass.len,		"password"},
-		{ conf.hostname.val,	conf.hostname.len,	"hostname"},
-		{ conf.port.val,	conf.port.len,		"port"},
-		{ conf.logs_loc.val,	conf.logs_loc.len,	"logfile"},
-		{ conf.saves_loc.val,	conf.saves_loc.len,	"dbfile"},
-		{ NULL, 0, NULL }
-	};
-
-	const char *pbuf = NULL;
-	while (getnextline(fbuf, len, &pbuf) != EOF && pbuf != NULL) {
-		char *key = NULL, *val = NULL, *pstr;
-
-		if (sscanf(pbuf, " %ms = %ms ", &key, &val) != 2)
-			goto again;
-
-		debug("Found key = \"%s\", value = \"%s\"", key, val);
-
-		/* Remove enclosing double quotes, and fail if the value is not
-		 * enclosed in double quotes.
-		 */
-		if (val[0] != '"')
-			goto again;
-		i = 1;
-		while (val[i] != '"' && val[i] != '\0')
-			i++;
-		val[i] = '\0';
-
-		/* Apply changes to global variables */
-		for (i = 0; tokens[i].key; i++) {
-			if ((pstr = strstr(tokens[i].key, key))) {
-				strncpy(tokens[i].p, &val[1], tokens[i].len);
-				break;
-			}
-		}
-
-		if (tokens[i].key == NULL)
-			logs_to_file("Key: \"%s\" is not implemented", key);
-
-	again:
-		free(key);
-		free(val);
-	}
-
-	free(fbuf);
-
-	replace_home(conf.logs_loc.val, conf.logs_loc.len);
-	replace_home(conf.saves_loc.val, conf.saves_loc.len);
-
-#ifdef DEBUG
-	for (i = 0; tokens[i].p; i++)
-		logs_to_file("%s", tokens[i].p);
-#endif
-
-	return 1;
-}
-
-/* Create memory for global variables and set their default values. */
-/* TODO replace this with a string sent to the parser for global values. */
-static int _init_memory(void)
-{
-#define initMem(LOC, LEN, DEF) do { \
-		LOC.len = LEN; \
-		LOC.val = malloc(LEN);\
-		if (LOC.val == NULL) \
-			goto error; \
-		strncpy(LOC.val, DEF, LEN); \
-		LOC.val[LEN-1] = '\0'; \
-	} while (0);
-
-	memset(&conf, 0, sizeof conf);
-
-	initMem(conf.hostname, 256, CONF_HOSTNAME);
-	initMem(conf.port, 16, CONF_PORT);
-	initMem(conf.logs_loc, 256, CONF_LOGS);
-	initMem(conf.saves_loc, 256, CONF_SAVES);
-	initMem(conf.conf_loc, 256, CONF_CONFIG);
-
-	return 1;
-
-error:
-	free(conf.hostname.val);
-	free(conf.port.val);
-	free(conf.logs_loc.val);
-	free(conf.saves_loc.val);
-	free(conf.conf_loc.val);
-	return -1;
-}
+	"set _conf_file \"~/.config/tetris/tetris.conf\"\n"
+	;
 
 /* Set default global variables, create necessary directories,
  * read in user specified configuration files.
  */
 int conf_init(const char *path)
 {
-	/* 0755 */
-	const mode_t mode = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
+	size_t len;
+	char *plast;
+	char *config_file = NULL;
 
-	if (_init_memory() != 1) {
-		log_err("Out of memory");
+	debug("Configuration Initialization begun.");
+
+	memset(&conf, 0, sizeof conf);
+
+	/* Parse built in configuration */
+	conf_parse(config_defaults, strlen(config_defaults));
+	replace_home(&(conf._conf_file.val), &(conf._conf_file.len));
+
+	/* Remove the last componenet part of the path */
+	plast = strrchr(conf._conf_file.val, '/');
+	if (plast != NULL)
+		*plast = '\0';
+
+	/* Make sure the directory exists */
+	if (try_mkdir_r(conf._conf_file.val, perm_mode) == -1)
 		return -1;
+
+	if (plast != NULL)
+		*plast = '/';
+
+	/* Read in the configuration file at ~/.config/tetris/tetris.conf */
+	file_into_buf(conf._conf_file.val, &config_file, &len);
+	if (config_file) {
+		conf_parse(config_file, len);
+		free(config_file);
 	}
-
-	/* ~/.local/share/tetris */
-	replace_home(conf.logs_loc.val, conf.logs_loc.len);
-	try_mkdir_r(conf.logs_loc.val, mode);
-	strncat(conf.logs_loc.val, "logs", conf.logs_loc.len);
-
-	/* ~/.local/share/tetris */
-	replace_home(conf.saves_loc.val, conf.saves_loc.len);
-	try_mkdir_r(conf.saves_loc.val, mode);
-	strncat(conf.saves_loc.val, "saves", conf.saves_loc.len);
-
-	/* ~/.config/tetris */
-	replace_home(conf.conf_loc.val, conf.conf_loc.len);
-	try_mkdir_r(conf.conf_loc.val, mode);
-	strncat(conf.conf_loc.val, "tetris.conf", conf.conf_loc.len);
-
-	/* Try to read the default compiled-in path for the configuration file,
-	 * but don't fail if we can't find it. The user supplied location will
-	 * overwrite any changes here.
-	 */
-	conf_parse(conf.conf_loc.val);
 
 	/* User specified configuration file overwrites the default
 	 * configuration file path. This one does fail if it doesn't exist.
 	 */
-	if (path && conf_parse(path) != 1)
-		return -1;
+	if (path) {
+		if (file_into_buf(path, &config_file, &len) == 1) {
+			conf_parse(config_file, len);
+			free(config_file);
+		} else {
+			return -1;
+		}
+	}
+
+	replace_home(&(conf._conf_file.val), &(conf._conf_file.len));
+	replace_home(&(conf.logs_file.val), &(conf.logs_file.len));
+	replace_home(&(conf.save_file.val), &(conf.save_file.len));
+
+	debug("Configuration Initialization complete.");
 
 	atexit(conf_cleanup);
+	return 1;
+}
+
+int conf_parse(const char *str, size_t len)
+{
+	size_t i;
+
+	if (str == NULL || len == 0)
+		return 0;
+
+	struct {
+		char *key;
+		int (*conf_key_callback)(const char *cmd, size_t len);
+	} tokens[] = {
+		{ "set", conf_command_set },
+		{ "unset", conf_command_unset },
+		{ "bind", conf_command_bind },
+	};
+
+	getnextline(NULL, 0, NULL);
+
+	char *pbuf;
+	while (getnextline(str, len, &pbuf) != EOF && (pbuf != NULL)) {
+
+		for (i = 0; i < LEN(tokens); i++) {
+			if (strstr(pbuf, tokens[i].key) != pbuf)
+				continue;
+			break;
+		}
+
+		if (i >= LEN(tokens))
+			goto again;
+
+		tokens[i].conf_key_callback(pbuf, strlen(pbuf));
+
+	again:
+		free(pbuf);
+		continue;
+	}
 
 	return 1;
 }
 
+struct config *conf_get_globals(void)
+{
+	struct config *ret = NULL;
+
+	ret = malloc(sizeof *ret);
+	if (!ret) {
+		log_err("Out of memory");
+		return NULL;
+	}
+
+	memcpy(ret, &conf, sizeof *ret);
+	return ret;
+}
+
+static int conf_enable_value(const char *cmd, size_t len)
+{
+	/* TODO */
+	(void) cmd; (void) len;
+	return 0;
+}
+
+static int conf_disable_value(const char *cmd, size_t len)
+{
+	/* TODO */
+	(void) cmd; (void) len;
+	return 0;
+}
+
+int conf_command_set(const char *cmd, size_t len)
+{
+	size_t i;
+	const char *pfirst, *plast;
+
+	if (strstr(cmd, "set") != cmd)
+		return 0;
+
+	struct {
+		char *key;
+		struct values *val;
+	} tokens_val[] = {
+		{ "username", &conf.username },
+		{ "password", &conf.password },
+		{ "hostname", &conf.hostname },
+		{ "port", &conf.port },
+		{ "logs_file", &conf.logs_file },
+		{ "save_file", &conf.save_file },
+		{ "_conf_file", &conf._conf_file },
+	};
+
+	struct values *mod = NULL;
+	pfirst = cmd;
+
+	/* Find something like `set username ...` */
+	for (i = 0; i < LEN(tokens_val); i++) {
+		if (strstr(cmd, tokens_val[i].key) == NULL)
+			continue;
+
+		mod = tokens_val[i].val;
+		pfirst += strlen(tokens_val[i].key) + strlen("set") +1;
+		break;
+	}
+
+	/* If the token was not found, try to treat it as an option.
+	 * E.g. `set gamemode_TG` does not take an argument, just toggles a
+	 * boolean.
+	 */
+	if (mod == NULL)
+		return conf_enable_value(cmd, len);
+
+	/* Otherwise try to get the value.
+	 * Must be of the form `set key "value"`
+	 */
+
+	/* Find first quotation or end of line */
+	while (*pfirst != '"' && *pfirst != '\0')
+		pfirst++;
+
+	if (*pfirst == '\0' || *pfirst == '\n')
+		log_warn("Expected value of form: \"value\". Skipping.");
+
+	/* char after first quotation mark */
+	pfirst++;
+
+	/* Find last quotation or end of line */
+	plast = pfirst;
+	while (*plast != '"' && *plast != '\0')
+		plast++;
+
+	if (*plast == '\0' || *plast == '\n')
+		log_warn("Expected value of form: \"value\". Skipping.");
+
+	mod->len = (plast - pfirst) +1;
+	mod->val = realloc(mod->val, mod->len);
+
+	if (mod->val == NULL) {
+		log_err("Out of memory");
+		return -1;
+	}
+
+	strncpy(mod->val, pfirst, mod->len -1);
+	if (mod->len > 0)
+		mod->val[mod->len -1] = '\0';
+
+	return 1;
+}
+
+int conf_command_unset(const char *cmd, size_t len)
+{
+	return conf_disable_value(cmd, len);
+}
+
+int conf_command_bind(const char *cmd, size_t len)
+{
+	(void) cmd; (void) len;
+	log_err("FINISH ME. bind command found: %s", cmd);
+#if 0
+#define TOKEN_KEYBINDING(X) { #X, &X }
+	struct {
+		char *key;
+		struct key_bindings *kb;
+	} tokens[] = {
+		TOKEN_KEYBINDING("move_drop"),
+		TOKEN_KEYBINDING("move_left"),
+		TOKEN_KEYBINDING("move_right"),
+		TOKEN_KEYBINDING("move_down"),
+		TOKEN_KEYBINDING("rotate_left"),
+		TOKEN_KEYBINDING("rotate_right"),
+
+		TOKEN_KEYBINDING("hold_key"),
+		TOKEN_KEYBINDING("pause_key"),
+		TOKEN_KEYBINDING("quit_key"),
+
+		TOKEN_KEYBINDING("toggle_ghosts"),
+		TOKEN_KEYBINDING("toggle_wallkicks"),
+		TOKEN_KEYBINDING("cycle_gamemodes"),
+		TOKEN_KEYBINDING("talk_key"),
+	};
+#endif
+
+	/* TODO */
+
+	return 1;
+}
+
+int conf_command_say(const char *cmd, size_t len)
+{
+	(void) cmd; (void) len;
+	return 0;
+}
+
 void conf_cleanup(void)
 {
+	free(conf.username.val);
+	free(conf.password.val);
 	free(conf.hostname.val);
 	free(conf.port.val);
-	free(conf.logs_loc.val);
-	free(conf.saves_loc.val);
-	free(conf.conf_loc.val);
+	free(conf.logs_file.val);
+	free(conf.save_file.val);
+	free(conf._conf_file.val);
 }
