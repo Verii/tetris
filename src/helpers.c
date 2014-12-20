@@ -101,6 +101,7 @@ int file_into_buf(const char *path, char **buf, size_t *len)
 	fd = open(path, O_RDONLY);
 
 	if (fd == -1) {
+		log_info("open: %s", path);
 		log_info("open: %s", strerror(errno));
 		goto cleanup;
 	}
