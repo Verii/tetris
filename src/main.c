@@ -30,6 +30,9 @@
 #include "blocks.h"
 #include "screen.h"
 #include "events.h"
+#include "network.h"
+
+struct blocks_game *pgame;
 
 static void usage(void)
 {
@@ -46,11 +49,6 @@ static void usage(void)
   "GNU General Public License for more details.\n\n"
 	"%s version %s\n"
 	"Built on %s at %s\n\n"
-	"Defaults:\n\t"
-	"Hostname: \"%s\"\tPort: \"%s\"\n\t"
-	"Log directory: \"%s\"\n\t"
-	"Save directory: \"%s\"\n\t"
-	"Configuration directory: \"%s\"\n\n"
 	"Usage:\n\t"
 	"[-u] usage\n\t"
 	"[-c file] path to use for configuration file\n\t"
@@ -59,13 +57,11 @@ static void usage(void)
 	"[-h host] hostname to connect to\n\t"
 	"[-p port] port to connect to\n";
 
-	fprintf(stderr, help, __progname, VERSION, __DATE__, __TIME__,
-		CONF_HOSTNAME, CONF_PORT, CONF_LOGS, CONF_SAVES, CONF_CONFIG);
+	fprintf(stderr, help, __progname, VERSION, __DATE__, __TIME__);
 }
 
 int main(int argc, char **argv)
 {
-	struct blocks_game *pgame;
 	bool cflag, hflag, lflag, pflag, sflag;
 	char conffile[256], hostname[256], port[16];
 	char logfile[256], savefile[256];
