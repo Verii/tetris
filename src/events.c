@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <errno.h>
 
+#include "conf.h"
 #include "screen.h"
 #include "blocks.h"
 #include "helpers.h"
@@ -50,8 +51,41 @@ void timer_handler(int sig)
 int input_handler(union events_value ev)
 {
 	int ret;
+	size_t i;
+	enum blocks_input_cmd cmd = -1;
+	const struct config *conf = conf_get_globals_s();
 
-	ret = blocks_input(pgame, ev.val_int);
+	struct {
+		int key;
+		enum blocks_input_cmd cmd;
+	} actions[] = {
+		{ conf->move_drop.key, MOVE_DROP },
+		{ conf->move_down.key, MOVE_DOWN },
+		{ conf->move_left.key, MOVE_LEFT },
+		{ conf->move_right.key, MOVE_RIGHT },
+
+		{ conf->rotate_left.key, ROT_LEFT },
+		{ conf->rotate_right.key, ROT_RIGHT },
+
+		{ conf->hold_key.key, HOLD_PIECE },
+		{ conf->quit_key.key, SAVE_QUIT },
+
+		{ conf->pause_key.key, TOGGLE_PAUSE },
+		{ conf->toggle_ghosts.key, TOGGLE_GHOSTS },
+	};
+
+	for (i = 0; i < LEN(actions); i++) {
+		if (actions[i].key != ev.val_int)
+			continue;
+
+		cmd = actions[i].cmd;
+		break;
+	}
+
+	if (i >= LEN(actions))
+		return 0;
+
+	ret = blocks_input(pgame, cmd);
 	screen_draw_game(pgame);
 
 	return ret;
