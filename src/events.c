@@ -78,6 +78,10 @@ int input_handler(union events_value ev)
 		if (actions[i].key != ev.val_int)
 			continue;
 
+		/* Don't accept disabled keys. */
+		if (!actions[i].enabled)
+			continue;
+
 		cmd = actions[i].cmd;
 		break;
 	}
