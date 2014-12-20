@@ -64,15 +64,34 @@ int logs_init(const char *path)
 	if (path) {
 		if (freopen(path, "a+", stderr) != NULL)
 			return 1;
-		else
-			log_err("freopen: %s: %s", strerror(errno), path);
+		else {
+			log_warn("freopen: %s: %s", strerror(errno), path);
+			log_info("Falling back to built-in log file location");
+		}
 	}
 
 	/* Fallback to global define */
-	if (freopen(conf.logs_loc.val, "a+", stderr) != NULL)
-		return 1;
 
-	log_err("freopen: %s: %s", strerror(errno), conf.logs_loc.val);
+	struct config *conf = conf_get_globals();
+	if (conf == NULL)
+		return -1;
+
+	char *plast = strrchr(conf->logs_file.val, '/');
+
+	*plast = '\0';
+	try_mkdir_r(conf->logs_file.val, perm_mode);
+
+	*plast = '/';
+
+	if (freopen(conf->logs_file.val, "a+", stderr) == NULL)
+		goto err;
+
+	free(conf);
+	return 1;
+
+err:
+	log_err("freopen: %s: %s", strerror(errno));
+	free(conf);
 
 	return -1;
 }
