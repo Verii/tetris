@@ -283,38 +283,78 @@ int conf_command_set(const char *cmd, size_t len)
 
 int conf_command_unset(const char *cmd, size_t len)
 {
+	if (strstr(cmd, "unset") != cmd)
+		return 0;
+
 	return conf_disable_value(cmd, len);
 }
 
 int conf_command_bind(const char *cmd, size_t len)
 {
-	(void) cmd; (void) len;
-	log_err("FINISH ME. bind command found: %s", cmd);
-#if 0
-#define TOKEN_KEYBINDING(X) { #X, &X }
+	size_t i;
+	const char *pchar;
+
+	if (len < strlen("bind") +1 || strstr(cmd, "bind") != cmd)
+		return 0;
+
 	struct {
 		char *key;
 		struct key_bindings *kb;
 	} tokens[] = {
-		TOKEN_KEYBINDING("move_drop"),
-		TOKEN_KEYBINDING("move_left"),
-		TOKEN_KEYBINDING("move_right"),
-		TOKEN_KEYBINDING("move_down"),
-		TOKEN_KEYBINDING("rotate_left"),
-		TOKEN_KEYBINDING("rotate_right"),
+		{ "move_drop", &conf.move_drop },
+		{ "move_left", &conf.move_left },
+		{ "move_right", &conf.move_right },
+		{ "move_down", &conf.move_down },
+		{ "rotate_left", &conf.rotate_left },
+		{ "rotate_right", &conf.rotate_right },
 
-		TOKEN_KEYBINDING("hold_key"),
-		TOKEN_KEYBINDING("pause_key"),
-		TOKEN_KEYBINDING("quit_key"),
+		{ "hold_key", &conf.hold_key },
+		{ "pause_key", &conf.pause_key },
+		{ "quit_key", &conf.quit_key },
 
-		TOKEN_KEYBINDING("toggle_ghosts"),
-		TOKEN_KEYBINDING("toggle_wallkicks"),
-		TOKEN_KEYBINDING("cycle_gamemodes"),
-		TOKEN_KEYBINDING("talk_key"),
+		{ "toggle_ghosts", &conf.toggle_ghosts },
+		{ "toggle_wallkicks", &conf.toggle_wallkicks },
+		{ "cycle_gamemodes", &conf.cycle_gamemodes },
+		{ "talk_key", &conf.talk_key },
 	};
-#endif
 
-	/* TODO */
+	struct key_bindings *mod = NULL;
+	pchar = cmd;
+
+	for (i = 0; i < LEN(tokens); i++) {
+		char *tmp;
+		tmp = strstr(cmd, tokens[i].key);
+		if (tmp == NULL)
+			continue;
+
+		mod = tokens[i].kb;
+		pchar = tmp + strlen(tokens[i].key);
+		break;
+	}
+
+	if (mod == NULL)
+		return -1;
+
+	/* Find first quotation or end of line */
+	while (*pchar != '\'' && *pchar != '\0')
+		pchar++;
+
+	if (*pchar != '\'') {
+		log_warn("Expected value of form: \'char\'. Skipping.");
+		return 0;
+	}
+
+	/* char after first quotation mark */
+	pchar++;
+
+	/* Make sure input looks like: 'c' */
+	if (pchar[1] != '\'') {
+		log_warn("Expected value of form: \'char\'. Skipping.");
+		return 0;
+	}
+
+	mod->enabled = true;
+	mod->key = *pchar;
 
 	return 1;
 }
