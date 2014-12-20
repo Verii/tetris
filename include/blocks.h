@@ -68,7 +68,10 @@ enum blocks_input_cmd {
 	MOVE_DROP,			/* Drop block to bottom of board */
 	ROT_LEFT,
 	ROT_RIGHT,
-	HOLD,
+	HOLD_PIECE,
+	SAVE_QUIT,
+	TOGGLE_PAUSE,
+	TOGGLE_GHOSTS,
 };
 
 /* Only 7 blocks(cur, hold, 5 next blocks) are stored in
@@ -158,7 +161,7 @@ int blocks_cleanup(struct blocks_game *);
 void blocks_tick(struct blocks_game *);
 
 /* Process key command in ch and modify game */
-int blocks_input(struct blocks_game *, int ch);
+int blocks_input(struct blocks_game *, enum blocks_input_cmd);
 
 
 /* Game modes, we win when the game mode returns 1 */

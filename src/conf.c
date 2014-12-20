@@ -181,6 +181,14 @@ struct config *conf_get_globals(void)
 	return ret;
 }
 
+struct config *conf_get_globals_s(void)
+{
+	static struct config ret;
+
+	memcpy(&ret, &conf, sizeof ret);
+	return &ret;
+}
+
 static int conf_enable_value(const char *cmd, size_t len)
 {
 	/* TODO */

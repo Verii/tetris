@@ -547,80 +547,61 @@ void blocks_tick(struct blocks_game *pgame)
 }
 
 /*
- * User input. Hopefully self explanatory.
- *
- * Input keys are currently:
- * 	- P pause
- * 	- O save/quit
- * 	- G toggle ghost
- * 	- W hard drops a piece to the bottom.
- * 	- [AD] move left/right respectively.
- * 	- S soft drops one row.
- * 	- [QE] rotate counter clockwise/clockwise repectively.
- * 	- (space) is used to hold the currently falling block.
+ * Blocks command processor.
  */
-int blocks_input(struct blocks_game *pgame, int ch)
+int blocks_input(struct blocks_game *pgame, enum blocks_input_cmd cmd)
 {
-	struct blocks *tmp;
+	struct blocks *cur;
 
 	if (pgame->quit || pgame->lose || pgame->win)
 		return -1;
 
-	switch (toupper(ch)) {
-	case 'G':
-		pgame->ghosts = !pgame->ghosts;
-		break;
-	case 'P':
-		pgame->pause = !pgame->pause;
-		break;
-	case 'O':
-		pgame->quit = true;
-		return -1;
-	}
+	cur = CURRENT_BLOCK(pgame);
 
-	switch (toupper(ch)) {
-	case 'A':
-		blocks_translate(pgame, CURRENT_BLOCK(pgame), MOVE_LEFT);
+	switch (cmd) {
+	case MOVE_LEFT:
+	case MOVE_RIGHT:
+		blocks_translate(pgame, cur, cmd);
 		break;
-	case 'D':
-		blocks_translate(pgame, CURRENT_BLOCK(pgame), MOVE_RIGHT);
+	case MOVE_DOWN:
+		if (blocks_fall(pgame, cur))
+			cur->soft_drop++;
 		break;
-	case 'S':
-		if (blocks_fall(pgame, CURRENT_BLOCK(pgame)))
-			CURRENT_BLOCK(pgame)->soft_drop++;
-		break;
-	case 'W':
+	case MOVE_DROP:
 		/* drop the block to the bottom of the game */
-		while (blocks_fall(pgame, CURRENT_BLOCK(pgame)))
-			CURRENT_BLOCK(pgame)->hard_drop++;
-
-		CURRENT_BLOCK(pgame)->lock_delay = 1E9 -1;
+		while (blocks_fall(pgame, cur))
+			cur->hard_drop++;
+		cur->lock_delay = 1E9 -1;
 		break;
-	case 'Q':
-		blocks_wall_kick(pgame, CURRENT_BLOCK(pgame), ROT_LEFT);
+	case ROT_LEFT:
+	case ROT_RIGHT:
+		blocks_wall_kick(pgame, cur, cmd);
 		break;
-	case 'E':
-		blocks_wall_kick(pgame, CURRENT_BLOCK(pgame), ROT_RIGHT);
-		break;
-	case ' ':
+	case HOLD_PIECE:
 		/* We can hold each block exactly once */
-		if (CURRENT_BLOCK(pgame)->hold == true)
+		if (cur->hold == true)
 			break;
 
-		tmp = CURRENT_BLOCK(pgame);
+		cur->hold = true;
+		reset_block(cur);
 
-		/* Effectively swap the first and second elements in
-		 * the linked list. The "Current Block" is element 2.
-		 * And the "Hold Block" is element 1. So we remove the
-		 * current block and reinstall it at the head, pushing
-		 * the hold block to the current position.
+		/* Remove the current block and reinstall it at the beginning
+		 * of the list. This swaps the hold and current block.
 		 */
-		LIST_REMOVE(tmp, entries);
-		LIST_INSERT_HEAD(&pgame->blocks_head, tmp, entries);
-
-		reset_block(HOLD_BLOCK(pgame));
-		HOLD_BLOCK(pgame)->hold = true;
+		LIST_REMOVE(cur, entries);
+		LIST_INSERT_HEAD(&pgame->blocks_head, cur, entries);
 		break;
+	case SAVE_QUIT:
+		pgame->quit = true;
+		break;
+	case TOGGLE_PAUSE:
+		pgame->pause = !pgame->pause;
+		break;
+	case TOGGLE_GHOSTS:
+		pgame->ghosts = !pgame->ghosts;
+		break;
+	default:
+		return -1;
 	}
 
 	blocks_update_ghost_block(pgame, pgame->ghost);

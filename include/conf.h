@@ -83,6 +83,11 @@ int conf_parse(const char *str, size_t len);
 /* Return structure containing global variables */
 struct config *conf_get_globals(void);
 
+/* Same but just return a pointer to a static allocation, so we don't have to
+ * free it manually.
+ */
+struct config *conf_get_globals_s(void);
+
 /* Internal functions, these are called when either a "set" "bind" or "say"
  * commands in encountered in the configuration file.
  */
