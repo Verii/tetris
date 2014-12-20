@@ -23,6 +23,7 @@
 #include <stdlib.h>
 
 #include "db.h"
+#include "conf.h"
 #include "logs.h"
 #include "blocks.h"
 #include "screen.h"
@@ -109,12 +110,31 @@ static void draw_text(struct blocks_game *pgame)
 	mvwprintw(text, 2, 1, "Score");
 
 	mvwprintw(text, 5, 1, "Controls");
-	mvwprintw(text, 6 , 2, "Pause [p]");
-	mvwprintw(text, 7 , 2, "Save/Quit [o]");
-	mvwprintw(text, 8 , 2, "Move [asd]");
-	mvwprintw(text, 9 , 2, "Rotate [qe]");
-	mvwprintw(text, 10, 2, "Ghosts [g]");
-	mvwprintw(text, 11, 2, "Hold [[space]]");
+
+	const struct config *conf = conf_get_globals_s();
+	mvwprintw(text, 6 , 2, "Pause: ");
+	wprintw(text, "%c", conf->pause_key.key);
+
+	mvwprintw(text, 7 , 2, "Save/Quit: ");
+	wprintw(text, "%c", conf->quit_key.key);
+
+	mvwprintw(text, 8 , 2, "Move: ");
+	wprintw(text, "%c%c%c%c",
+			conf->move_left.key,
+			conf->move_down.key,
+			conf->move_right.key,
+			conf->move_drop.key);
+
+	mvwprintw(text, 9 , 2, "Rotate: ");
+	wprintw(text, "%c%c",
+			conf->rotate_left.key,
+			conf->rotate_right.key);
+
+	mvwprintw(text, 10, 2, "Ghosts: ");
+	wprintw(text, "%c", conf->toggle_ghosts.key);
+
+	mvwprintw(text, 11, 2, "Hold: ");
+	wprintw(text, "%c", conf->hold_key.key);
 
 	wattrset(text, COLOR_PAIR(2));
 	mvwprintw(text, 13, 1, "Log:");
