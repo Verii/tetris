@@ -16,12 +16,12 @@ To install:
 
 ## Dependencies, Libraries
 
--GNU C99/POSIX
--libsqlite3 (3.8+)
--libncurses
--libncursesw (ncurses +wide char support)
--librt
--libm
+-GNU C99/POSIX  
+-libsqlite3 (3.8+)  
+-libncurses  
+-libncursesw (ncurses +wide char support)  
+-librt  
+-libm  
 
 ## Contributions
 
