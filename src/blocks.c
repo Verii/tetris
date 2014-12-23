@@ -594,7 +594,7 @@ int blocks_input(struct blocks_game *pgame, enum blocks_input_cmd cmd)
 	case SAVE_QUIT:
 		pgame->quit = true;
 		break;
-	case TOGGLE_PAUSE:
+	case PAUSE_GAME:
 		pgame->pause = !pgame->pause;
 		break;
 	case TOGGLE_GHOSTS:

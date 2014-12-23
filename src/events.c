@@ -63,14 +63,14 @@ int input_handler(union events_value ev)
 		{ conf->move_down.key, MOVE_DOWN },
 		{ conf->move_left.key, MOVE_LEFT },
 		{ conf->move_right.key, MOVE_RIGHT },
-
 		{ conf->rotate_left.key, ROT_LEFT },
 		{ conf->rotate_right.key, ROT_RIGHT },
 
 		{ conf->hold_key.key, HOLD_PIECE },
 		{ conf->quit_key.key, SAVE_QUIT },
+		{ conf->pause_key.key, PAUSE_GAME },
 
-		{ conf->pause_key.key, TOGGLE_PAUSE },
+		/* Toggle Attributes */
 		{ conf->toggle_ghosts.key, TOGGLE_GHOSTS },
 	};
 

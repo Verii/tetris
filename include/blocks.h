@@ -70,8 +70,14 @@ enum blocks_input_cmd {
 	ROT_RIGHT,
 	HOLD_PIECE,
 	SAVE_QUIT,
-	TOGGLE_PAUSE,
+	PAUSE_GAME,
+
+	/* Game attributes */
 	TOGGLE_GHOSTS,
+	TOGGLE_HOLD,
+	TOGGLE_PAUSE,
+	TOGGLE_WALLKICKS,
+	TOGGLE_TSPIN,
 };
 
 /* Only 7 blocks(cur, hold, 5 next blocks) are stored in
@@ -80,14 +86,14 @@ enum blocks_input_cmd {
  */
 struct blocks {
 	uint32_t lock_delay;		/* how long to wait (nsec) */
-	uint8_t soft_drop, hard_drop;	/* number of blocks dropped */
-	uint8_t col_off, row_off;	/* column/row offsets */
+	uint8_t soft_drop, hard_drop;	/* number of rows dropped */
 
-	bool t_spin;			/* T-Spin . not implemented*/
+	bool t_spin;			/* T-Spin */
 	bool hold;			/* can only hold once */
 
 	enum blocks_block_types type;
 
+	uint8_t col_off, row_off;	/* column/row offsets */
 	struct pieces {			/* pieces stores two values(x, y) */
 		int8_t x, y;		/* between -1 and +2 */
 	} p[4];				/* each block has 4 pieces */
@@ -112,8 +118,14 @@ struct blocks_game {
 	LIST_HEAD(blocks_head, blocks) blocks_head;	/* list of blocks */
 	blocks_win_condition	check_win;
 
-	bool ghosts;			/* Draw the ghost block? */
 	struct blocks		*ghost;
+
+	/* Attributes */
+	bool allow_ghosts;
+	bool allow_hold;
+	bool allow_pause;
+	bool allow_wallkicks;
+	bool allow_tspin;
 };
 
 /* event loop checks if this variable is set, then calls tick function */
