@@ -112,7 +112,7 @@ struct blocks_game {
 
 	uint8_t *colors[BLOCKS_MAX_ROWS];	/* 1-to-1 with board */
 	uint32_t nsec;			/* tick delay in nanoseconds */
-	bool pause;			/* game pause? */
+	bool paused;			/* game pause? */
 	bool lose, quit, win;		/* quit? lose? win? */
 
 	LIST_HEAD(blocks_head, blocks) blocks_head;	/* list of blocks */

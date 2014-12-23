@@ -53,33 +53,33 @@ int input_handler(union events_value ev)
 	int ret;
 	size_t i;
 	enum blocks_input_cmd cmd = -1;
-	const struct config *conf = conf_get_globals_s();
+	struct config *conf = conf_get_globals_s();
 
 	struct {
-		int key;
+		struct key_bindings *key;
 		enum blocks_input_cmd cmd;
 	} actions[] = {
-		{ conf->move_drop.key, MOVE_DROP },
-		{ conf->move_down.key, MOVE_DOWN },
-		{ conf->move_left.key, MOVE_LEFT },
-		{ conf->move_right.key, MOVE_RIGHT },
-		{ conf->rotate_left.key, ROT_LEFT },
-		{ conf->rotate_right.key, ROT_RIGHT },
+		{ &conf->move_drop, MOVE_DROP },
+		{ &conf->move_down, MOVE_DOWN },
+		{ &conf->move_left, MOVE_LEFT },
+		{ &conf->move_right, MOVE_RIGHT },
+		{ &conf->rotate_left, ROT_LEFT },
+		{ &conf->rotate_right, ROT_RIGHT },
 
-		{ conf->hold_key.key, HOLD_PIECE },
-		{ conf->quit_key.key, SAVE_QUIT },
-		{ conf->pause_key.key, PAUSE_GAME },
+		{ &conf->hold_key, HOLD_PIECE },
+		{ &conf->quit_key, SAVE_QUIT },
+		{ &conf->pause_key, PAUSE_GAME },
 
 		/* Toggle Attributes */
-		{ conf->toggle_ghosts.key, TOGGLE_GHOSTS },
+		{ &conf->toggle_ghosts, TOGGLE_GHOSTS },
 	};
 
 	for (i = 0; i < LEN(actions); i++) {
-		if (actions[i].key != ev.val_int)
+		if (actions[i].key->key != ev.val_int)
 			continue;
 
 		/* Don't accept disabled keys. */
-		if (!actions[i].enabled)
+		if (!actions[i].key->enabled)
 			continue;
 
 		cmd = actions[i].cmd;

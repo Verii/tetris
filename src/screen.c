@@ -241,7 +241,7 @@ static void draw_board(bool self, struct blocks_game *pgame, WINDOW *win)
 		mvwprintw(win, i -2, x_off +1, " . . . . .");
 
 	/* Draw the Ghost block on the bottom of the board, if the user wants */
-	if (pgame->ghosts && pgame->ghost) {
+	if (pgame->allow_ghosts && pgame->ghost) {
 		struct blocks *np = pgame->ghost;
 
 		wattrset(win, A_DIM| COLOR_PAIR(np->type %sizeof(colors) +1));
@@ -285,7 +285,7 @@ static void draw_board(bool self, struct blocks_game *pgame, WINDOW *win)
 	/* Center the text horizontally, place the text slightly above
 	 * the middle vertically.
 	 */
-	if (pgame->pause) {
+	if (pgame->paused) {
 		wattrset(win, A_BOLD | COLOR_PAIR(1));
 		mvwprintw(win, (BLOCKS_MAX_ROWS -2) /2 -1,
 				 (BLOCKS_MAX_COLUMNS -2) /2 -1 +x_off,

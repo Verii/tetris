@@ -462,7 +462,7 @@ int blocks_init(struct blocks_game **pmem)
 	pgame->level = 1;
 	blocks_update_tick_speed(pgame);
 
-	pgame->ghosts = true;
+	pgame->allow_ghosts = true;
 	pgame->ghost = malloc(sizeof *pgame->ghost);
 	if (!pgame->ghost) {
 		log_err("No memory for ghost block");
@@ -529,7 +529,7 @@ int blocks_cleanup(struct blocks_game *pgame)
  */
 void blocks_tick(struct blocks_game *pgame)
 {
-	if (pgame->pause || pgame->lose || pgame->quit || pgame->win)
+	if (pgame->paused || pgame->lose || pgame->quit || pgame->win)
 		return;
 
 	if (!blocks_fall(pgame, CURRENT_BLOCK(pgame))) {
@@ -595,10 +595,10 @@ int blocks_input(struct blocks_game *pgame, enum blocks_input_cmd cmd)
 		pgame->quit = true;
 		break;
 	case PAUSE_GAME:
-		pgame->pause = !pgame->pause;
+		pgame->paused = !pgame->paused;
 		break;
 	case TOGGLE_GHOSTS:
-		pgame->ghosts = !pgame->ghosts;
+		pgame->allow_ghosts = !pgame->allow_ghosts;
 		break;
 	default:
 		return -1;
