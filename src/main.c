@@ -158,13 +158,6 @@ int main(int argc, char **argv)
 
 	events_main_loop();
 
-	if (pgame->lose) {
-		db_save_score(pgame);
-		screen_draw_over();
-	} else {
-		db_save_state(pgame);
-	}
-
 	tetris_cleanup(pgame);
 
 	return 0;
