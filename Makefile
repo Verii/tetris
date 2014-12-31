@@ -1,15 +1,14 @@
 BIN = tetris
-VERSION = v0.52
+VERSION = v0.53
 
 SRC =	src/main.c \
-	src/blocks.c \
 	src/conf.c \
-	src/db.c \
 	src/events.c \
 	src/helpers.c \
 	src/logs.c \
 	src/network.c \
-	src/screen.c
+	src/screen.c \
+	src/tetris.c
 
 DESTDIR = /usr/local/bin
 
@@ -37,14 +36,7 @@ OBJS = ${SRC:.c=.o}
 debug: ${OBJS}
 	${CC} ${OBJS} ${LDFLAGS} -o ${BIN}-$@
 
-sexp:
-	${MAKE} -C sexp/
-	mv sexp/libsexp.a lib/
-	cp -u sexp/sexp.h include/
-
 clean:
-	${MAKE} -C sexp/ clean
-	-rm -f lib/libsexp.a
 	-rm -f ${BIN} ${BIN}-debug ${OBJS}
 
-.PHONY: sexp
+.PHONY: clean debug install all
