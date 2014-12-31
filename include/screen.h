@@ -19,15 +19,35 @@
 #ifndef SCREEN_H_
 #define SCREEN_H_
 
-#include "blocks.h"
+#include <ncurses.h>
+#include <ncursesw/ncurses.h>
+
+#include "tetris.h"
+
+#define PIECES_CHAR WACS_BLOCK
+
+#define COLORS_LENGTH	7
+extern const char *colors;
+
+#define PIECES_Y_OFF 4
+#define PIECES_X_OFF 3
+
+#define BOARD_Y_OFF 1
+#define BOARD_X_OFF 18
+
+#define BOARD_HEIGHT TETRIS_MAX_ROWS
+#define BOARD_WIDTH TETRIS_MAX_COLUMNS +2
+
+#define TEXT_Y_OFF 1
+#define TEXT_X_OFF BOARD_X_OFF + BOARD_WIDTH
 
 int screen_init(void);
 void screen_cleanup(void);
 
 /* Update screen */
-void screen_draw_game(struct blocks_game *);
+void screen_draw_game(tetris *);
 
 /* Game over! prints high scores if the player lost */
-void screen_draw_over(void);
+void screen_draw_over(tetris *);
 
-#endif				/* SCREEN_H_ */
+#endif	/* SCREEN_H_ */

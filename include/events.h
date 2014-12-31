@@ -20,7 +20,6 @@
 #define EVENTS_H_
 
 #include <signal.h>
-#include "blocks.h"
 
 union events_value {
 	void *val_ptr;
