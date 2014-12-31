@@ -1,11 +1,6 @@
 # Tetris
 
 ## Building
-To pull in dependencies:
-
-    git submodule init
-    git submodule update
-
 To build:
 
     make (or `make debug`)
