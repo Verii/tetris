@@ -24,15 +24,14 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "db.h"
 #include "conf.h"
 #include "logs.h"
-#include "blocks.h"
+#include "tetris.h"
 #include "screen.h"
 #include "events.h"
 #include "network.h"
 
-struct blocks_game *pgame;
+tetris *pgame;
 
 static void usage(void)
 {
@@ -124,7 +123,7 @@ int main(int argc, char **argv)
 	 * If a valid string is passed to one of the init subsystems, then that
 	 * string takes precedence, even over the configuration file.
 	 *
-	 * So if we start the game as `blocks -h example.com -p 100`, and the
+	 * So if we start the game as `tetris -h example.com -p 100`, and the
 	 * configuration file specifies singleplayer, we will still try to play
 	 * multiplayer.
 	 */
@@ -132,19 +131,19 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 
 	if ((logs_init(lflag? logfile: NULL) != 1) ||
-	    (blocks_init(&pgame) != 1 || pgame == NULL) ||
-	    (db_init(sflag? savefile: NULL) != 1) ||
+	    (tetris_init(&pgame) != 1 || pgame == NULL) ||
 	    (network_init(hflag? hostname: NULL, pflag? port: NULL) != 1) ||
 	    (screen_init() != 1))
 		exit(EXIT_FAILURE);
 
-	db_resume_state(pgame);
-	blocks_update_ghost_block(pgame, pgame->ghost);
 	screen_draw_game(pgame);
+
+	int delay;
+	tetris_get_attr(pgame, TETRIS_GET_DELAY, &delay);
 
 	struct timespec ts_tick;
 	ts_tick.tv_sec = 0;
-	ts_tick.tv_nsec = pgame->nsec;
+	ts_tick.tv_nsec = delay;
 
 	struct sigaction sa_tick;
 	sa_tick.sa_flags = 0;
@@ -166,7 +165,7 @@ int main(int argc, char **argv)
 		db_save_state(pgame);
 	}
 
-	blocks_cleanup(pgame);
+	tetris_cleanup(pgame);
 
 	return 0;
 }
