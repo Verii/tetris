@@ -16,11 +16,6 @@ network.c do it.
 
 conf.c safer.
 conf.c tidy up.
-conf.c accept $HOME.
-
-db.c nothing has changed much. Look over again, with new insight and make it
-	better.
-db.c refactor SQL statements.
 
 helpers.c make function names more consistent.
 helpers.c cleanup and refactor.
@@ -31,4 +26,3 @@ screen.c menu :( so boring.
 
 Move to main ?
 	logs.c Try to create the path of the user specified logs file.
-	db.c Try to create path of user specified saves file.
