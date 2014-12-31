@@ -1,4 +1,0 @@
-[submodule "S-expressions"]
-	path = sexp
-	url = https://github.com/Verii/S-expressions
-	branch = master
