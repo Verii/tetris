@@ -70,6 +70,7 @@ struct tetris {
 	bool win;
 	bool lose;
 	bool quit;
+	bool difficult; // successive difficult moves
 
 	sqlite3 *db_handle;
 	char db_file[256];
@@ -518,27 +519,25 @@ static void update_points(tetris *pgame, uint8_t destroyed)
 			break;
 	}
 
+	/* Add difficulty bonus for consecutive difficult moves */
+	if (pgame->difficult == true)
+		point_mod = (point_mod * 3) /2;
+
 	/* point modifier, "difficult" line clears earn more over time.
 	 * a tetris (4 line clears) counts for 1 difficult move.
 	 *
-	 * difficult values >1 boost points by 3/2
+	 * consecutive difficult moves inc. points by 3/2
 	 */
-	static size_t difficult = 0;
-
 	if (destroyed == 4) {
 		logs_to_game("Tetris!");
-		difficult++;
+		pgame->difficult = true;
 	} else if (CURRENT_BLOCK(pgame)->t_spin) {
 		logs_to_game("T spin!");
-		difficult++;
+		pgame->difficult = true;
 	} else {
 		/* We lose our difficulty multipliers on easy moves */
-		difficult = 0;
+		pgame->difficult = false;
 	}
-
-	/* Add difficulty bonus for consecutive difficult moves */
-	if (difficult > 1)
-		point_mod = (point_mod * 3) /2;
 
 done :{
 	int score_inc = (point_mod * pgame->level)
@@ -748,6 +747,7 @@ int tetris_cmd(tetris *pgame, int cmd)
 
 	case TETRIS_PAUSE_GAME:
 		pgame->paused = !pgame->paused;
+		pgame->difficult = false; // Lose difficulty bonus when we pause
 		break;
 
 	case TETRIS_GAME_TICK:
