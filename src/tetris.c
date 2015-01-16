@@ -464,8 +464,15 @@ static int destroy_lines(tetris *pgame)
 			continue;
 
 		/* Move lines above destroyed line down */
-		for (j = i; j > 0; j--)
+		for (j = i; j > 0; j--) {
 			pgame->spaces[j] = pgame->spaces[j -1];
+			memcpy(pgame->colors[j], pgame->colors[j -1],
+				TETRIS_MAX_COLUMNS * sizeof *pgame->colors[0]);
+		}
+
+		/* Fill top row colors with zeros. */
+		memset(pgame->colors[0], 0,
+			TETRIS_MAX_COLUMNS * sizeof *pgame->colors[0]);
 
 		/* Lines are moved down, so we recheck this row. */
 		i++;
