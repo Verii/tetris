@@ -33,64 +33,18 @@
 
 /* Set by signal handler */
 volatile sig_atomic_t tetris_do_tick;
-extern tetris *pgame;
+
 static timer_t timerid;
 static sigset_t ignore_mask;
 static fd_set master_read;
 static uint8_t fd_max;
 
-static struct events {
-	int fd;
-	events_callback cb;
-	union events_value val;
-} events[2];
+#define NUM_EVENTS 2
+events* p_events[NUM_EVENTS];
 
-void timer_handler(int sig)
+static void events_timer_cleanup(void)
 {
-	tetris_do_tick = sig;
-}
-
-int input_handler(union events_value ev)
-{
-	int ret, cmd = -1;
-	size_t i;
-	struct config *conf = conf_get_globals_s();
-
-	struct {
-		struct key_bindings *key;
-		int cmd;
-	} actions[] = {
-		{ &conf->move_drop, TETRIS_MOVE_DROP },
-		{ &conf->move_down, TETRIS_MOVE_DOWN },
-		{ &conf->move_left, TETRIS_MOVE_LEFT },
-		{ &conf->move_right, TETRIS_MOVE_RIGHT },
-		{ &conf->rotate_left, TETRIS_ROT_LEFT },
-		{ &conf->rotate_right, TETRIS_ROT_RIGHT },
-
-		{ &conf->hold_key, TETRIS_HOLD_BLOCK },
-		{ &conf->quit_key, TETRIS_QUIT_GAME },
-		{ &conf->pause_key, TETRIS_PAUSE_GAME },
-	};
-
-	for (i = 0; i < LEN(actions); i++) {
-		if (actions[i].key->key != ev.val_int)
-			continue;
-
-		/* Don't accept disabled keys. */
-		if (!actions[i].key->enabled)
-			continue;
-
-		cmd = actions[i].cmd;
-		break;
-	}
-
-	if (i >= LEN(actions) || cmd == -1)
-		return 0;
-
-	ret = tetris_cmd(pgame, cmd);
-	screen_draw_game(pgame);
-
-	return ret;
+	timer_delete(timerid);
 }
 
 static int events_reset_timer(timer_t td, struct timespec ts)
@@ -137,24 +91,33 @@ int events_add_timer_event(struct timespec ts, struct sigaction sa, int sig)
 		return -1;
 	}
 
+	atexit(events_timer_cleanup);
+
 	return 1;
 }
 
 int events_add_input_event(int fd, events_callback cb)
 {
-	size_t i;
+	if (fd < 0)
+		return 0;
 
-	for (i = 0; i < LEN(events); i++) {
-		if (events[i].cb)
-			continue;
-
-		events[i].fd = fd;
-		events[i].cb = cb;
-		break;
+	events *new_event = malloc(sizeof *new_event);
+	if (!new_event) {
+		log_err("Out of memory");
+		return -1;
 	}
 
-	if (i >= LEN(events))
+	new_event->fd = fd;
+	new_event->cb = cb;
+
+	size_t i = 0;
+	while (i < NUM_EVENTS && p_events[i])
+		i++;
+
+	if (i >= NUM_EVENTS)
 		return -1;
+	else
+		p_events[i] = new_event;
 
 	FD_SET(fd, &master_read);
 
@@ -162,14 +125,9 @@ int events_add_input_event(int fd, events_callback cb)
 		fd_max = fd;
 
 	debug("Registered event: %d/%d from fd %d",
-			i, LEN(events), events[i].fd);
+			i, NUM_EVENTS-1, p_events[i]->fd);
 
 	return 1;
-}
-
-void events_cleanup(void)
-{
-	timer_delete(timerid);
 }
 
 
@@ -178,70 +136,59 @@ void events_cleanup(void)
  * We wait for user input on stdin and the network socket(if available).
  * We also handle interrupts in the form of signals from POSIX timers.
  */
-void events_main_loop(void)
+void events_main_loop(tetris *pgame)
 {
-	int ps_ret, num_events, success;
-	fd_set read_fds;
+  while (1) {
 
-	atexit(events_cleanup);
+	fd_set read_fds = master_read;
 
 	sigset_t empty_mask;
 	sigemptyset(&empty_mask);
 
-	const struct timespec timeout = {
+	struct timespec ps_timeout = {
 		.tv_nsec = 0,
 		.tv_sec = 1,
 	};
 
-	while (1) {
-		success = 0;
-		num_events = 0;
-		read_fds = master_read;
+	errno = 0;
+	int ps_ret = pselect(fd_max+1, &read_fds, NULL, NULL,
+			&ps_timeout, &empty_mask);
 
-		errno = 0;
-		ps_ret = pselect(fd_max+1, &read_fds, NULL, NULL,
-				&timeout, &empty_mask);
-
-		if (ps_ret == -1 && errno != EINTR) {
-			perror("pselect()");
-			continue;
-		}
-
-		if (tetris_do_tick > 0) {
-			tetris_do_tick = 0;
-
-			success = tetris_cmd(pgame, TETRIS_GAME_TICK);
-			screen_draw_game(pgame);
-
-			/* Update tick timer */
-			int delay;
-			tetris_get_attr(pgame, TETRIS_GET_DELAY, &delay);
-
-			struct timespec ts;
-			ts.tv_sec = 0;
-			ts.tv_nsec = delay;
-
-			events_reset_timer(timerid, ts);
-		}
-
-		for (size_t i = 0; ps_ret && i < LEN(events); i++) {
-			if (num_events >= ps_ret || events[i].cb == NULL)
-				break;
-
-			if (!FD_ISSET(i, &read_fds))
-				continue;
-
-			num_events++;
-
-			char buf;
-			read(events[i].fd, &buf, 1);
-			events[i].val.val_int = buf;
-
-			success = events[i].cb(events[i].val);
-		}
-
-		/* Quit the game if one of the callbacks returns -1 */
-		if (success < 0)
-			break;
+	if (ps_ret == -1 && errno != EINTR) {
+		perror("pselect()");
+		continue;
 	}
+
+	if (tetris_do_tick > 0) {
+		tetris_do_tick = 0;
+
+		if (tetris_cmd(pgame, TETRIS_GAME_TICK) < 0)
+			return;
+
+		screen_draw_game(pgame);
+
+		/* Update tick timer */
+		struct timespec ts;
+		ts.tv_sec = 0;
+		tetris_get_attr(pgame, TETRIS_GET_DELAY, &ts.tv_nsec);
+
+		events_reset_timer(timerid, ts);
+	}
+
+	if (ps_ret <= 0)
+		continue;
+
+	for (size_t i = 0; i < NUM_EVENTS; i++) {
+		if (!p_events[i])
+			break;
+
+		if (!FD_ISSET(p_events[i]->fd, &read_fds))
+			continue;
+
+		/* Call registered callback, return if the callback fails */
+		if (p_events[i]->cb(p_events[i]) < 0)
+			return;
+	}
+
+  } /* while */
 }

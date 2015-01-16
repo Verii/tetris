@@ -696,7 +696,7 @@ int tetris_cmd(tetris *pgame, int cmd)
 		return -1;
 
 	if (pgame->paused &&
-	   (cmd != TETRIS_PAUSE_GAME || cmd != TETRIS_QUIT_GAME))
+	   !(cmd == TETRIS_PAUSE_GAME || cmd == TETRIS_QUIT_GAME))
 		return 0;
 
 	block *cur = CURRENT_BLOCK(pgame);
@@ -1330,20 +1330,20 @@ int tetris_draw_text(tetris *pgame, WINDOW *scr)
 			conf->rotate_right.key);
 
 	mvwprintw(scr, 10, 2, "Hold: %c", conf->hold_key.key);
-	mvwprintw(scr, 12, 2, "--------");
+	mvwprintw(scr, 12, 1, "--------");
 
 	/* Print in-game logs/messages */
 	wattrset(scr, COLOR_PAIR(3));
 
-	struct log_entry *np;
+	struct log_entry *lep;
 	size_t i = 0;
 
-	LIST_FOREACH(np, &entry_head, entries) {
+	LIST_FOREACH(lep, &entry_head, entries) {
 		/* Display messages, then remove anything left over */
 		if (i < 8) {
-			mvwprintw(scr, 20-i, 2, "%s", np->msg);
+			mvwprintw(scr, 13+i, 2, "%s", lep->msg);
 		} else {
-			struct log_entry *tmp = np;
+			struct log_entry *tmp = lep;
 
 			LIST_REMOVE(tmp, entries);
 			free(tmp->msg);

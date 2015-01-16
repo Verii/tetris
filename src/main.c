@@ -30,6 +30,7 @@
 #include "screen.h"
 #include "events.h"
 #include "network.h"
+#include "helpers.h"
 
 tetris *pgame;
 
@@ -57,6 +58,62 @@ static void usage(void)
 	"[-p port] port to connect to\n";
 
 	fprintf(stderr, help, __progname, VERSION, __DATE__, __TIME__);
+}
+
+int network_handler(events *pev)
+{
+	(void) pev;
+	return 0;
+}
+
+int keyboard_handler(events *pev)
+{
+	int ret = -1;
+
+	struct config *conf = conf_get_globals_s();
+
+	struct {
+		struct key_bindings *key;
+		int cmd;
+	} actions[] = {
+		{ &conf->move_drop,	TETRIS_MOVE_DROP },
+		{ &conf->move_down,	TETRIS_MOVE_DOWN },
+		{ &conf->move_left,	TETRIS_MOVE_LEFT },
+		{ &conf->move_right,	TETRIS_MOVE_RIGHT },
+		{ &conf->rotate_left,	TETRIS_ROT_LEFT },
+		{ &conf->rotate_right,	TETRIS_ROT_RIGHT },
+
+		{ &conf->hold_key,	TETRIS_HOLD_BLOCK },
+		{ &conf->quit_key,	TETRIS_QUIT_GAME },
+		{ &conf->pause_key,	TETRIS_PAUSE_GAME },
+	};
+
+	char kb_key;
+	read(pev->fd, &kb_key, 1);
+
+	size_t i = 0;
+	for (; i < LEN(actions); i++) {
+		if (actions[i].key->key != kb_key)
+			continue;
+
+		if (!actions[i].key->enabled)
+			continue;
+
+		ret = tetris_cmd(pgame, actions[i].cmd);
+		screen_draw_game(pgame);
+		break;
+	}
+
+	if (i >= LEN(actions))
+		return 0;
+
+	return ret;
+}
+
+void timer_handler(int sig)
+{
+	extern volatile sig_atomic_t tetris_do_tick;
+	tetris_do_tick = sig;
 }
 
 int main(int argc, char **argv)
@@ -138,26 +195,23 @@ int main(int argc, char **argv)
 
 	screen_draw_game(pgame);
 
-	int delay;
-	tetris_get_attr(pgame, TETRIS_GET_DELAY, &delay);
 
 	struct timespec ts_tick;
 	ts_tick.tv_sec = 0;
-	ts_tick.tv_nsec = delay;
+	tetris_get_attr(pgame, TETRIS_GET_DELAY, &ts_tick.tv_nsec);
 
 	struct sigaction sa_tick;
 	sa_tick.sa_flags = 0;
 	sa_tick.sa_handler = timer_handler;
 	sigemptyset(&sa_tick.sa_mask);
 
-	/* Create timer */
+	/* Add events to event loop */
 	events_add_timer_event(ts_tick, sa_tick, SIGRTMIN+2);
 
-	/* Add events to event loop */
-	events_add_input_event(fileno(stdin), input_handler);
+	events_add_input_event(fileno(stdin), keyboard_handler);
+//	events_add_input_event(netfd, network_handler);
 
-	events_main_loop();
-
+	events_main_loop(pgame);
 	tetris_cleanup(pgame);
 
 	return 0;

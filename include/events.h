@@ -19,29 +19,39 @@
 #ifndef EVENTS_H_
 #define EVENTS_H_
 
+#include "tetris.h"
 #include <signal.h>
 
-union events_value {
-	void *val_ptr;
-	int val_int;
+typedef struct events events;
+
+typedef int (*events_callback)(events *);
+
+/**
+ * events structure contains the file descriptor to listen on,
+ * and the callback function to call when input is detected on the fd.
+ */
+struct events {
+	int fd;
+	events_callback cb;
 };
 
-typedef int (*events_callback)(union events_value);
-
-/* TODO */
-int events_add_input_event(int fd, events_callback cb);
-int events_add_output_event(int fd, events_callback cb);
-
-int events_add_timer_event(struct timespec, struct sigaction, int sig);
-void events_main_loop(void);
-void events_cleanup(void);
-
-/* Right, so admittedly this is pretty sloppy. There are global defines
- * everywhere and the logical flow is just all over the place.
- *
- * TODO make this pretty.
+/**
+ * Listen on File Descriptor fd for input, then call cb.
  */
-void timer_handler(int);
-int input_handler(union events_value ev);
+int events_add_input_event(int fd, events_callback cb);
+
+/**
+ * Create a POSIX timer to signal the program (sig) periodically (timespec).
+ * The raised signal is caught by the function defined the (sigaction).
+ */
+int events_add_timer_event(struct timespec, struct sigaction, int sig);
+
+/**
+ * Main loop of the program, pselect() for interrupts and keyboard/network
+ * input, handling game commands, etc.
+ *
+ * Returns when the user quits, the server tells us to, or the game is over.
+ */
+void events_main_loop(tetris *);
 
 #endif /* EVENTS_H_ */
