@@ -36,15 +36,24 @@ volatile sig_atomic_t tetris_do_tick;
 
 static timer_t timerid;
 static sigset_t ignore_mask;
+
 static fd_set master_read;
+static fd_set master_write;
 static uint8_t fd_max;
 
 #define NUM_EVENTS 2
-events* p_events[NUM_EVENTS];
+static events* p_events[NUM_EVENTS];
 
 static void events_timer_cleanup(void)
 {
 	timer_delete(timerid);
+}
+
+static void events_IO_cleanup(void)
+{
+	size_t i;
+	for (i = 0; i < NUM_EVENTS; i++)
+		if (p_events[i]) events_remove_IO(p_events[i]->fd);
 }
 
 static int events_reset_timer(timer_t td, struct timespec ts)
@@ -63,7 +72,7 @@ static int events_reset_timer(timer_t td, struct timespec ts)
 	return 1;
 }
 
-int events_add_timer_event(struct timespec ts, struct sigaction sa, int sig)
+int events_add_timer(struct timespec ts, struct sigaction sa, int sig)
 {
 	sigaddset(&ignore_mask, sig);
 	sigprocmask(SIG_BLOCK, &ignore_mask, NULL);
@@ -96,7 +105,7 @@ int events_add_timer_event(struct timespec ts, struct sigaction sa, int sig)
 	return 1;
 }
 
-int events_add_input_event(int fd, events_callback cb)
+int events_add_input(int fd, events_callback cb)
 {
 	if (fd < 0)
 		return 0;
@@ -124,8 +133,43 @@ int events_add_input_event(int fd, events_callback cb)
 	if (fd > fd_max)
 		fd_max = fd;
 
+	atexit(events_IO_cleanup);
 	debug("Registered event: %d/%d from fd %d",
 			i, NUM_EVENTS-1, p_events[i]->fd);
+
+	return 1;
+}
+
+int events_remove_IO(int fd)
+{
+	if (fd < 0)
+		return 0;
+
+	size_t i;
+	for (i = 0; i < NUM_EVENTS; i++) {
+		if (p_events[i] && p_events[i]->fd == fd)
+			break;
+	}
+
+	close(p_events[i]->fd);
+
+	if (FD_ISSET(p_events[i]->fd, &master_read))
+		FD_CLR(p_events[i]->fd, &master_read);
+
+	if (FD_ISSET(p_events[i]->fd, &master_write))
+		FD_CLR(p_events[i]->fd, &master_write);
+
+	free(p_events[i]);
+	p_events[i] = NULL;
+
+	debug("Unregistered event: %d/%d from fd %d",
+			i, NUM_EVENTS-1, fd);
+
+	fd_max = p_events[0]->fd;
+	for (i = 1; i < NUM_EVENTS; i++) {
+		if (p_events[i] && p_events[i]->fd > fd_max)
+			fd_max = p_events[i]->fd;
+	}
 
 	return 1;
 }
@@ -141,6 +185,7 @@ void events_main_loop(tetris *pgame)
   while (1) {
 
 	fd_set read_fds = master_read;
+	fd_set write_fds = master_write;
 
 	sigset_t empty_mask;
 	sigemptyset(&empty_mask);
@@ -151,7 +196,7 @@ void events_main_loop(tetris *pgame)
 	};
 
 	errno = 0;
-	int ps_ret = pselect(fd_max+1, &read_fds, NULL, NULL,
+	int ps_ret = pselect(fd_max+1, &read_fds, &write_fds, NULL,
 			&ps_timeout, &empty_mask);
 
 	if (ps_ret == -1 && errno != EINTR) {
@@ -182,7 +227,8 @@ void events_main_loop(tetris *pgame)
 		if (!p_events[i])
 			break;
 
-		if (!FD_ISSET(p_events[i]->fd, &read_fds))
+		if (!(FD_ISSET(p_events[i]->fd, &read_fds) ||
+		      FD_ISSET(p_events[i]->fd, &write_fds))
 			continue;
 
 		/* Call registered callback, return if the callback fails */

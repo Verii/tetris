@@ -36,15 +36,18 @@ struct events {
 };
 
 /**
- * Listen on File Descriptor fd for input, then call cb.
+ * Listen on File Descriptor fd for IO, then call cb.
  */
-int events_add_input_event(int fd, events_callback cb);
+int events_add_input(int fd, events_callback cb);
+int events_add_output(int fd, events_callback cb);
+
+int events_remove_IO(int fd);
 
 /**
  * Create a POSIX timer to signal the program (sig) periodically (timespec).
  * The raised signal is caught by the function defined the (sigaction).
  */
-int events_add_timer_event(struct timespec, struct sigaction, int sig);
+int events_add_timer(struct timespec, struct sigaction, int sig);
 
 /**
  * Main loop of the program, pselect() for interrupts and keyboard/network
