@@ -32,17 +32,20 @@
 #define COLORS_LENGTH	7
 extern const char *colors;
 
-#define PIECES_Y_OFF 4
-#define PIECES_X_OFF 3
+#define PIECES_Y_OFF	4
+#define PIECES_X_OFF	3
+#define PIECES_HEIGHT	16
+#define PIECES_WIDTH	13
 
-#define BOARD_Y_OFF 1
-#define BOARD_X_OFF 18
+#define BOARD_Y_OFF	1
+#define BOARD_X_OFF	18
+#define BOARD_HEIGHT	TETRIS_MAX_ROWS
+#define BOARD_WIDTH	TETRIS_MAX_COLUMNS +2
 
-#define BOARD_HEIGHT TETRIS_MAX_ROWS
-#define BOARD_WIDTH TETRIS_MAX_COLUMNS +2
-
-#define TEXT_Y_OFF 1
-#define TEXT_X_OFF BOARD_X_OFF + BOARD_WIDTH
+#define TEXT_Y_OFF	1
+#define TEXT_X_OFF	BOARD_X_OFF + BOARD_WIDTH
+#define TEXT_HEIGHT	BOARD_HEIGHT
+#define TEXT_WIDTH	(COLS - TEXT_X_OFF -1)
 
 int screen_init(void);
 void screen_cleanup(void);
