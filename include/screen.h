@@ -20,7 +20,10 @@
 #define SCREEN_H_
 
 #include <ncurses.h>
-#include <ncursesw/ncurses.h>
+
+#if defined(WIDE_NCURSES_HEADER)
+# include <ncursesw/ncurses.h>
+#endif
 
 #include "tetris.h"
 

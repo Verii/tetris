@@ -21,8 +21,11 @@
 #ifndef TETRIS_H_
 #define TETRIS_H_
 
-# include <ncurses.h>
+#include <ncurses.h>
+
+#if defined(WIDE_NCURSES_HEADER)
 # include <ncursesw/ncurses.h>
+#endif
 
 #include <stdbool.h>
 #include <stdint.h>
