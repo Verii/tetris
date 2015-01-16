@@ -1313,8 +1313,8 @@ int tetris_draw_text(tetris *pgame, WINDOW *scr)
 
 	wattrset(scr, COLOR_PAIR(1));
 
-	mvwprintw(scr, 1, 1, "Level");
-	mvwprintw(scr, 2, 1, "Score");
+	mvwprintw(scr, 1, 1, "Level %7d", pgame->level);
+	mvwprintw(scr, 2, 1, "Score %7d", pgame->score);
 
 	mvwprintw(scr, 5, 1, "Controls");
 	mvwprintw(scr, 6 , 2, "Pause: %c", conf->pause_key.key);
@@ -1330,11 +1330,7 @@ int tetris_draw_text(tetris *pgame, WINDOW *scr)
 			conf->rotate_right.key);
 
 	mvwprintw(scr, 10, 2, "Hold: %c", conf->hold_key.key);
-
-	wattrset(scr, COLOR_PAIR(5));
-
-	mvwprintw(scr, 1, 7, "%7d", pgame->level);
-	mvwprintw(scr, 2, 7, "%7d", pgame->score);
+	mvwprintw(scr, 12, 2, "--------");
 
 	/* Print in-game logs/messages */
 	wattrset(scr, COLOR_PAIR(3));
@@ -1343,7 +1339,7 @@ int tetris_draw_text(tetris *pgame, WINDOW *scr)
 	size_t i = 0;
 
 	LIST_FOREACH(np, &entry_head, entries) {
-		/* Display 7 messages, then remove anything left over */
+		/* Display messages, then remove anything left over */
 		if (i < 8) {
 			mvwprintw(scr, 20-i, 2, "%s", np->msg);
 		} else {
@@ -1355,8 +1351,6 @@ int tetris_draw_text(tetris *pgame, WINDOW *scr)
 		}
 		i++;
 	}
-
-	mvwprintw(scr, 12, 2, "--------");
 
 	wnoutrefresh(scr);
 	return 1;
