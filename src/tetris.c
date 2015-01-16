@@ -31,7 +31,10 @@
 #include "tetris.h"
 #include "logs.h"
 
+/* Check if the given (Y, X) contains a block on the game board (G). */
 #define tetris_at_yx(G, Y, X)		(G->spaces[(Y)] & (1 << (X)))
+
+/* Set/Unset the given coordinate as having a piece on game board G. */
 #define tetris_set_yx(G, Y, X)		(G->spaces[(Y)] |= (1 << (X)))
 #define tetris_unset_yx(G, Y, X)	(G->spaces[(Y)] &= ~(1 << (X)))
 
@@ -180,6 +183,7 @@ static void block_reset(block *pblock)
 	pblock->soft_drop = 0;
 	pblock->hard_drop = 0;
 	pblock->hold = false;
+	pblock->t_spin = false;
 
 #define PIECE_XY(X, Y) \
 	pblock->p[index].x = X; pblock->p[index++].y = Y;
@@ -691,7 +695,8 @@ int tetris_cmd(tetris *pgame, int cmd)
 	if (pgame->quit || pgame->lose || pgame->win)
 		return -1;
 
-	if (pgame->paused && cmd != TETRIS_PAUSE_GAME)
+	if (pgame->paused &&
+	   (cmd != TETRIS_PAUSE_GAME || cmd != TETRIS_QUIT_GAME))
 		return 0;
 
 	block *cur = CURRENT_BLOCK(pgame);
