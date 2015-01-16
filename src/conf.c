@@ -45,6 +45,7 @@ static const char config_defaults[] =
 	"bind pause_key 'p'\n"
 	"bind quit_key 'o'\n"
 
+#if 0
 	/* Ingame toggle options */
 	"bind toggle_ghosts 'g'\n"
 	"bind toggle_wallkicks 'k'\n"
@@ -56,16 +57,10 @@ static const char config_defaults[] =
 	"set password \"password\"\n"
 	"set hostname \"example.com\"\n"
 	"set port \"10024\"\n"
+#endif
 	"set logs_file \"~/.local/share/tetris/logs\"\n"
 	"set save_file \"~/.local/share/tetris/saves\"\n"
 
-	"unset gamemode_classic\n"
-	"set gamemode_TG\n"
-
-	/* Location of default configuration file.
-	 * I guess you could technically put this in your config file if you
-	 * wanted to chain them together.
-	 */
 	"set _conf_file \"~/.config/tetris/tetris.conf\"\n"
 	;
 
@@ -83,7 +78,7 @@ int conf_init(const char *path)
 	memset(&conf, 0, sizeof conf);
 
 	/* Parse built in configuration */
-	conf_parse(config_defaults, strlen(config_defaults));
+	conf_parse(config_defaults, sizeof config_defaults);
 	replace_home(&(conf._conf_file.val), &(conf._conf_file.len));
 
 	/* Remove the last componenet part of the path */
