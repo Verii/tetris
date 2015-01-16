@@ -1316,7 +1316,7 @@ int tetris_draw_board(tetris *pgame, WINDOW *scr)
 	return 1;
 }
 
-int tetris_draw_text(tetris *pgame, WINDOW *scr)
+int tetris_draw_text(tetris *pgame, WINDOW *scr, int width, int height)
 {
 	const struct config *conf = conf_get_globals_s();
 
@@ -1346,15 +1346,17 @@ int tetris_draw_text(tetris *pgame, WINDOW *scr)
 	/* Print in-game logs/messages */
 	wattrset(scr, COLOR_PAIR(3));
 
-	struct log_entry *lep;
-	size_t i = 0;
+	struct log_entry *lep, *tmp;
+	int i = 0;
 
 	LIST_FOREACH(lep, &entry_head, entries) {
-		/* Display messages, then remove anything left over */
-		if (i < 8) {
-			mvwprintw(scr, 13+i, 2, "%s", lep->msg);
+		/* Display messages, then remove anything that can't fit on
+		 * screen
+		 */
+		if (i < height-14) {
+			mvwprintw(scr, 13+i, 2, "%.*s", width -3, lep->msg);
 		} else {
-			struct log_entry *tmp = lep;
+			tmp = lep;
 
 			LIST_REMOVE(tmp, entries);
 			free(tmp->msg);

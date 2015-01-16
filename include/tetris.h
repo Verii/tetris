@@ -147,7 +147,7 @@ void tetris_clean_scores(tetris *);
 /* Draw functions */
 int tetris_draw_board(tetris *, WINDOW *);
 int tetris_draw_pieces(tetris *, WINDOW *);
-int tetris_draw_text(tetris *, WINDOW *);
+int tetris_draw_text(tetris *, WINDOW *, int width, int height);
 
 /* Game modes, we win when the game mode returns 1 */
 
