@@ -62,11 +62,14 @@ int screen_init(void)
 
 	mvprintw(PIECES_Y_OFF-1, PIECES_X_OFF+1, "Hold   Next");
 
-	pieces = newwin(16, 13, PIECES_Y_OFF, PIECES_X_OFF);
+	pieces = newwin(PIECES_HEIGHT, PIECES_WIDTH,
+			PIECES_Y_OFF, PIECES_X_OFF);
 
-	board = newwin(BOARD_HEIGHT, BOARD_WIDTH, BOARD_Y_OFF, BOARD_X_OFF);
+	board = newwin(BOARD_HEIGHT, BOARD_WIDTH,
+			BOARD_Y_OFF, BOARD_X_OFF);
 
-	text = newwin(BOARD_HEIGHT, 40, TEXT_Y_OFF, TEXT_X_OFF);
+	text = newwin(TEXT_HEIGHT, TEXT_WIDTH,
+			TEXT_Y_OFF, TEXT_X_OFF);
 
 	refresh();
 
@@ -93,7 +96,7 @@ void screen_draw_game(tetris *pgame)
 {
 	tetris_draw_pieces(pgame, pieces);
 	tetris_draw_board(pgame, board);
-	tetris_draw_text(pgame, text);
+	tetris_draw_text(pgame, text, TEXT_WIDTH, TEXT_HEIGHT);
 
 	doupdate();
 }
