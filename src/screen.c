@@ -17,7 +17,6 @@
  */
 
 #include <ncurses.h>
-#include <ncursesw/ncurses.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -52,7 +51,7 @@ int screen_init(void)
 		COLOR_CYAN }), COLORS_LENGTH * sizeof *colors);
 
 	start_color();
-	for (size_t i = 0; i < LEN(colors); i++)
+	for (size_t i = 0; i < COLORS_LENGTH; i++)
 		init_pair(i + 1, colors[i], COLOR_BLACK);
 
 	attrset(COLOR_PAIR(1));
