@@ -1202,7 +1202,7 @@ int tetris_draw_pieces(tetris *pgame, WINDOW *scr)
 
 	for (i = 0; i < LEN(pblock->p); i++) {
 		wattrset(scr, A_BOLD |
-			COLOR_PAIR(pblock->type % COLORS_LENGTH +1));
+			COLOR_PAIR((pblock->type % COLORS_LENGTH) +1));
 
 		mvwadd_wch(scr, pblock->p[i].y +2,
 				pblock->p[i].x +3, PIECES_CHAR);
@@ -1213,7 +1213,7 @@ int tetris_draw_pieces(tetris *pgame, WINDOW *scr)
 	while (pblock) {
 		for (i = 0; i < LEN(pblock->p); i++) {
 			wattrset(scr, A_BOLD |
-				COLOR_PAIR(pblock->type % COLORS_LENGTH +1));
+				COLOR_PAIR((pblock->type % COLORS_LENGTH) +1));
 
 			mvwadd_wch(scr, pblock->p[i].y +2 +(count*3),
 					pblock->p[i].x +9, PIECES_CHAR);
@@ -1251,7 +1251,7 @@ int tetris_draw_board(tetris *pgame, WINDOW *scr)
 	/* Draw the ghost block */
 	pblock = pgame->ghost;
 	wattrset(scr, A_DIM |
-		COLOR_PAIR(pblock->type % COLORS_LENGTH +1));
+		COLOR_PAIR((pblock->type % COLORS_LENGTH) +1));
 
 	for (i = 0; i < LEN(pblock->p); i++) {
 		mvwadd_wch(scr,
@@ -1280,7 +1280,7 @@ int tetris_draw_board(tetris *pgame, WINDOW *scr)
 	pblock = CURRENT_BLOCK(pgame);
 	for (i = 0; i < LEN(pblock->p); i++) {
 		wattrset(scr, A_DIM |
-			COLOR_PAIR(pblock->type % COLORS_LENGTH +1));
+			COLOR_PAIR((pblock->type % COLORS_LENGTH) +1));
 
 		mvwadd_wch(scr,
 		    pblock->p[i].y +pblock->row_off -2,
