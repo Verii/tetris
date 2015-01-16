@@ -540,10 +540,14 @@ static void update_points(tetris *pgame, uint8_t destroyed)
 	if (difficult > 1)
 		point_mod = (point_mod * 3) /2;
 
-done:
-	pgame->score += (point_mod * pgame->level)
+done :{
+	int score_inc = (point_mod * pgame->level)
 		+ CURRENT_BLOCK(pgame)->soft_drop
 		+ (CURRENT_BLOCK(pgame)->hard_drop * 2);
+
+	logs_to_game("+%d", score_inc);
+	pgame->score += score_inc;
+      }
 }
 
 /*
