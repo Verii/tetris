@@ -52,17 +52,12 @@ static const char config_defaults[] =
 
 	"bind cycle_gamemodes 'm'\n"
 	"bind talk_key 't'\n"
+#endif
 
 	"set username \"username\"\n"
 	"set password \"password\"\n"
-	"set hostname \"example.com\"\n"
-	"set port \"10024\"\n"
-#endif
-
-#ifdef DEBUG
 	"set hostname \"localhost\"\n"
 	"set port \"10024\"\n"
-#endif
 
 	"set logs_file \"~/.local/share/tetris/logs\"\n"
 	"set save_file \"~/.local/share/tetris/saves\"\n"
@@ -75,42 +70,19 @@ static const char config_defaults[] =
  */
 int conf_init(const char *path)
 {
-	size_t len;
-	char *plast;
-	char *config_file = NULL;
+	if (path == NULL) {
+		/* Parse built in configuration */
+		memset(&conf, 0, sizeof conf);
+		conf_parse(config_defaults, sizeof config_defaults);
+		replace_home(&(conf._conf_file.val), &(conf._conf_file.len));
+		return 1;
+	} else {
+		size_t len;
+		char *config_file;
 
-	debug("Configuration Initialization begun.");
-
-	memset(&conf, 0, sizeof conf);
-
-	/* Parse built in configuration */
-	conf_parse(config_defaults, sizeof config_defaults);
-	replace_home(&(conf._conf_file.val), &(conf._conf_file.len));
-
-	/* Remove the last componenet part of the path */
-	plast = strrchr(conf._conf_file.val, '/');
-	if (plast != NULL)
-		*plast = '\0';
-
-	/* Make sure the directory exists */
-	if (try_mkdir_r(conf._conf_file.val, perm_mode) == -1)
-		return -1;
-
-	if (plast != NULL)
-		*plast = '/';
-
-	/* Read in the configuration file at ~/.config/tetris/tetris.conf */
-	file_into_buf(conf._conf_file.val, &config_file, &len);
-	if (config_file) {
-		conf_parse(config_file, len);
-		free(config_file);
-	}
-
-	/* User specified configuration file overwrites the default
-	 * configuration file path. This one does fail if it doesn't exist.
-	 */
-	if (path) {
-		if (file_into_buf(path, &config_file, &len) == 1) {
+		/* Read in the configuration file at path */
+		file_into_buf(path, &config_file, &len);
+		if (config_file && len > 0) {
 			conf_parse(config_file, len);
 			free(config_file);
 		} else {
@@ -118,13 +90,12 @@ int conf_init(const char *path)
 		}
 	}
 
-	replace_home(&(conf._conf_file.val), &(conf._conf_file.len));
 	replace_home(&(conf.logs_file.val), &(conf.logs_file.len));
 	replace_home(&(conf.save_file.val), &(conf.save_file.len));
 
+	atexit(conf_cleanup);
 	debug("Configuration Initialization complete.");
 
-	atexit(conf_cleanup);
 	return 1;
 }
 
@@ -380,4 +351,5 @@ void conf_cleanup(void)
 	free(conf.logs_file.val);
 	free(conf.save_file.val);
 	free(conf._conf_file.val);
+	memset(&conf, 0, sizeof conf);
 }
