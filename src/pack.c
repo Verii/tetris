@@ -222,46 +222,46 @@ int unpack(const char *buf, size_t buflen, const char *fmt, ...)
 		switch (*(p++)) {
 		case 'c':
 			if (!(buf[len] == 0x40 || buf[len] == 0x41))
-				goto nonconformance;
+				goto non_conformance;
 
 			len++;
 			if (sign) {
 				c = va_arg(ap, int8_t *);
-				if (!c) return -1;
+				if (!c) goto invalid_pointer;
 				*c = buf[len++];
 			} else {
 				uc = va_arg(ap, uint8_t *);
-				if (!uc) return -1;
+				if (!uc) goto invalid_pointer;
 				*uc = buf[len++];
 			}
 			break;
 		case 'h':
 			if (!(buf[len] == 0x42 || buf[len] == 0x43))
-				goto nonconformance;
+				goto non_conformance;
 
 			len++;
 			if (sign) {
 				h = va_arg(ap, int16_t *);
-				if (!h) return -1;
+				if (!h) goto invalid_pointer;
 				len += unpacki16(&buf[len], h);
 			} else {
 				uh = va_arg(ap, uint16_t *);
-				if (!uh) return -1;
+				if (!uh) goto invalid_pointer;
 				len += unpacki16(&buf[len], uh);
 			}
 			break;
 		case 'd':
 			if (!(buf[len] == 0x44 || buf[len] == 0x45))
-				goto nonconformance;
+				goto non_conformance;
 
 			len++;
 			if (sign) {
 				d = va_arg(ap, int32_t *);
-				if (!d) return -1;
+				if (!d) goto invalid_pointer;
 				len += unpacki32(&buf[len], d);
 			} else {
 				ud = va_arg(ap, uint32_t *);
-				if (!ud) return -1;
+				if (!ud) goto invalid_pointer;
 				len += unpacki32(&buf[len], ud);
 			}
 			break;
@@ -271,15 +271,15 @@ int unpack(const char *buf, size_t buflen, const char *fmt, ...)
 #endif
 		case 's':
 			if (!(buf[len] == 0x4e || buf[len] == 0x4f))
-				goto nonconformance;
+				goto non_conformance;
 
 			len++;
 			if (sign) {
 				s = va_arg(ap, char **);
-				if (!s) return -1;
+				if (!s) goto invalid_pointer;
 			} else {
 				us = va_arg(ap, unsigned char **);
-				if (!us) return -1;
+				if (!us) goto invalid_pointer;
 			}
 
 			slen = va_arg(ap, unsigned char *);
@@ -311,13 +311,19 @@ int unpack(const char *buf, size_t buflen, const char *fmt, ...)
 	va_end(ap);
 	return 1;
 
-nonconformance:
+non_conformance:
+	va_end(ap);
 	fprintf(stderr, "There is an error in your data."
 		       " 0x%hhx is not what I expected.\nAt format char \'%c\'\n"
 		       , buf[len], *p);
 	return -1;
 
-outofmem:
+out_of_mem:
+	va_end(ap);
 	fprintf(stderr, "Out of memory\n");
+	return -1;
+
+invalid_pointer:
+	va_end(ap);
 	return -1;
 }
