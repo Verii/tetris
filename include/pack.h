@@ -26,9 +26,9 @@
  * The length of the final array is stored in the first byte. [1, 254]
  *
  * Fields are preceeded by an octet identifier,
- * All identifiers begin with the binary sequence 0100 is the higher order bits
- * of the octet. The remaining lower 4 bits are set to correspond to different
- * data types as follows:
+ * All identifiers begin with the binary sequence 0100.
+ * The remaining lower 4 bits are set to correspond
+ * to different data types as follows:
  *
  * signed char		0000 'c'
  * unsigned char	0001 'uc'
@@ -44,9 +44,18 @@
  * The string and array types are followed by a 1-octet unsigned value
  * designating the length of the data.
  *
+ * The datatype identifier is then followed up with the data.
+ * Characters are 1 octet.
+ * Shorts are 2 octets. (Network Byte Order/Big Endian)
+ * Ints are 4 octets.
+ * Longs are 8 octets. (not implemented)
+ * Strings and Arrays are variable size [1, 255].
+ *
  * (ret) contains the address of the location to store the data, must be
  * atleast (buflen) bytes long.
  */
 int pack(char *ret, size_t buflen, const char *fmt, ...);
+
+int unpack(const char *buf, size_t buflen, const char *fmt, ...);
 
 #endif
