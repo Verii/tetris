@@ -125,7 +125,7 @@ int pack(char *ret, size_t buflen, const char *fmt, ...)
 		case 's':
 			s = (unsigned char *) va_arg(ap, unsigned char *);
 			slen = (unsigned char) va_arg(ap, int);
-			buf[len++] = (sign ? 13 : 15) + (1 << 6);
+			buf[len++] = (sign ? 14 : 15) + (1 << 6);
 			buf[len++] = slen & 0xFF;
 
 			if (len + slen > sizeof buf)
