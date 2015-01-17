@@ -141,6 +141,7 @@ int file_into_buf(const char *path, char **buf, size_t *len)
 
 cleanup:
 	*buf = NULL;
+	*len = 0;
 	if (fd != -1)
 		close(fd);
 
