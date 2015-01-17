@@ -18,21 +18,70 @@
 
 #include <stdlib.h>
 
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+
 #include "logs.h"
 #include "network.h"
 
+static int tcp_sock_fd;
+//static int udp_sock_fd;
+
+static void network_cleanup(void)
+{
+	debug("Network Cleanup complete.");
+	return;
+}
+
 int network_init(const char *host, const char *port)
 {
-	(void) host; (void) port;
+	/* getaddrinfo()
+	 * socket()
+	 * connect()
+	 */
+
+	struct addrinfo *res, *ap;
+	struct addrinfo hints = {
+		.ai_family = AF_UNSPEC,
+		.ai_socktype = SOCK_STREAM,
+		.ai_protocol = 0,
+		.ai_flags = 0,
+		.ai_canonname = NULL,
+		.ai_addr = NULL,
+		.ai_next = NULL,
+	};
+
+	int s = getaddrinfo(host, port, &hints, &res);
+	if (s != 0) {
+		log_err("getaddrinfo: %s, (%s:%s)", gai_strerror(s),
+			host, port);
+		return -1;
+	}
+
+	for (ap = res; ap; ap = ap->ai_next) {
+		tcp_sock_fd = socket(ap->ai_family,
+				ap->ai_socktype, ap->ai_protocol);
+		if (tcp_sock_fd == -1)
+			continue;
+
+		if (connect(tcp_sock_fd, ap->ai_addr, ap->ai_addrlen) == 0)
+			break;
+
+		close(tcp_sock_fd);
+	}
+
+	if (!ap) {
+		freeaddrinfo(res);
+		log_err("Could not connect to server");
+		return -1;
+	}
+
+	freeaddrinfo(res);
 
 	debug("Network Initialization complete.");
 	atexit(network_cleanup);
 
-	return 1;
-}
-
-void network_cleanup(void)
-{
-	debug("Network Cleanup complete.");
-	return;
+	return tcp_sock_fd;
 }

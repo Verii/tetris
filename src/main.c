@@ -24,6 +24,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "pack.h"
 #include "conf.h"
 #include "logs.h"
 #include "tetris.h"
@@ -60,10 +61,26 @@ static void usage(void)
 	fprintf(stderr, help, __progname, VERSION, __DATE__, __TIME__);
 }
 
-int network_handler(events *pev)
+int network_in_handler(events *pev)
 {
-	(void) pev;
-	return 0;
+	char buf[256];
+
+	if (read(pev->fd, buf, sizeof buf -1) <= 0) {
+		logs_to_game("You won?");
+		logs_to_game("Server closed connection.");
+		events_remove_IO(pev->fd);
+	}
+
+	buf[sizeof buf -1] = '\0';
+
+	char *nl;
+	if ((nl = strchr(buf, '\n')) != NULL)
+		*nl = '\0';
+
+	if (strlen(buf))
+		logs_to_game(buf);
+
+	return 1;
 }
 
 int keyboard_handler(events *pev)
@@ -189,9 +206,10 @@ int main(int argc, char **argv)
 
 	if ((logs_init(lflag? logfile: NULL) != 1) ||
 	    (tetris_init(&pgame) != 1 || pgame == NULL) ||
-	    (network_init(hflag? hostname: NULL, pflag? port: NULL) != 1) ||
 	    (screen_init() != 1))
 		exit(EXIT_FAILURE);
+
+	int netfd = network_init(hflag? hostname: NULL, pflag? port: NULL);
 
 	screen_draw_game(pgame);
 
@@ -206,10 +224,10 @@ int main(int argc, char **argv)
 	sigemptyset(&sa_tick.sa_mask);
 
 	/* Add events to event loop */
-	events_add_timer_event(ts_tick, sa_tick, SIGRTMIN+2);
+	events_add_timer(ts_tick, sa_tick, SIGRTMIN+2);
 
-	events_add_input_event(fileno(stdin), keyboard_handler);
-//	events_add_input_event(netfd, network_handler);
+	events_add_input(fileno(stdin), keyboard_handler);
+	events_add_input(netfd, network_in_handler);
 
 	events_main_loop(pgame);
 	tetris_cleanup(pgame);

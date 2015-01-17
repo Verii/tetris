@@ -58,6 +58,12 @@ static const char config_defaults[] =
 	"set hostname \"example.com\"\n"
 	"set port \"10024\"\n"
 #endif
+
+#ifdef DEBUG
+	"set hostname \"localhost\"\n"
+	"set port \"10024\"\n"
+#endif
+
 	"set logs_file \"~/.local/share/tetris/logs\"\n"
 	"set save_file \"~/.local/share/tetris/saves\"\n"
 

@@ -20,7 +20,6 @@
 #ifndef NETWORK_H_
 #define NETWORK_H_
 
-int network_init(const char*, const char*);
-void network_cleanup(void);
+int network_init(const char *host, const char *port);
 
 #endif /* NETWORK_H_ */
