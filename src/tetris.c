@@ -687,8 +687,6 @@ int tetris_cleanup(tetris *pgame)
 		tetris_save_state(pgame);
 	}
 
-	tetris_clean_scores(pgame);
-
 	free(pgame->ghost);
 	free(pgame);
 
