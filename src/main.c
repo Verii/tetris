@@ -172,13 +172,13 @@ int main(int argc, char **argv)
 			/* change default port number */
 			pflag = true;
 			strncpy(port, optarg, 16);
-			logfile[sizeof port -1] = '\0';
+			port[sizeof port -1] = '\0';
 			break;
 		case 's':
 			/* db location */
 			sflag = true;
 			strncpy(savefile, optarg, 256);
-			logfile[sizeof savefile -1] = '\0';
+			savefile[sizeof savefile -1] = '\0';
 			break;
 		case 'u':
 		default:
