@@ -23,23 +23,35 @@
  * Pack data into a char array, using format (fmt) string to determine the data
  * type.
  *
- * The length of the final array is stored in the first byte. [1, 254]
+ * Example:
+ *
+ * 	char buf[256];
+ * 	int len = pack(buf, sizeof buf, "uduchus", long, char, short, string);
+ *
+ * Will create an array containing those elements, in-order, preceeded by the
+ * entire array's length. Each element will be preceeded by an identifier.
+ *
+ * Multi-byte data(i.e. shorts, longs, etc.) are stored in Network Byte Order!
+ *
+ * The length of the final array is stored in the lower 7 bits of the first octet. [1, 127]
+ * If the first bit of the first octet is set, then the size of the data is
+ * unspecified. And it's probably larger than 127 bytes.
  *
  * Fields are preceeded by an octet identifier,
  * All identifiers begin with the binary sequence 0100.
  * The remaining lower 4 bits are set to correspond
  * to different data types as follows:
  *
- * signed char		0000 'c'
- * unsigned char	0001 'uc'
- * signed short		0010 'h'
- * unsigned short	0011 'uh'
- * signed int		0100 'd'
- * unsigned int		0101 'ud'
- * signed long		1000 'l'
- * unsigned long	1001 'ul'
- * string		1110 's'	(signed character array)
- * array		1111 'us'	(unsigned character array)
+ * signed char		0000	format char. 'c'
+ * unsigned char	0001	format char. 'uc'
+ * signed short		0010	format char. 'h'
+ * unsigned short	0011	format char. 'uh'
+ * signed int		0100	format char. 'd'
+ * unsigned int		0101	format char. 'ud'
+ * signed long		1000	format char. 'l'	*(unimplemented as of 16-01-2015)
+ * unsigned long	1001	format char. 'ul'	*(unimplemented as of 16-01-2015)
+ * string		1110	format char. 's'	(signed character array)
+ * array		1111	format char. 'us'	(unsigned character array)
  *
  * The string and array types are followed by a 1-octet unsigned value
  * designating the length of the data.
