@@ -141,5 +141,5 @@ void screen_draw_over(tetris *pgame)
 	tetris_clean_scores(pgame);
 
 	refresh();
-	while (getch());
+	getch();
 }
