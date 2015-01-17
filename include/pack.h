@@ -26,19 +26,20 @@
  * Example:
  *
  * 	char buf[256];
- * 	int len = pack(buf, sizeof buf, "uduchus", long, char, short, string);
+ * 	int len = pack(buf, sizeof buf, "uduchus", long, char, short, string,
+ * 			string_len);
  *
- * Will create an array containing those elements, in-order, preceeded by the
- * entire array's length. Each element will be preceeded by an identifier.
+ * Will create an array containing those elements, in-order.
  *
- * Multi-byte data(i.e. shorts, longs, etc.) are stored in Network Byte Order!
+ * String and Array data types MUST be followed by a char containing
+ * the array's length. [1, 255]
  *
- * The length of the final array is stored in the lower 7 bits of the first octet. [1, 127]
- * If the first bit of the first octet is set, then the size of the data is
- * unspecified. And it's probably larger than 127 bytes.
+ * ---
  *
- * Fields are preceeded by an octet identifier,
- * All identifiers begin with the binary sequence 0100.
+ * Fields are preceeded by an octet identifier.
+ * Multi-byte fields(i.e. shorts, longs, etc.) are stored in Network Byte Order!
+ * Strings and Arrays, obviously, do not have their orders modified.
+ * All identifiers begin with the binary sequence 0100 in the higher order bits.
  * The remaining lower 4 bits are set to correspond
  * to different data types as follows:
  *

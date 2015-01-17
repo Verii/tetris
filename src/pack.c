@@ -26,7 +26,7 @@
 
 #include "pack.h"
 
-int unpacki16(const unsigned char *buf, uint16_t *h)
+int unpacki16(const char *buf, uint16_t *h)
 {
 	uint16_t tmp;
 
@@ -43,7 +43,7 @@ void packi16(unsigned char *buf, uint16_t h)
 	*buf++ = h & 0xFF;
 }
 
-int unpacki32(const unsigned char *buf, uint32_t *d)
+int unpacki32(const char *buf, uint32_t *d)
 {
 	uint32_t tmp;
 	tmp = (*buf++) << 24; tmp += (*buf++) << 16;
@@ -88,8 +88,8 @@ void packi32(unsigned char *buf, uint32_t d)
  */
 int pack(char *ret, size_t buflen, const char *fmt, ...)
 {
-	unsigned char buf[255];
-	size_t len = 1;
+	unsigned char buf[256];
+	size_t len = 0;
 	bool sign = true;
 
 	va_list ap;
@@ -127,7 +127,7 @@ int pack(char *ret, size_t buflen, const char *fmt, ...)
 			h = (uint16_t) va_arg(ap, int);
 			buf[len++] = (sign ? 2 : 3) + (1 << 6);
 
-			if (len +2 > sizeof buf +1)
+			if (len +2 > sizeof buf)
 				goto outofbounds;
 			packi16(&buf[len], htons(h));
 			len += 2;
@@ -166,9 +166,7 @@ int pack(char *ret, size_t buflen, const char *fmt, ...)
 
 	va_end(ap);
 
-	buf[0] = len & 0xFF;
-
-	if (len >= sizeof buf || len > buflen)
+	if (len > sizeof buf || len > buflen)
 		goto outofbounds;
 
 	memcpy(ret, &buf[0], len);
@@ -194,7 +192,7 @@ outofbounds:
  */
 int unpack(const char *buf, size_t buflen, const char *fmt, ...)
 {
-	size_t len = 1;
+	size_t len = 0;
 	bool sign = true;
 
 	va_list ap;
@@ -203,6 +201,8 @@ int unpack(const char *buf, size_t buflen, const char *fmt, ...)
 	int8_t *c; uint8_t *uc;
 	int16_t *h; uint16_t *uh;
 	int32_t *d; uint32_t *ud;
+
+	void *ps;
 	char **s; unsigned char **us;
 	unsigned char *slen; // length of string or array data
 
@@ -221,6 +221,9 @@ int unpack(const char *buf, size_t buflen, const char *fmt, ...)
 
 		switch (*(p++)) {
 		case 'c':
+			if (buflen - len < 2)
+				goto done;
+
 			if (!(buf[len] == 0x40 || buf[len] == 0x41))
 				goto non_conformance;
 
@@ -236,6 +239,9 @@ int unpack(const char *buf, size_t buflen, const char *fmt, ...)
 			}
 			break;
 		case 'h':
+			if (buflen - len < 3)
+				goto done;
+
 			if (!(buf[len] == 0x42 || buf[len] == 0x43))
 				goto non_conformance;
 
@@ -243,7 +249,7 @@ int unpack(const char *buf, size_t buflen, const char *fmt, ...)
 			if (sign) {
 				h = va_arg(ap, int16_t *);
 				if (!h) goto invalid_pointer;
-				len += unpacki16(&buf[len], h);
+				len += unpacki16(&buf[len], (uint16_t *)h);
 			} else {
 				uh = va_arg(ap, uint16_t *);
 				if (!uh) goto invalid_pointer;
@@ -251,6 +257,9 @@ int unpack(const char *buf, size_t buflen, const char *fmt, ...)
 			}
 			break;
 		case 'd':
+			if (buflen - len < 5)
+				goto done;
+
 			if (!(buf[len] == 0x44 || buf[len] == 0x45))
 				goto non_conformance;
 
@@ -258,7 +267,7 @@ int unpack(const char *buf, size_t buflen, const char *fmt, ...)
 			if (sign) {
 				d = va_arg(ap, int32_t *);
 				if (!d) goto invalid_pointer;
-				len += unpacki32(&buf[len], d);
+				len += unpacki32(&buf[len], (uint32_t *)d);
 			} else {
 				ud = va_arg(ap, uint32_t *);
 				if (!ud) goto invalid_pointer;
@@ -270,34 +279,39 @@ int unpack(const char *buf, size_t buflen, const char *fmt, ...)
 			break;
 #endif
 		case 's':
+			/* Enough room for size field? */
+			if (len +2 > buflen)
+				goto done;
+
 			if (!(buf[len] == 0x4e || buf[len] == 0x4f))
 				goto non_conformance;
-
 			len++;
+
+			/* Read the size field, make sure there's enough room
+			 * to read string */
+			if (len + buf[len] > buflen)
+				goto done;
+
 			if (sign) {
-				s = va_arg(ap, char **);
-				if (!s) goto invalid_pointer;
+				if (!(s = va_arg(ap, char **)))
+					goto invalid_pointer;
+				if (!(*s = malloc(buf[len])))
+					goto out_of_mem;
+				ps = *s;
 			} else {
-				us = va_arg(ap, unsigned char **);
-				if (!us) goto invalid_pointer;
+				if (!(us = va_arg(ap, unsigned char **)))
+					goto invalid_pointer;
+				if (!(*us = malloc(buf[len])))
+					goto out_of_mem;
+				ps = *us;
 			}
 
-			slen = va_arg(ap, unsigned char *);
+			if (!(slen = va_arg(ap, unsigned char *)))
+				goto invalid_pointer;
+
 			*slen = buf[len++];
 
-			if (sign) {
-				if (!*s)
-					*s = malloc(*slen);
-				if (!*s)
-					goto outofmem;
-				memcpy(*s, &buf[len], *slen);
-			} else {
-				if (!*us)
-					*us = malloc(*slen);
-				if (!*us)
-					goto outofmem;
-				memcpy(*us, &buf[len], *slen);
-			}
+			memcpy(ps, &buf[len], *slen);
 
 			len += *slen;
 			break;
@@ -307,9 +321,10 @@ int unpack(const char *buf, size_t buflen, const char *fmt, ...)
 			return -1;
 		}
 	}
+done:
 
 	va_end(ap);
-	return 1;
+	return len;
 
 non_conformance:
 	va_end(ap);
