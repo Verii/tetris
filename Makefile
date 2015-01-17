@@ -7,6 +7,7 @@ SRC =	src/main.c \
 	src/helpers.c \
 	src/logs.c \
 	src/network.c \
+	src/pack.c \
 	src/screen.c \
 	src/tetris.c
 
