@@ -151,6 +151,9 @@ int events_remove_IO(int fd)
 			break;
 	}
 
+	if (i == NUM_EVENTS)
+		return 0;
+
 	close(p_events[i]->fd);
 
 	if (FD_ISSET(p_events[i]->fd, &master_read))
