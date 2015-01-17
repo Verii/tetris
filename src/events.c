@@ -46,14 +46,17 @@ static events* p_events[NUM_EVENTS];
 
 static void events_timer_cleanup(void)
 {
-	timer_delete(timerid);
+	if (timerid != 0)
+		timer_delete(timerid);
+	timerid = 0;
 }
 
 static void events_IO_cleanup(void)
 {
 	size_t i;
 	for (i = 0; i < NUM_EVENTS; i++)
-		if (p_events[i]) events_remove_IO(p_events[i]->fd);
+		if (p_events[i])
+			events_remove_IO(p_events[i]->fd);
 }
 
 static int events_reset_timer(timer_t td, struct timespec ts)
@@ -100,8 +103,6 @@ int events_add_timer(struct timespec ts, struct sigaction sa, int sig)
 		return -1;
 	}
 
-	atexit(events_timer_cleanup);
-
 	return 1;
 }
 
@@ -133,7 +134,6 @@ int events_add_input(int fd, events_callback cb)
 	if (fd > fd_max)
 		fd_max = fd;
 
-	atexit(events_IO_cleanup);
 	debug("Registered event: %d/%d from fd %d",
 			i, NUM_EVENTS-1, p_events[i]->fd);
 
@@ -185,6 +185,9 @@ int events_remove_IO(int fd)
  */
 void events_main_loop(tetris *pgame)
 {
+	atexit(events_IO_cleanup);
+	atexit(events_timer_cleanup);
+
   while (1) {
 
 	fd_set read_fds = master_read;
@@ -195,7 +198,7 @@ void events_main_loop(tetris *pgame)
 
 	struct timespec ps_timeout = {
 		.tv_nsec = 0,
-		.tv_sec = 1,
+		.tv_sec = 2,
 	};
 
 	errno = 0;
