@@ -17,13 +17,17 @@ int main(void)
 		printf("%hhx ", buf[i] & 0xFF);
 	puts("");
 
-	unsigned int ibuf;
-	memcpy(&ibuf, &buf[2], 4);
-	printf("long: %u -> %u\n", ibuf, ntohl(ibuf));
+	unsigned int ibuf = 0;
+	ibuf |= buf[2] << 24;
+	ibuf |= buf[3] << 16;
+	ibuf |= buf[4] << 8;
+	ibuf |= buf[5];
+	printf("long: %u\n", ntohl(ibuf));
 
-	unsigned short sbuf;
-	memcpy(&sbuf, &buf[7], 2);
-	printf("short: %u -> %u\n", sbuf, ntohs(sbuf));
+	unsigned short sbuf = 0;
+	sbuf |= buf[7] << 8;
+	sbuf |= buf[8];
+	printf("short: %u\n", ntohs(sbuf));
 
 	puts("");
 
