@@ -24,7 +24,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "pack.h"
+#include "net/pack.h"
 
 int unpacki16(const char *buf, uint16_t *h)
 {
@@ -142,7 +142,7 @@ int pack(char *ret, size_t buflen, const char *fmt, ...)
 			len += 4;
 			break;
 		case 's':
-			s = (unsigned char *) va_arg(ap, unsigned char *);
+			s = va_arg(ap, unsigned char *);
 			slen = (unsigned char) va_arg(ap, int);
 			buf[len++] = (sign ? 14 : 15) + (1 << 6);
 			buf[len++] = slen & 0xFF;
@@ -201,9 +201,7 @@ int unpack(const char *buf, size_t buflen, const char *fmt, ...)
 	int8_t *c; uint8_t *uc;
 	int16_t *h; uint16_t *uh;
 	int32_t *d; uint32_t *ud;
-
-	void *ps;
-	char **s; unsigned char **us;
+	unsigned char **us;
 	unsigned char *slen; // length of string or array data
 
 	va_start(ap, fmt);
@@ -288,26 +286,17 @@ int unpack(const char *buf, size_t buflen, const char *fmt, ...)
 			if (len + buf[len] > buflen)
 				goto done;
 
-			if (sign) {
-				if (!(s = va_arg(ap, char **)))
-					goto invalid_pointer;
-				if (!(*s = malloc(buf[len])))
-					goto out_of_mem;
-				ps = *s;
-			} else {
-				if (!(us = va_arg(ap, unsigned char **)))
-					goto invalid_pointer;
-				if (!(*us = malloc(buf[len])))
-					goto out_of_mem;
-				ps = *us;
-			}
-
+			if (!(us = va_arg(ap, unsigned char **)))
+				goto invalid_pointer;
 			if (!(slen = va_arg(ap, unsigned char *)))
 				goto invalid_pointer;
+			if (!(*us = malloc(buf[len] +1)))
+				goto out_of_mem;
 
 			*slen = buf[len++];
 
-			memcpy(ps, &buf[len], *slen);
+			memcpy(*us, &buf[len], *slen);
+			(*us)[*slen] = '\0';
 
 			len += *slen;
 			break;

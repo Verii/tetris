@@ -6,8 +6,9 @@ SRC =	src/main.c \
 	src/events.c \
 	src/helpers.c \
 	src/logs.c \
-	src/network.c \
-	src/pack.c \
+	src/net/network.c \
+	src/net/pack.c \
+	src/net/serialize.c \
 	src/screen.c \
 	src/tetris.c
 

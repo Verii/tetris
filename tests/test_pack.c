@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "pack.h"
+#include "net/pack.h"
 
 char buf[128];
 int len;
@@ -11,8 +11,47 @@ int len;
 void print_data(void)
 {
 	printf("Encoded data: (%d bytes)\n", len);
-	for (int i = 0; i < len; i++)
-		printf("%hhx ", buf[i] & 0xFF);
+	int i = 0;
+	while (i < len)
+		printf("%.2hhx ", buf[i++]);
+	puts("");
+
+	i = 0;
+	while (i < len) {
+		switch (buf[i++]) {
+		case 0x40:
+		case 0x41:
+			printf("char byte %d\n", i);
+			printf("[c] %.2hhx\n", buf[i]);
+			i++;
+			break;
+		case 0x42:
+		case 0x43:
+			printf("short byte %d\n", i);
+			short *s = (short *) &buf[i];
+			printf("[h] %x\n", *s);
+			i += 2;
+			break;
+		case 0x44:
+		case 0x45:
+			printf("int byte %d\n", i);
+			int *d = (int *) &buf[i];
+			printf("[d] %x\n", *d);
+			i += 4;
+			break;
+		case 0x48:
+		case 0x49:
+			break;
+		case 0x4e:
+		case 0x4f:
+			printf("[s] \"%.*s\" ", buf[i], &buf[i+1]);
+			i += buf[i] +1;
+			break;
+		default:
+			printf("%.2hhx ", buf[i++]);
+			break;
+		}
+	}
 	puts("");
 }
 
@@ -91,15 +130,15 @@ int test_long(void)
 int test_string(void)
 {
 	const char *DATA = "This is a test of strings";
-	const char *fmt = "s";
-
-	char *ret;
-	int ret_len;
+	const char *fmt = "us";
 
 	printf("Encoding the string\n\t\"%s\".\n", DATA);
 
-	len = pack((char*)&buf, sizeof buf, fmt, DATA, strlen(DATA));
+	len = pack((char*)&buf, sizeof buf, fmt, DATA, strlen(DATA) +1);
 	print_data();
+
+	char *ret = NULL;
+	int ret_len = 0;
 
 	unpack(buf, len, fmt, &ret, &ret_len);
 
@@ -152,6 +191,7 @@ int main(void)
 		};
 
 		printf("%d\n", unpack(malicious_buf, sizeof malicious_buf, "s", &ret, &ret_len));
+		free(ret);
 	}
 
 	return 0;

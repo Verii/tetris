@@ -24,13 +24,14 @@
 #include <netdb.h>
 
 #include "logs.h"
-#include "network.h"
+#include "net/network.h"
 
 static int tcp_sock_fd;
 //static int udp_sock_fd;
 
 static void network_cleanup(void)
 {
+	fprintf(stderr, "Network cleaned up without incident.\n");
 	debug("Network Cleanup complete.");
 	return;
 }
