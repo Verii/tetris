@@ -141,15 +141,14 @@ int pack(char *ret, size_t buflen, const char *fmt, ...)
 			packi32(&buf[len], htonl(d));
 			len += 4;
 			break;
-#if 0 // I don't know, use an array or two longs or something.
-		case 'l':
-			break;
-#endif
 		case 's':
 			s = (unsigned char *) va_arg(ap, unsigned char *);
 			slen = (unsigned char) va_arg(ap, int);
 			buf[len++] = (sign ? 14 : 15) + (1 << 6);
 			buf[len++] = slen & 0xFF;
+
+			if (!s)
+				goto done;
 
 			if (len + slen > sizeof buf)
 				goto outofbounds;
@@ -159,11 +158,12 @@ int pack(char *ret, size_t buflen, const char *fmt, ...)
 		default:
 			fprintf(stderr, "Error in format string: "
 					"%c is not supported\n", *p);
-			return -1;
+			return 0;
 		}
 
 	}
 
+done:
 	va_end(ap);
 
 	if (len > sizeof buf || len > buflen)
@@ -176,7 +176,7 @@ int pack(char *ret, size_t buflen, const char *fmt, ...)
 outofbounds:
 	fprintf(stderr, "Data length too large, on char \"%c\"\n", *p);
 	va_end(ap);
-	return -1;
+	return 0;
 }
 
 /**
@@ -221,7 +221,7 @@ int unpack(const char *buf, size_t buflen, const char *fmt, ...)
 
 		switch (*(p++)) {
 		case 'c':
-			if (buflen - len < 2)
+			if (len +2 > buflen)
 				goto done;
 
 			if (!(buf[len] == 0x40 || buf[len] == 0x41))
@@ -229,17 +229,17 @@ int unpack(const char *buf, size_t buflen, const char *fmt, ...)
 
 			len++;
 			if (sign) {
-				c = va_arg(ap, int8_t *);
-				if (!c) goto invalid_pointer;
+				if (!(c = va_arg(ap, int8_t *)))
+					goto invalid_pointer;
 				*c = buf[len++];
 			} else {
-				uc = va_arg(ap, uint8_t *);
-				if (!uc) goto invalid_pointer;
+				if (!(uc = va_arg(ap, uint8_t *)))
+					goto invalid_pointer;
 				*uc = buf[len++];
 			}
 			break;
 		case 'h':
-			if (buflen - len < 3)
+			if (len +3 > buflen)
 				goto done;
 
 			if (!(buf[len] == 0x42 || buf[len] == 0x43))
@@ -247,17 +247,17 @@ int unpack(const char *buf, size_t buflen, const char *fmt, ...)
 
 			len++;
 			if (sign) {
-				h = va_arg(ap, int16_t *);
-				if (!h) goto invalid_pointer;
+				if (!(h = va_arg(ap, int16_t *)))
+					goto invalid_pointer;
 				len += unpacki16(&buf[len], (uint16_t *)h);
 			} else {
-				uh = va_arg(ap, uint16_t *);
-				if (!uh) goto invalid_pointer;
+				if (!(uh = va_arg(ap, uint16_t *)))
+					goto invalid_pointer;
 				len += unpacki16(&buf[len], uh);
 			}
 			break;
 		case 'd':
-			if (buflen - len < 5)
+			if (len +5 > buflen)
 				goto done;
 
 			if (!(buf[len] == 0x44 || buf[len] == 0x45))
@@ -265,19 +265,15 @@ int unpack(const char *buf, size_t buflen, const char *fmt, ...)
 
 			len++;
 			if (sign) {
-				d = va_arg(ap, int32_t *);
-				if (!d) goto invalid_pointer;
+				if (!(d = va_arg(ap, int32_t *)))
+					goto invalid_pointer;
 				len += unpacki32(&buf[len], (uint32_t *)d);
 			} else {
-				ud = va_arg(ap, uint32_t *);
-				if (!ud) goto invalid_pointer;
+				if (!(ud = va_arg(ap, uint32_t *)))
+					goto invalid_pointer;
 				len += unpacki32(&buf[len], ud);
 			}
 			break;
-#if 0
-		case 'l':
-			break;
-#endif
 		case 's':
 			/* Enough room for size field? */
 			if (len +2 > buflen)
@@ -318,7 +314,7 @@ int unpack(const char *buf, size_t buflen, const char *fmt, ...)
 		default:
 			fprintf(stderr, "Error in format string: "
 					"%c is not supported\n", *p);
-			return -1;
+			return 0;
 		}
 	}
 done:
@@ -331,14 +327,14 @@ non_conformance:
 	fprintf(stderr, "There is an error in your data."
 		       " 0x%hhx is not what I expected.\nAt format char \'%c\'\n"
 		       , buf[len], *p);
-	return -1;
+	return 0;
 
 out_of_mem:
 	va_end(ap);
 	fprintf(stderr, "Out of memory\n");
-	return -1;
+	return 0;
 
 invalid_pointer:
 	va_end(ap);
-	return -1;
+	return 0;
 }
