@@ -228,7 +228,7 @@ void events_main_loop(tetris *pgame)
 			break;
 
 		if (!(FD_ISSET(p_events[i]->fd, &read_fds) ||
-		      FD_ISSET(p_events[i]->fd, &write_fds))
+		      FD_ISSET(p_events[i]->fd, &write_fds)))
 			continue;
 
 		/* Call registered callback, return if the callback fails */
