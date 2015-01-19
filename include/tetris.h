@@ -98,7 +98,6 @@ int tetris_cmd(tetris *, int command);
 
 int tetris_set_attr(tetris *, int attrib, ...);
 
-
 /* Get Attributes */
 #define TETRIS_GET_PAUSED	0x20
 #define TETRIS_GET_WIN		0x21
@@ -147,7 +146,6 @@ void tetris_clean_scores(tetris *);
 /* Draw functions */
 int tetris_draw_board(tetris *, WINDOW *);
 int tetris_draw_pieces(tetris *, WINDOW *);
-int tetris_draw_text(tetris *, WINDOW *, int width, int height);
 
 /* Game modes, we win when the game mode returns 1 */
 
