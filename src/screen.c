@@ -30,6 +30,8 @@
 static WINDOW *board, *pieces, *text;
 const char *colors;
 
+extern struct config *config;
+
 int screen_init(void)
 {
 	debug("Initializing ncurses context");
@@ -80,8 +82,6 @@ int screen_init(void)
 
 void screen_cleanup(void)
 {
-	debug("Cleaning ncurses context");
-
 	delwin(board);
 	delwin(pieces);
 	delwin(text);
@@ -96,8 +96,57 @@ void screen_draw_game(tetris *pgame)
 {
 	tetris_draw_pieces(pgame, pieces);
 	tetris_draw_board(pgame, board);
-	tetris_draw_text(pgame, text, TEXT_WIDTH, TEXT_HEIGHT);
 
+	/* Draw text */
+	werase(text);
+	wattrset(text, COLOR_PAIR(1));
+
+	int level, score;
+	tetris_get_attr(pgame, TETRIS_GET_LEVEL, &level);
+	tetris_get_attr(pgame, TETRIS_GET_SCORE, &score);
+
+	mvwprintw(text, 1, 1, "Level %7d", level);
+	mvwprintw(text, 2, 1, "Score %7d", score);
+
+	mvwprintw(text, 5, 1, "Controls");
+	mvwprintw(text, 6 , 2, "Pause: %c", config->pause_key.key);
+	mvwprintw(text, 7 , 2, "Save/Quit: %c", config->quit_key.key);
+	mvwprintw(text, 8 , 2, "Move: %c%c%c%c",
+			config->move_left.key,
+			config->move_down.key,
+			config->move_right.key,
+			config->move_drop.key);
+
+	mvwprintw(text, 9 , 2, "Rotate: %c%c",
+			config->rotate_left.key,
+			config->rotate_right.key);
+
+	mvwprintw(text, 10, 2, "Hold: %c", config->hold_key.key);
+	mvwprintw(text, 12, 1, "--------");
+
+	/* Print in-game logs/messages */
+	wattrset(text, COLOR_PAIR(3));
+
+	struct log_entry *lep, *tmp;
+	int i = 0;
+
+	LIST_FOREACH(lep, &entry_head, entries) {
+		/* Display messages, then remove anything that can't fit on
+		 * screen
+		 */
+		if (i < TEXT_HEIGHT-14) {
+			mvwprintw(text, 13+i, 2, "%.*s", TEXT_WIDTH -3, lep->msg);
+		} else {
+			tmp = lep;
+
+			LIST_REMOVE(tmp, entries);
+			free(tmp->msg);
+			free(tmp);
+		}
+		i++;
+	}
+
+	wnoutrefresh(text);
 	doupdate();
 }
 
