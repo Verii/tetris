@@ -25,7 +25,6 @@
 #include <errno.h>
 
 #include "events.h"
-#include "conf.h"
 #include "screen.h"
 #include "tetris.h"
 #include "helpers.h"
@@ -34,9 +33,13 @@
 /* Set by signal handler */
 volatile sig_atomic_t tetris_do_tick;
 
+/* For POSIX timer, ignore mask blocks the generated signal from everyone but
+ * pselect().
+ */
 static timer_t timerid;
 static sigset_t ignore_mask;
 
+/* pselect() read/write fd sets */
 static fd_set master_read;
 static fd_set master_write;
 static uint8_t fd_max;
@@ -165,11 +168,10 @@ int events_remove_IO(int fd)
 	free(p_events[i]);
 	p_events[i] = NULL;
 
-	debug("Unregistered event: %d/%d from fd %d",
-			i, NUM_EVENTS-1, fd);
+	debug("Removed event: %d/%d from fd %d", i, NUM_EVENTS-1, fd);
 
-	fd_max = p_events[0]->fd;
-	for (i = 1; i < NUM_EVENTS; i++) {
+	fd_max = 0;
+	for (i = 0; i < NUM_EVENTS; i++) {
 		if (p_events[i] && p_events[i]->fd > fd_max)
 			fd_max = p_events[i]->fd;
 	}
