@@ -24,7 +24,6 @@
 #include <string.h>
 #include <sys/queue.h>
 
-#include "conf.h"
 #include "logs.h"
 #include "helpers.h"
 
@@ -58,42 +57,19 @@ int logs_init(const char *path)
 {
 	LIST_INIT(&entry_head);
 
-	atexit(logs_cleanup);
-
-	/* Try first user supplied log file. */
-	if (path) {
-		if (freopen(path, "a+", stderr) != NULL)
-			return 1;
-		else {
-			log_warn("freopen: %s: %s", strerror(errno), path);
-			log_info("Falling back to built-in log file location");
-		}
-	}
-
-	/* Fallback to global define */
-
-	struct config *conf = conf_get_globals();
-	if (conf == NULL)
+	if (!path)
 		return -1;
 
-	char *plast = strrchr(conf->logs_file.val, '/');
+	atexit(logs_cleanup);
 
-	*plast = '\0';
-	try_mkdir_r(conf->logs_file.val, perm_mode);
+	if (freopen(path, "a+", stderr) != NULL)
+		return 1;
+	else {
+		log_warn("freopen: %s: %s", strerror(errno), path);
+		return -1;
+	}
 
-	*plast = '/';
-
-	if (freopen(conf->logs_file.val, "a+", stderr) == NULL)
-		goto err;
-
-	free(conf);
 	return 1;
-
-err:
-	log_err("freopen: %s: %s", strerror(errno));
-	free(conf);
-
-	return -1;
 }
 
 /* Remove elements in linked list, close logfile. */
