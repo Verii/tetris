@@ -672,6 +672,12 @@ int tetris_cleanup(tetris *pgame)
 {
 	block *np;
 
+	if (pgame->lose || pgame->win) {
+		tetris_save_score(pgame);
+	} else {
+		tetris_save_state(pgame);
+	}
+
 	/* Remove each piece in the linked list */
 	while ((np = pgame->blocks_head.lh_first)) {
 		LIST_REMOVE(np, entries);
@@ -680,12 +686,6 @@ int tetris_cleanup(tetris *pgame)
 
 	for (int i = 0; i < TETRIS_MAX_ROWS; i++)
 		free(pgame->colors[i]);
-
-	if (pgame->lose || pgame->win) {
-		tetris_save_score(pgame);
-	} else {
-		tetris_save_state(pgame);
-	}
 
 	free(pgame->ghost);
 	free(pgame);
@@ -1032,7 +1032,7 @@ int tetris_save_state(tetris *pgame)
 			pgame->level,
 			time(NULL));
 
-	if (len < 0) {
+	if (len < 0 || insert == NULL) {
 		ret = -1;
 		log_err("Out of memory");
 		goto error;
@@ -1041,7 +1041,7 @@ int tetris_save_state(tetris *pgame)
 	data_len = (TETRIS_MAX_ROWS - 2) * sizeof(*pgame->spaces);
 	data = malloc(data_len);
 
-	if (!data) {
+	if (data == NULL) {
 		/* Non-fatal, we just don't save to database */
 		ret = 0;
 		log_err("Out of memory");
@@ -1309,59 +1309,6 @@ int tetris_draw_board(tetris *pgame, WINDOW *scr)
 	wattrset(scr, COLOR_PAIR(1));
 	mvwprintw(scr, BOARD_HEIGHT -1, (BOARD_WIDTH -strlen(pgame->id))/2,
 		"%s", pgame->id);
-
-	wnoutrefresh(scr);
-	return 1;
-}
-
-int tetris_draw_text(tetris *pgame, WINDOW *scr, int width, int height)
-{
-	const struct config *conf = conf_get_globals_s();
-
-	werase(scr);
-
-	wattrset(scr, COLOR_PAIR(1));
-
-	mvwprintw(scr, 1, 1, "Level %7d", pgame->level);
-	mvwprintw(scr, 2, 1, "Score %7d", pgame->score);
-
-	mvwprintw(scr, 5, 1, "Controls");
-	mvwprintw(scr, 6 , 2, "Pause: %c", conf->pause_key.key);
-	mvwprintw(scr, 7 , 2, "Save/Quit: %c", conf->quit_key.key);
-	mvwprintw(scr, 8 , 2, "Move: %c%c%c%c",
-			conf->move_left.key,
-			conf->move_down.key,
-			conf->move_right.key,
-			conf->move_drop.key);
-
-	mvwprintw(scr, 9 , 2, "Rotate: %c%c",
-			conf->rotate_left.key,
-			conf->rotate_right.key);
-
-	mvwprintw(scr, 10, 2, "Hold: %c", conf->hold_key.key);
-	mvwprintw(scr, 12, 1, "--------");
-
-	/* Print in-game logs/messages */
-	wattrset(scr, COLOR_PAIR(3));
-
-	struct log_entry *lep, *tmp;
-	int i = 0;
-
-	LIST_FOREACH(lep, &entry_head, entries) {
-		/* Display messages, then remove anything that can't fit on
-		 * screen
-		 */
-		if (i < height-14) {
-			mvwprintw(scr, 13+i, 2, "%.*s", width -3, lep->msg);
-		} else {
-			tmp = lep;
-
-			LIST_REMOVE(tmp, entries);
-			free(tmp->msg);
-			free(tmp);
-		}
-		i++;
-	}
 
 	wnoutrefresh(scr);
 	return 1;
