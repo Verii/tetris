@@ -24,16 +24,19 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "pack.h"
 #include "conf.h"
 #include "logs.h"
 #include "tetris.h"
 #include "screen.h"
 #include "events.h"
-#include "network.h"
 #include "helpers.h"
 
+#include "net/serialize.h"
+#include "net/network.h"
+#include "net/pack.h"
+
 tetris *pgame;
+struct config *config;
 
 static void usage(void)
 {
@@ -87,22 +90,20 @@ int keyboard_handler(events *pev)
 {
 	int ret = -1;
 
-	struct config *conf = conf_get_globals_s();
-
 	struct {
 		struct key_bindings *key;
 		int cmd;
 	} actions[] = {
-		{ &conf->move_drop,	TETRIS_MOVE_DROP },
-		{ &conf->move_down,	TETRIS_MOVE_DOWN },
-		{ &conf->move_left,	TETRIS_MOVE_LEFT },
-		{ &conf->move_right,	TETRIS_MOVE_RIGHT },
-		{ &conf->rotate_left,	TETRIS_ROT_LEFT },
-		{ &conf->rotate_right,	TETRIS_ROT_RIGHT },
+		{ &config->move_drop,	TETRIS_MOVE_DROP },
+		{ &config->move_down,	TETRIS_MOVE_DOWN },
+		{ &config->move_left,	TETRIS_MOVE_LEFT },
+		{ &config->move_right,	TETRIS_MOVE_RIGHT },
+		{ &config->rotate_left,	TETRIS_ROT_LEFT },
+		{ &config->rotate_right,TETRIS_ROT_RIGHT },
 
-		{ &conf->hold_key,	TETRIS_HOLD_BLOCK },
-		{ &conf->quit_key,	TETRIS_QUIT_GAME },
-		{ &conf->pause_key,	TETRIS_PAUSE_GAME },
+		{ &config->hold_key,	TETRIS_HOLD_BLOCK },
+		{ &config->quit_key,	TETRIS_QUIT_GAME },
+		{ &config->pause_key,	TETRIS_PAUSE_GAME },
 	};
 
 	char kb_key;
@@ -153,31 +154,31 @@ int main(int argc, char **argv)
 		case 'c':
 			/* update location for configuration file */
 			cflag = true;
-			strncpy(conffile, optarg, 256);
+			strncpy(conffile, optarg, sizeof conffile);
 			conffile[sizeof conffile -1] = '\0';
 			break;
 		case 'h':
 			/* change default host name */
 			hflag = true;
-			strncpy(hostname, optarg, 128);
+			strncpy(hostname, optarg, sizeof hostname);
 			hostname[sizeof hostname -1] = '\0';
 			break;
 		case 'l':
 			/* logfile location */
 			lflag = true;
-			strncpy(logfile, optarg, 256);
+			strncpy(logfile, optarg, sizeof logfile);
 			logfile[sizeof logfile -1] = '\0';
 			break;
 		case 'p':
 			/* change default port number */
 			pflag = true;
-			strncpy(port, optarg, 16);
+			strncpy(port, optarg, sizeof port);
 			port[sizeof port -1] = '\0';
 			break;
 		case 's':
 			/* db location */
 			sflag = true;
-			strncpy(savefile, optarg, 256);
+			strncpy(savefile, optarg, sizeof savefile);
 			savefile[sizeof savefile -1] = '\0';
 			break;
 		case 'u':
@@ -188,31 +189,35 @@ int main(int argc, char **argv)
 		}
 	}
 
-	/* This function creates and defines global variables accessed by each
-	 * of the subsystem init() functions. Unless non-NULL is passed to an
-	 * init function, it will proceed with either the default, compiled-in
-	 * value, or use the global value as read in from the configuration
-	 * file.
-	 *
-	 * If a valid string is passed to one of the init subsystems, then that
-	 * string takes precedence, even over the configuration file.
-	 *
-	 * So if we start the game as `tetris -h example.com -p 100`, and the
-	 * configuration file specifies singleplayer, we will still try to play
-	 * multiplayer.
+	/* Create globals from built in config */
+	if (conf_create(&config) != 1)
+		exit(EXIT_FAILURE);
+
+	if (conf_init(config, NULL) != 1)
+		exit(EXIT_FAILURE);
+
+	/* Try to read default configuration file, or user supplied
+	 * configuration file
 	 */
-	if (conf_init(cflag? conffile: NULL) != 1)
+	if (conf_init(config, cflag? conffile: config->_conf_file.val) != 1)
 		exit(EXIT_FAILURE);
 
-	if ((logs_init(lflag? logfile: NULL) != 1) ||
-	    (tetris_init(&pgame) != 1 || pgame == NULL) ||
-	    (screen_init() != 1))
+	if (logs_init(lflag? logfile: config->logs_file.val) != 1)
 		exit(EXIT_FAILURE);
 
-	int netfd = network_init(hflag? hostname: NULL, pflag? port: NULL);
+	if (tetris_init(&pgame) != 1 || pgame == NULL)
+		exit(EXIT_FAILURE);
 
+	/* Create ncurses context, draw screen, and watch for keyboard input */
+	screen_init();
 	screen_draw_game(pgame);
+	events_add_input(fileno(stdin), keyboard_handler);
 
+	/* Add network FD to events watch list */
+	events_add_input(
+			network_init(hflag? hostname: config->hostname.val,
+				pflag? port: config->port.val)
+			, network_in_handler);
 
 	struct timespec ts_tick;
 	ts_tick.tv_sec = 0;
@@ -223,14 +228,14 @@ int main(int argc, char **argv)
 	sa_tick.sa_handler = timer_handler;
 	sigemptyset(&sa_tick.sa_mask);
 
-	/* Add events to event loop */
 	events_add_timer(ts_tick, sa_tick, SIGRTMIN+2);
 
-	events_add_input(fileno(stdin), keyboard_handler);
-	events_add_input(netfd, network_in_handler);
-
 	events_main_loop(pgame);
+
+	screen_draw_over(pgame);
+
 	tetris_cleanup(pgame);
+	conf_cleanup(config);
 
 	return 0;
 }
