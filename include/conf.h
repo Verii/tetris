@@ -27,21 +27,8 @@ struct values {
 };
 
 struct key_bindings {
-	/* Choose to ignore keypress or not */
-	bool enabled;
-
-	/* Registered key */
-	int key;
-
-#if 0
-	/* Callback for keypress */
-	key_cb_func cb;
-
-	union key_cb_val {
-		int val_int;
-		void *val_ptr;
-	};
-#endif
+	bool enabled; /* Choose to ignore keypress or not */
+	int key; /* Registered key */
 };
 
 struct config {
@@ -72,31 +59,24 @@ struct config {
 		talk_key;
 };
 
+int conf_create(struct config **);
+
 /* Read in the specified path. If path is NULL, read in the compiled in default
  * path.
  */
-int conf_init(const char *path);
+int conf_init(struct config *, const char *path);
 
 /* Parse an entire configuration set line by line. */
-int conf_parse(const char *str, size_t len);
-
-/* Return structure containing global variables */
-struct config *conf_get_globals(void);
-
-/* Same but just return a pointer to a static allocation, so we don't have to
- * free it manually.
- */
-struct config *conf_get_globals_s(void);
+int conf_parse(struct config *, const char *str, size_t len);
 
 /* Internal functions, these are called when either a "set" "bind" or "say"
  * commands in encountered in the configuration file.
  */
-int conf_command_set(const char *cmd, size_t len);
-int conf_command_unset(const char *cmd, size_t len);
+int conf_command_set(struct config *, const char *cmd, size_t len);
+int conf_command_unset(struct config *, const char *cmd, size_t len);
 
-int conf_command_bind(const char *cmd, size_t len);
-int conf_command_say(const char *cmd, size_t len);
+int conf_command_bind(struct config *, const char *cmd, size_t len);
 
-void conf_cleanup(void);
+void conf_cleanup(struct config *conf);
 
 #endif /* CONF_H_ */

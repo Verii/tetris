@@ -31,8 +31,6 @@
 #include "logs.h"
 #include "helpers.h"
 
-static struct config conf;
-
 static const char config_defaults[] =
 	/* Default movement keys */
 	"bind move_drop 'w'\n"
@@ -41,7 +39,7 @@ static const char config_defaults[] =
 	"bind move_right 'd'\n"
 	"bind rotate_left 'q'\n"
 	"bind rotate_right 'e'\n"
-	"bind hold_key ' '\n"
+	"bind hold_key 'h'\n"
 	"bind pause_key 'p'\n"
 	"bind quit_key 'o'\n"
 
@@ -65,16 +63,35 @@ static const char config_defaults[] =
 	"set _conf_file \"~/.config/tetris/tetris.conf\"\n"
 	;
 
+
+int conf_create(struct config **retc)
+{
+	struct config *conf;
+
+	conf = malloc(sizeof *conf);
+	if (conf == NULL) {
+		log_err("Out of memory\n");
+		return -1;
+	}
+
+	*retc = conf;
+
+	return 1;
+}
+
 /* Set default global variables, create necessary directories,
  * read in user specified configuration files.
  */
-int conf_init(const char *path)
+int conf_init(struct config *conf, const char *path)
 {
+	if (conf == NULL)
+		return -1;
+
 	if (path == NULL) {
 		/* Parse built in configuration */
-		memset(&conf, 0, sizeof conf);
-		conf_parse(config_defaults, sizeof config_defaults);
-		replace_home(&(conf._conf_file.val), &(conf._conf_file.len));
+		memset(conf, 0, sizeof *conf);
+		conf_parse(conf, config_defaults, sizeof config_defaults);
+		replace_home(&(conf->_conf_file.val), &(conf->_conf_file.len));
 		return 1;
 	} else {
 		size_t len;
@@ -83,23 +100,26 @@ int conf_init(const char *path)
 		/* Read in the configuration file at path */
 		file_into_buf(path, &config_file, &len);
 		if (config_file && len > 0) {
-			conf_parse(config_file, len);
+			conf_parse(conf, config_file, len);
 			free(config_file);
 		} else {
 			return -1;
 		}
 	}
 
-	replace_home(&(conf.logs_file.val), &(conf.logs_file.len));
-	replace_home(&(conf.save_file.val), &(conf.save_file.len));
+	fprintf(stderr, "%s\n", conf->logs_file.val);
 
-	atexit(conf_cleanup);
+	replace_home(&(conf->logs_file.val), &(conf->logs_file.len));
+	replace_home(&(conf->save_file.val), &(conf->save_file.len));
+
+	fprintf(stderr, "%s\n", conf->logs_file.val);
+
 	debug("Configuration Initialization complete.");
 
 	return 1;
 }
 
-int conf_parse(const char *str, size_t len)
+int conf_parse(struct config *conf, const char *str, size_t len)
 {
 	size_t i;
 
@@ -108,7 +128,7 @@ int conf_parse(const char *str, size_t len)
 
 	struct {
 		char *key;
-		int (*conf_key_callback)(const char *cmd, size_t len);
+		int (*cb)(struct config *, const char *, size_t);
 	} tokens[] = {
 		{ "set", conf_command_set },
 		{ "unset", conf_command_unset },
@@ -129,7 +149,7 @@ int conf_parse(const char *str, size_t len)
 		if (i >= LEN(tokens))
 			goto again;
 
-		tokens[i].conf_key_callback(pbuf, strlen(pbuf));
+		tokens[i].cb(conf, pbuf, strlen(pbuf));
 
 	again:
 		free(pbuf);
@@ -139,43 +159,7 @@ int conf_parse(const char *str, size_t len)
 	return 1;
 }
 
-struct config *conf_get_globals(void)
-{
-	struct config *ret = NULL;
-
-	ret = malloc(sizeof *ret);
-	if (!ret) {
-		log_err("Out of memory");
-		return NULL;
-	}
-
-	memcpy(ret, &conf, sizeof *ret);
-	return ret;
-}
-
-struct config *conf_get_globals_s(void)
-{
-	static struct config ret;
-
-	memcpy(&ret, &conf, sizeof ret);
-	return &ret;
-}
-
-static int conf_enable_value(const char *cmd, size_t len)
-{
-	/* TODO */
-	(void) cmd; (void) len;
-	return 0;
-}
-
-static int conf_disable_value(const char *cmd, size_t len)
-{
-	/* TODO */
-	(void) cmd; (void) len;
-	return 0;
-}
-
-int conf_command_set(const char *cmd, size_t len)
+int conf_command_set(struct config *conf, const char *cmd, size_t len)
 {
 	size_t i;
 	const char *pfirst, *plast;
@@ -187,13 +171,13 @@ int conf_command_set(const char *cmd, size_t len)
 		char *key;
 		struct values *val;
 	} tokens_val[] = {
-		{ "username", &conf.username },
-		{ "password", &conf.password },
-		{ "hostname", &conf.hostname },
-		{ "port", &conf.port },
-		{ "logs_file", &conf.logs_file },
-		{ "save_file", &conf.save_file },
-		{ "_conf_file", &conf._conf_file },
+		{ "username", &conf->username },
+		{ "password", &conf->password },
+		{ "hostname", &conf->hostname },
+		{ "port", &conf->port },
+		{ "logs_file", &conf->logs_file },
+		{ "save_file", &conf->save_file },
+		{ "_conf_file", &conf->_conf_file },
 	};
 
 	struct values *mod = NULL;
@@ -211,16 +195,8 @@ int conf_command_set(const char *cmd, size_t len)
 		break;
 	}
 
-	/* If the token was not found, try to treat it as an option.
-	 * E.g. `set gamemode_TG` does not take an argument, just toggles a
-	 * boolean.
-	 */
-	if (mod == NULL)
-		return conf_enable_value(cmd, len);
-
-	/* Otherwise try to get the value.
-	 * Must be of the form `set key "value"`
-	 */
+	if (i >= LEN(tokens_val) || mod == NULL)
+		return 0;
 
 	/* Find first quotation or end of line */
 	while (*pfirst != '"' && *pfirst != '\0')
@@ -258,15 +234,16 @@ int conf_command_set(const char *cmd, size_t len)
 	return 1;
 }
 
-int conf_command_unset(const char *cmd, size_t len)
+/* TODO */
+int conf_command_unset(struct config *conf, const char *cmd, size_t len)
 {
-	if (strstr(cmd, "unset") != cmd)
+	if (!conf || !len || strstr(cmd, "unset") != cmd)
 		return 0;
 
-	return conf_disable_value(cmd, len);
+	return 0;
 }
 
-int conf_command_bind(const char *cmd, size_t len)
+int conf_command_bind(struct config *conf, const char *cmd, size_t len)
 {
 	size_t i;
 	const char *pchar;
@@ -278,21 +255,21 @@ int conf_command_bind(const char *cmd, size_t len)
 		char *key;
 		struct key_bindings *kb;
 	} tokens[] = {
-		{ "move_drop", &conf.move_drop },
-		{ "move_left", &conf.move_left },
-		{ "move_right", &conf.move_right },
-		{ "move_down", &conf.move_down },
-		{ "rotate_left", &conf.rotate_left },
-		{ "rotate_right", &conf.rotate_right },
+		{ "move_drop", &conf->move_drop },
+		{ "move_left", &conf->move_left },
+		{ "move_right", &conf->move_right },
+		{ "move_down", &conf->move_down },
+		{ "rotate_left", &conf->rotate_left },
+		{ "rotate_right", &conf->rotate_right },
 
-		{ "hold_key", &conf.hold_key },
-		{ "pause_key", &conf.pause_key },
-		{ "quit_key", &conf.quit_key },
+		{ "hold_key", &conf->hold_key },
+		{ "pause_key", &conf->pause_key },
+		{ "quit_key", &conf->quit_key },
 
-		{ "toggle_ghosts", &conf.toggle_ghosts },
-		{ "toggle_wallkicks", &conf.toggle_wallkicks },
-		{ "cycle_gamemodes", &conf.cycle_gamemodes },
-		{ "talk_key", &conf.talk_key },
+		{ "toggle_ghosts", &conf->toggle_ghosts },
+		{ "toggle_wallkicks", &conf->toggle_wallkicks },
+		{ "cycle_gamemodes", &conf->cycle_gamemodes },
+		{ "talk_key", &conf->talk_key },
 	};
 
 	struct key_bindings *mod = NULL;
@@ -336,20 +313,14 @@ int conf_command_bind(const char *cmd, size_t len)
 	return 1;
 }
 
-int conf_command_say(const char *cmd, size_t len)
+void conf_cleanup(struct config *conf)
 {
-	(void) cmd; (void) len;
-	return 0;
-}
-
-void conf_cleanup(void)
-{
-	free(conf.username.val);
-	free(conf.password.val);
-	free(conf.hostname.val);
-	free(conf.port.val);
-	free(conf.logs_file.val);
-	free(conf.save_file.val);
-	free(conf._conf_file.val);
-	memset(&conf, 0, sizeof conf);
+	free(conf->username.val);
+	free(conf->password.val);
+	free(conf->hostname.val);
+	free(conf->port.val);
+	free(conf->logs_file.val);
+	free(conf->save_file.val);
+	free(conf->_conf_file.val);
+	free(conf);
 }
