@@ -26,8 +26,8 @@
 #include "logs.h"
 #include "net/network.h"
 
-static int tcp_sock_fd;
-//static int udp_sock_fd;
+static int tcp_sock_fd = -1;
+//static int udp_sock_fd = -1;
 
 static void network_cleanup(void)
 {
@@ -42,6 +42,9 @@ int network_init(const char *host, const char *port)
 	 * socket()
 	 * connect()
 	 */
+
+	if (!host || !port)
+		return -1;
 
 	struct addrinfo *res, *ap;
 	struct addrinfo hints = {
