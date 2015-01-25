@@ -28,6 +28,7 @@
 #include "logs.h"
 #include "tetris.h"
 #include "screen.h"
+#include "input.h"
 #include "events.h"
 #include "helpers.h"
 
@@ -37,6 +38,7 @@
 
 tetris *pgame;
 struct config *config;
+volatile sig_atomic_t tetris_do_tick;
 
 static void usage(void)
 {
@@ -64,73 +66,8 @@ static void usage(void)
 	fprintf(stderr, help, __progname, VERSION, __DATE__, __TIME__);
 }
 
-int network_in_handler(events *pev)
-{
-	char buf[256];
-
-	if (read(pev->fd, buf, sizeof buf -1) <= 0) {
-		logs_to_game("You won?");
-		logs_to_game("Server closed connection.");
-		events_remove_IO(pev->fd);
-	}
-
-	buf[sizeof buf -1] = '\0';
-
-	char *nl;
-	if ((nl = strchr(buf, '\n')) != NULL)
-		*nl = '\0';
-
-	if (strlen(buf))
-		logs_to_game(buf);
-
-	return 1;
-}
-
-int keyboard_handler(events *pev)
-{
-	int ret = -1;
-
-	struct {
-		struct key_bindings *key;
-		int cmd;
-	} actions[] = {
-		{ &config->move_drop,	TETRIS_MOVE_DROP },
-		{ &config->move_down,	TETRIS_MOVE_DOWN },
-		{ &config->move_left,	TETRIS_MOVE_LEFT },
-		{ &config->move_right,	TETRIS_MOVE_RIGHT },
-		{ &config->rotate_left,	TETRIS_ROT_LEFT },
-		{ &config->rotate_right,TETRIS_ROT_RIGHT },
-
-		{ &config->hold_key,	TETRIS_HOLD_BLOCK },
-		{ &config->quit_key,	TETRIS_QUIT_GAME },
-		{ &config->pause_key,	TETRIS_PAUSE_GAME },
-	};
-
-	char kb_key;
-	read(pev->fd, &kb_key, 1);
-
-	size_t i = 0;
-	for (; i < LEN(actions); i++) {
-		if (actions[i].key->key != kb_key)
-			continue;
-
-		if (!actions[i].key->enabled)
-			continue;
-
-		ret = tetris_cmd(pgame, actions[i].cmd);
-		screen_draw_game(pgame);
-		break;
-	}
-
-	if (i >= LEN(actions))
-		return 0;
-
-	return ret;
-}
-
 void timer_handler(int sig)
 {
-	extern volatile sig_atomic_t tetris_do_tick;
 	tetris_do_tick = sig;
 }
 
@@ -208,16 +145,28 @@ int main(int argc, char **argv)
 	if (tetris_init(&pgame) != 1 || pgame == NULL)
 		exit(EXIT_FAILURE);
 
+	tetris_set_attr(pgame, TETRIS_SET_NAME, config->username.val);
+	tetris_set_attr(pgame, TETRIS_SET_DBFILE, config->save_file.val);
+
 	/* Create ncurses context, draw screen, and watch for keyboard input */
 	screen_init();
 	screen_draw_game(pgame);
-	events_add_input(fileno(stdin), keyboard_handler);
+	events_add_input(fileno(stdin), keyboard_in_handler);
 
 	/* Add network FD to events watch list */
-	events_add_input(
-			network_init(hflag? hostname: config->hostname.val,
-				pflag? port: config->port.val)
-			, network_in_handler);
+	int server_fd = network_init(hflag? hostname: config->hostname.val,
+			pflag? port: config->port.val);
+
+	events_add_input(server_fd, network_in_handler);
+
+	/* Request authentication token from server.
+	 * Setup client-server encryption.
+	 * Add user to matchmaking server-side.
+	 *
+	 * Server responses are handled in network_in_handler.
+	 */
+//	network_authenticate(server_fd, config->username.val,
+//			config->password.val);
 
 	struct timespec ts_tick;
 	ts_tick.tv_sec = 0;

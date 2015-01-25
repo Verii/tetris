@@ -736,8 +736,8 @@ int tetris_cmd(tetris *pgame, int cmd)
 		if (cur->hold == true)
 			break;
 
-		cur->hold = true;
 		block_reset(cur);
+		cur->hold = true;
 
 		/* Remove the current block and reinstall it at the beginning
 		 * of the list. This swaps the hold and current block.

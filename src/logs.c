@@ -62,9 +62,11 @@ int logs_init(const char *path)
 
 	atexit(logs_cleanup);
 
-	if (freopen(path, "a+", stderr) != NULL)
+	fprintf(stderr, "Redirecting logs to %s\n", path);
+
+	if (freopen(path, "a+", stderr) != NULL) {
 		return 1;
-	else {
+	} else {
 		log_warn("freopen: %s: %s", strerror(errno), path);
 		return -1;
 	}

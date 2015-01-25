@@ -31,7 +31,7 @@
 #include "logs.h"
 
 /* Set by signal handler */
-volatile sig_atomic_t tetris_do_tick;
+extern volatile sig_atomic_t tetris_do_tick;
 
 /* For POSIX timer, ignore mask blocks the generated signal from everyone but
  * pselect().

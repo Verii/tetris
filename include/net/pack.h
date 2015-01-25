@@ -64,8 +64,10 @@
  * Longs are 8 octets. (not implemented)
  * Strings and Arrays are variable size [1, 255].
  *
- * (ret) contains the address of the location to store the data, must be
+ * (ret) contains the location to store the data, must be
  * atleast (buflen) bytes long.
+ *
+ * @return length of bytes written to (ret).
  */
 int pack(char *ret, size_t buflen, const char *fmt, ...);
 

@@ -21,6 +21,7 @@
 
 #include "tetris.h"
 #include <signal.h>
+#include <stdlib.h>
 
 typedef struct events events;
 
@@ -39,7 +40,6 @@ struct events {
  * Listen on File Descriptor fd for IO, then call cb.
  */
 int events_add_input(int fd, events_callback cb);
-
 int events_remove_IO(int fd);
 
 /**

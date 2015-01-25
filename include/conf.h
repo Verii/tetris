@@ -19,6 +19,8 @@
 #ifndef CONF_H_
 #define CONF_H_
 
+#include <stdint.h>
+#include <stdlib.h>
 #include <stdbool.h>
 
 struct values {

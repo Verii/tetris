@@ -107,12 +107,8 @@ int conf_init(struct config *conf, const char *path)
 		}
 	}
 
-	fprintf(stderr, "%s\n", conf->logs_file.val);
-
 	replace_home(&(conf->logs_file.val), &(conf->logs_file.len));
 	replace_home(&(conf->save_file.val), &(conf->save_file.len));
-
-	fprintf(stderr, "%s\n", conf->logs_file.val);
 
 	debug("Configuration Initialization complete.");
 

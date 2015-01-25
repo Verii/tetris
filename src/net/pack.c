@@ -59,33 +59,6 @@ void packi32(unsigned char *buf, uint32_t d)
 	*buf++ = d >> 8; *buf++ = d & 0xFF;
 }
 
-/**
- * Pack data into a char array, using format (fmt) string to determine the data
- * type.
- * The length of the final array is stored in the first byte. [1, 254]
- *
- * Fields are preceeded by an octet identifier,
- * All identifiers begin with the binary sequence 0100 is the higher order bits
- * of the octet. The remaining lower 4 bits are set to correspond to different
- * data types as follows:
- *
- * signed char		0000 'c'
- * unsigned char	0001 'uc'
- * signed short		0010 'h'
- * unsigned short	0011 'uh'
- * signed int		0100 'd'
- * unsigned int		0101 'ud'
- * signed long		1000 'l'
- * unsigned long	1001 'ul'
- * string		1110 's'	(signed character array)
- * array		1111 'us'	(unsigned character array)
- *
- * The string and array types are followed by a 1-octet unsigned value
- * designating the length of the data.
- *
- * (ret) contains the address of the location to store the data, must be
- * atleast (buflen) bytes long.
- */
 int pack(char *ret, size_t buflen, const char *fmt, ...)
 {
 	unsigned char buf[256];
@@ -179,17 +152,6 @@ outofbounds:
 	return 0;
 }
 
-/**
- * Unpacks the buffer (buf) of length (buflen) according to format characters
- * in (fmt).
- *
- * This function conforms to the principle of "strict out, loose in".
- * We do check for signedness, but it's not enforced. Give the user what they want.
- *
- * e.g.
- * If the datatype is of unsigned short, but they ask for short, give them a
- * short. (We do make sure it's actually a short though, and not a long.)
- */
 int unpack(const char *buf, size_t buflen, const char *fmt, ...)
 {
 	size_t len = 0;

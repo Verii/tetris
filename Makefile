@@ -1,10 +1,11 @@
 BIN = tetris
-VERSION = v0.55
+VERSION = v0.60
 
 SRC =	src/main.c \
 	src/conf.c \
 	src/events.c \
 	src/helpers.c \
+	src/input.c \
 	src/logs.c \
 	src/net/network.c \
 	src/net/pack.c \
