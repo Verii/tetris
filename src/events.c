@@ -215,7 +215,7 @@ void events_main_loop(tetris *pgame)
 
 	for (size_t i = 0; i < NUM_EVENTS; i++) {
 		if (!p_events[i])
-			break;
+			continue;
 
 		if (!(FD_ISSET(p_events[i]->fd, &read_fds) ||
 		      FD_ISSET(p_events[i]->fd, &write_fds)))
