@@ -145,11 +145,9 @@ static void block_reset(block *pblock)
 #define PIECE_XY(X, Y) \
 	pblock->p[index].x = X; pblock->p[index++].y = Y;
 
+	/* The piece at (0, 0) is the pivot when we rotate. */
 	PIECE_XY( 0,  0);
 
-	/* The piece at (0, 0) is the pivot when we rotate.
-	 * So each block has a piece at (0, 0)
-	 */
 	switch (pblock->type) {
 	case TETRIS_O_BLOCK:
 		PIECE_XY(-1, -1);
