@@ -284,15 +284,19 @@ static int block_wall_kick(tetris *pgame, block *pblock, int cmd)
 	if (block_translate(pgame, pblock, TETRIS_MOVE_LEFT) == 1) {
 		if (block_rotate(pgame, pblock, cmd) == 1)
 			return 1;
+		else
+			/* undo previous translation */
+			block_translate(pgame, pblock, TETRIS_MOVE_RIGHT);
 	}
 
-	/* undo previous translation */
-	block_translate(pgame, pblock, TETRIS_MOVE_RIGHT);
 
 	/* Try to move right and rotate again. */
 	if (block_translate(pgame, pblock, TETRIS_MOVE_RIGHT) == 1) {
 		if (block_rotate(pgame, pblock, cmd) == 1)
 			return 1;
+		else
+			/* undo previous translation */
+			block_translate(pgame, pblock, TETRIS_MOVE_LEFT);
 	}
 
 	return 0;
