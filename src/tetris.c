@@ -303,19 +303,19 @@ static int block_wall_kick(tetris *pgame, block *pblock, int cmd)
  * This function is used during normal gravitational events, and during
  * user-input 'soft drop' events.
  */
-static int block_fall(tetris *pgame, block *pblock)
+static int block_fall(tetris *pgame, block *pblock, int dir)
 {
 	for (size_t i = 0; i < LEN(pblock->p); i++) {
 		int bounds_x, bounds_y;
-		bounds_y = pblock->p[i].y + pblock->row_off + 1;
+		bounds_y = pblock->p[i].y + pblock->row_off + dir;
 		bounds_x = pblock->p[i].x + pblock->col_off;
 
-		if (bounds_y >= TETRIS_MAX_ROWS ||
+		if (bounds_y < 0 || bounds_y >= TETRIS_MAX_ROWS ||
 		    tetris_at_yx(pgame, bounds_y, bounds_x))
 			return 0;
 	}
 
-	pblock->row_off++;
+	pblock->row_off += dir;
 
 	return 1;
 }
@@ -363,7 +363,7 @@ static void update_ghost_block(tetris *pgame, block *pblock)
 
 	/* Copy the currently falling block but move it to the bottom of the
 	 * board */
-	while (block_fall(pgame, pblock))
+	while (block_fall(pgame, pblock, 1))
 		;
 }
 
@@ -520,8 +520,30 @@ done :{
  */
 static void tetris_tick(tetris *pgame)
 {
-	if (!block_fall(pgame, CURRENT_BLOCK(pgame))) {
-		write_block(pgame, CURRENT_BLOCK(pgame));
+	/* If the player dropped the block give them an extra game tick */
+	if (pgame->enable_lock_delay &&
+	    CURRENT_BLOCK(pgame)->hard_drop &&
+	    CURRENT_BLOCK(pgame)->lock_delay == false) {
+		CURRENT_BLOCK(pgame)->lock_delay = true;
+		return;
+	}
+
+	/* Check for T-Spin */
+	/* A T-Spin is counted if a T block cannot move left, right, or
+	 * up and a line is cleared.
+	 */
+	if (pgame->enable_tspins &&
+	    CURRENT_BLOCK(pgame)->type == TETRIS_T_BLOCK) {
+
+		CURRENT_BLOCK(pgame)->t_spin = true;
+
+		/* Try to move left, if it succeeds, we move it back
+		 * and fail
+		 */
+		if (block_translate(pgame, CURRENT_BLOCK(pgame), TETRIS_MOVE_LEFT)) {
+			block_translate(pgame, CURRENT_BLOCK(pgame), TETRIS_MOVE_RIGHT);
+			CURRENT_BLOCK(pgame)->t_spin = false;
+		}
 
 
 		int lines = destroy_lines(pgame);
@@ -654,19 +676,20 @@ int tetris_cmd(tetris *pgame, int cmd)
 		break;
 
 	case TETRIS_MOVE_DOWN:
-		if (block_fall(pgame, cur))
+		if (block_fall(pgame, cur, 1))
 			cur->soft_drop++;
 		break;
 
 	case TETRIS_MOVE_DROP:
 		/* drop the block to the bottom of the game */
-		while (block_fall(pgame, cur))
+		while (block_fall(pgame, cur, 1))
 			cur->hard_drop++;
 		break;
 
 	case TETRIS_HOLD_BLOCK:
 		/* We can hold each block exactly once */
-		if (cur->hold == true)
+		if (cur->hold == true) {
+			logs_to_game("Block has already been held.");
 			break;
 
 		block_reset(cur);
@@ -691,14 +714,12 @@ int tetris_cmd(tetris *pgame, int cmd)
 	case TETRIS_GAME_TICK:
 		tetris_tick(pgame);
 		break;
-
-	default:
-		return 0;
 	}
 
 	if (pgame->check_win)
 		pgame->check_win(pgame);
-	if (pgame->ghosts)
+
+	if (pgame->enable_ghosts)
 		update_ghost_block(pgame, pgame->ghost_block);
 
 	return 1;
