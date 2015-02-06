@@ -105,6 +105,7 @@ struct tetris {
 	bool quit;
 	bool difficult; // successive difficult moves
 
+	char gamemode[16];
 	char db_file[256];
 	char id[16];
 	time_t date;
@@ -144,10 +145,12 @@ int tetris_set_name(tetris *, const char *name);
 int tetris_set_dbfile(tetris *, const char *name);
 
 /* Game modes, we win when the game mode returns 1 */
-int tetris_set_win_condition(tetris *, int (*)(tetris *));
-int tetris_classic(tetris *);
-int tetris_40_lines(tetris *);
-int tetris_timed(tetris *);
+enum TETRIS_GAMES {
+	TETRIS_CLASSIC,
+	TETRIS_40_LINES,
+	TETRIS_TIMED,
+};
+int tetris_set_win_condition(tetris *, enum TETRIS_GAMES);
 
 /* Get Attributes */
 enum TETRIS_GAME_STATE {

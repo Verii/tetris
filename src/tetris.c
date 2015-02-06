@@ -717,30 +717,53 @@ int tetris_set_dbfile(tetris *pgame, const char *dbfile)
 	return 1;
 }
 
-int tetris_set_win_condition(tetris *pgame, int (*wc)(tetris *pgame))
-{
-	pgame->check_win = wc;
-	return 1;
-}
+/* Game Modes */
 
 /* Default game mode, we never win. Game continues until we lose. */
-int tetris_classic(tetris *pgame)
+static int tetris_classic(tetris *pgame)
 {
-	(void) pgame;
+	pgame->win = false;
 	return 0;
 }
 
-int tetris_40_lines(tetris *pgame)
+/* We win when we've destroyed 40 or more lines */
+static int tetris_40_lines(tetris *pgame)
 {
-	if (pgame->lines_destroyed >= 40)
+	if (pgame->lines_destroyed >= 40) {
+		pgame->win = true;
 		return 1;
+	}
 	return 0;
 }
 
-int tetris_timed(tetris *pgame)
+/* TODO, play for X minutes */
+static int tetris_timed(tetris *pgame)
 {
-	(void) pgame;
+	pgame->win = false;
 	return 0;
+}
+
+
+int tetris_set_win_condition(tetris *pgame, enum TETRIS_GAMES gm)
+{
+	switch (gm) {
+	case TETRIS_40_LINES:
+		strncpy(pgame->gamemode, "40 Lines", sizeof pgame->gamemode);
+		pgame->check_win = &tetris_40_lines;
+		break;
+	case TETRIS_TIMED:
+		/* XXX, change my name when we define tetris_timed() */
+		strncpy(pgame->gamemode, "Classic", sizeof pgame->gamemode);
+		pgame->check_win = &tetris_timed;
+		break;
+	case TETRIS_CLASSIC:
+	default:
+		strncpy(pgame->gamemode, "Classic", sizeof pgame->gamemode);
+		pgame->check_win = &tetris_classic;
+		break;
+	}
+
+	return 1;
 }
 
 
