@@ -152,7 +152,9 @@ int main(int argc, char **argv)
 	tetris_set_win_condition(pgame, TETRIS_40_LINES);
 //	tetris_set_win_condition(pgame, TETRIS_CLASSIC);
 
-	db_resume_state(pgame);
+	if (db_resume_state(pgame) != 1)
+		logs_to_game("Unable to resume old game save.");
+
 
 	/* Draw with Ncurses context by default */
 #if !defined(DEBUG)
