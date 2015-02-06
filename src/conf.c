@@ -25,7 +25,6 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <errno.h>
 
 #include "conf.h"
 #include "logs.h"

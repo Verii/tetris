@@ -21,7 +21,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
-#include <time.h>
 #include <unistd.h>
 
 #include "db.h"
@@ -31,11 +30,7 @@
 #include "screen.h"
 #include "input.h"
 #include "events.h"
-#include "helpers.h"
-
-#include "net/serialize.h"
 #include "net/network.h"
-#include "net/pack.h"
 
 tetris *pgame;
 struct config *config;
