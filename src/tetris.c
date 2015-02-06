@@ -545,6 +545,23 @@ static void tetris_tick(tetris *pgame)
 			CURRENT_BLOCK(pgame)->t_spin = false;
 		}
 
+		/* Try to move right, if successful move back and
+		 * fail. */
+		if (block_translate(pgame, CURRENT_BLOCK(pgame), TETRIS_MOVE_RIGHT)) {
+			block_translate(pgame, CURRENT_BLOCK(pgame), TETRIS_MOVE_LEFT);
+			CURRENT_BLOCK(pgame)->t_spin = false;
+		}
+
+		/* Try to move up, if successful, move down and fail */
+		if (block_fall(pgame, CURRENT_BLOCK(pgame), -1)) {
+			block_fall(pgame, CURRENT_BLOCK(pgame), 1);
+			CURRENT_BLOCK(pgame)->t_spin = false;
+		}
+	}
+
+	if (!block_fall(pgame, CURRENT_BLOCK(pgame), 1)) {
+
+		write_block(pgame, CURRENT_BLOCK(pgame));
 
 		int lines = destroy_lines(pgame);
 
@@ -655,14 +672,24 @@ int tetris_cleanup(tetris *pgame)
  */
 int tetris_cmd(tetris *pgame, int cmd)
 {
+	/* "fail" if these are true so we can escape events_main_loop() */
 	if (pgame->quit || pgame->lose || pgame->win)
 		return -1;
 
+	/* While paused, we can only unpause or quit */
 	if (pgame->paused &&
 	   !(cmd == TETRIS_PAUSE_GAME || cmd == TETRIS_QUIT_GAME))
 		return 0;
 
 	block *cur = CURRENT_BLOCK(pgame);
+
+	/* Block lock delays are enabled after a block is hard dropped to the
+	 * bottom of the board. The game will wait one additional game tick,
+	 * or for a single movement command, before locking the block into place.
+	 */
+
+	/* This would be the command *after* a block has been hard dropped. */
+	bool additional_tick = cur->lock_delay || cur->hard_drop;
 
 	switch (cmd) {
 	case TETRIS_MOVE_LEFT:
@@ -672,7 +699,10 @@ int tetris_cmd(tetris *pgame, int cmd)
 
 	case TETRIS_ROT_LEFT:
 	case TETRIS_ROT_RIGHT:
-		block_wall_kick(pgame, cur, cmd);
+		if (pgame->enable_wallkicks)
+			block_wall_kick(pgame, cur, cmd);
+		else
+			block_rotate(pgame, cur, cmd);
 		break;
 
 	case TETRIS_MOVE_DOWN:
@@ -685,12 +715,27 @@ int tetris_cmd(tetris *pgame, int cmd)
 		while (block_fall(pgame, cur, 1))
 			cur->hard_drop++;
 		break;
+	}
 
+	if (additional_tick &&
+	    (cmd == TETRIS_MOVE_LEFT || cmd == TETRIS_MOVE_RIGHT ||
+	    cmd == TETRIS_ROT_LEFT || cmd == TETRIS_ROT_RIGHT ||
+	    cmd == TETRIS_MOVE_DOWN || cmd == TETRIS_MOVE_DROP)) {
+
+		/* have we ticked once already? */
+		if (cur->lock_delay == false)
+			tetris_tick(pgame); // first one here is skipped
+		/* lock block to board */
+		tetris_tick(pgame);
+	}
+
+	switch (cmd) {
 	case TETRIS_HOLD_BLOCK:
 		/* We can hold each block exactly once */
 		if (cur->hold == true) {
 			logs_to_game("Block has already been held.");
 			break;
+		}
 
 		block_reset(cur);
 		cur->hold = true;
