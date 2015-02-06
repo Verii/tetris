@@ -217,24 +217,26 @@ int screen_nc_update(tetris *pgame)
 	/* Draw text */
 	wattrset(text, COLOR_PAIR(1));
 
-	mvwprintw(text, 1, 1, "Level %7d", tetris_get_level(pgame));
-	mvwprintw(text, 2, 1, "Score %7d", tetris_get_score(pgame));
+	mvwprintw(text, 0, 1, "Gamemode: %s", pgame->gamemode);
+	mvwprintw(text, 2, 2, "Level %7d", tetris_get_level(pgame));
+	mvwprintw(text, 3, 2, "Score %7d", tetris_get_score(pgame));
+	mvwprintw(text, 4, 2, "Lines %7d", tetris_get_lines(pgame));
 
-	mvwprintw(text, 5, 1, "Controls");
-	mvwprintw(text, 6 , 2, "Pause: %c", config->pause_key.key);
-	mvwprintw(text, 7 , 2, "Save/Quit: %c", config->quit_key.key);
-	mvwprintw(text, 8 , 2, "Move: %c%c%c%c",
+	mvwprintw(text, 6, 2, "Controls");
+	mvwprintw(text, 7 , 3, "Pause: %c", config->pause_key.key);
+	mvwprintw(text, 8 , 3, "Save/Quit: %c", config->quit_key.key);
+	mvwprintw(text, 9 , 3, "Move: %c%c%c%c",
 			config->move_left.key,
 			config->move_down.key,
 			config->move_right.key,
 			config->move_drop.key);
 
-	mvwprintw(text, 9 , 2, "Rotate: %c%c",
+	mvwprintw(text, 10 , 3, "Rotate: %c%c",
 			config->rotate_left.key,
 			config->rotate_right.key);
 
-	mvwprintw(text, 10, 2, "Hold: %c", config->hold_key.key);
-	mvwprintw(text, 12, 1, "--------");
+	mvwprintw(text, 11, 3, "Hold: %c", config->hold_key.key);
+	mvwprintw(text, 13, 1, "--------");
 
 	/* Print in-game logs/messages */
 	wattrset(text, COLOR_PAIR(3));
@@ -246,8 +248,8 @@ int screen_nc_update(tetris *pgame)
 		/* Display messages, then remove anything that can't fit on
 		 * screen
 		 */
-		if (i < TEXT_HEIGHT-14) {
-			mvwprintw(text, 13+i, 2, "%.*s", TEXT_WIDTH -3, lep->msg);
+		if (i < TEXT_HEIGHT-15) {
+			mvwprintw(text, 14+i, 2, "%.*s", TEXT_WIDTH -3, lep->msg);
 		} else {
 			tmp = lep;
 
@@ -288,6 +290,13 @@ int screen_nc_gameover(tetris *pgame)
 	for (size_t i = 0; i < LEN(res) && res[i]; i++)
 	{
 		char *date_str = ctime(&((res[i])->date));
+
+		/* Bold the entry we've just added to the highscores */
+		if ((tetris_get_score(pgame) == (res[i])->score) &&
+		    (tetris_get_level(pgame) == (res[i])->level))
+			attrset(COLOR_PAIR(1) | A_BOLD);
+		else
+			attrset(COLOR_PAIR(1));
 
 		mvprintw(i +3, 4, "%2d.\t%-16s%-5d\t%-5d\t%.*s", i+1,
 			 (res[i])->id ? (res[i])->id : "unknown",
