@@ -279,7 +279,7 @@ int screen_nc_gameover(tetris *pgame)
 
 	mvprintw(1, 1, "Local Leaderboard");
 	mvprintw(2, 3, "Rank\tName\t\tLevel\tScore\tDate");
-	mvprintw(LINES -2, 1, "Press any key to continue ..");
+	mvprintw(LINES -2, 1, "Press any RETURN to continue ..");
 
 	/* Print score board when you lose a game */
 	tetris *res[10];
@@ -307,7 +307,8 @@ int screen_nc_gameover(tetris *pgame)
 	db_clean_scores(res, LEN(res));
 
 	refresh();
-	getch();
+	sleep(1);
+	while (getch() != KEY_ENTER);
 
 	return 1;
 }
