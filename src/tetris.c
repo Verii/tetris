@@ -140,55 +140,53 @@ static void block_reset(block *pblock)
 	pblock->hard_drop = 0;
 	pblock->hold = false;
 	pblock->t_spin = false;
+	pblock->lock_delay = false;
 
 #define PIECE_XY(X, Y) \
 	pblock->p[index].x = X; pblock->p[index++].y = Y;
 
-	/* The piece at (0, 0) is the pivot when we rotate */
+	PIECE_XY( 0,  0);
+
+	/* The piece at (0, 0) is the pivot when we rotate.
+	 * So each block has a piece at (0, 0)
+	 */
 	switch (pblock->type) {
 	case TETRIS_O_BLOCK:
 		PIECE_XY(-1, -1);
 		PIECE_XY( 0, -1);
 		PIECE_XY(-1,  0);
-		PIECE_XY( 0,  0);
 		break;
 	case TETRIS_I_BLOCK:
 		pblock->col_off--;	/* center */
 
 		PIECE_XY(-1,  0);
-		PIECE_XY( 0,  0);
 		PIECE_XY( 1,  0);
 		PIECE_XY( 2,  0);
 		break;
 	case TETRIS_T_BLOCK:
 		PIECE_XY( 0, -1);
 		PIECE_XY(-1,  0);
-		PIECE_XY( 0,  0);
 		PIECE_XY( 1,  0);
 		break;
 	case TETRIS_L_BLOCK:
 		PIECE_XY( 1, -1);
 		PIECE_XY(-1,  0);
-		PIECE_XY( 0,  0);
 		PIECE_XY( 1,  0);
 		break;
 	case TETRIS_J_BLOCK:
 		PIECE_XY(-1, -1);
 		PIECE_XY(-1,  0);
-		PIECE_XY( 0,  0);
 		PIECE_XY( 1,  0);
 		break;
 	case TETRIS_Z_BLOCK:
 		PIECE_XY(-1, -1);
 		PIECE_XY( 0, -1);
-		PIECE_XY( 0,  0);
 		PIECE_XY( 1,  0);
 		break;
 	case TETRIS_S_BLOCK:
 		PIECE_XY( 0, -1);
 		PIECE_XY( 1, -1);
 		PIECE_XY(-1,  0);
-		PIECE_XY( 0,  0);
 		break;
 	}
 #undef PIECE_XY
