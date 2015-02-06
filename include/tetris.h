@@ -104,6 +104,7 @@ struct tetris {
 	bool lose;
 	bool quit;
 	bool difficult; // successive difficult moves
+	uint8_t rseed; // random seed
 
 	char gamemode[16];
 	char db_file[256];

@@ -80,7 +80,6 @@ int main(int argc, char **argv)
 	int ch;
 
 	setlocale(LC_ALL, "");
-	srand(time(NULL));
 
 	/* Quit if we're not attached to a tty */
 	if (!isatty(fileno(stdin)))

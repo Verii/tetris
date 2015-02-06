@@ -66,7 +66,7 @@ static void bag_random_generator(tetris *pgame) {
 	 * From the Tetris Guidlines:
 	 * 	First piece is never the O, S, or Z blocks.
 	 */
-	index = rand() % (LEN(pgame->bag) - 3); // [0, 3]
+	index = random() % (LEN(pgame->bag) - 3); // [0, 3]
 	pgame->bag[0] = avail_blocks[index];
 	avail_blocks[index] = DIRTY_BIT;
 
@@ -83,7 +83,7 @@ static void bag_random_generator(tetris *pgame) {
 	 */
 	for (uint8_t i = 1; i < LEN(pgame->bag); i++) {
 
-		index = rand() % (LEN(pgame->bag) - i) +1;
+		index = random() % (LEN(pgame->bag) - i) +1;
 
 		size_t get_elm = 0;
 
@@ -563,6 +563,9 @@ int tetris_init(tetris **pmem)
 	}
 
 	tetris *pgame = *pmem;
+
+	pgame->rseed = time(NULL);
+	srandom(pgame->rseed);
 
 	bag_random_generator(pgame);
 
