@@ -47,21 +47,6 @@ static uint8_t fd_max;
 #define NUM_EVENTS 2
 static events* p_events[NUM_EVENTS];
 
-static void events_timer_cleanup(void)
-{
-	if (timerid != 0)
-		timer_delete(timerid);
-	timerid = 0;
-}
-
-static void events_IO_cleanup(void)
-{
-	size_t i;
-	for (i = 0; i < NUM_EVENTS; i++)
-		if (p_events[i])
-			events_remove_IO(p_events[i]->fd);
-}
-
 static int events_reset_timer(timer_t td, struct timespec ts)
 {
 	struct itimerspec timer_ts;
@@ -187,9 +172,6 @@ int events_remove_IO(int fd)
  */
 void events_main_loop(tetris *pgame)
 {
-	atexit(events_IO_cleanup);
-	atexit(events_timer_cleanup);
-
   while (1) {
 
 	fd_set read_fds = master_read;
@@ -218,12 +200,12 @@ void events_main_loop(tetris *pgame)
 		if (tetris_cmd(pgame, TETRIS_GAME_TICK) < 0)
 			return;
 
-		screen_draw_game(pgame);
+		screen_update(pgame);
 
 		/* Update tick timer */
 		struct timespec ts;
 		ts.tv_sec = 0;
-		tetris_get_attr(pgame, TETRIS_GET_DELAY, &ts.tv_nsec);
+		ts.tv_nsec = tetris_get_delay(pgame);
 
 		events_reset_timer(timerid, ts);
 	}
@@ -245,4 +227,26 @@ void events_main_loop(tetris *pgame)
 	}
 
   } /* while */
+}
+
+static void events_timer_cleanup(void)
+{
+	if (timerid != 0)
+		timer_delete(timerid);
+	timerid = 0;
+}
+
+static void events_IO_cleanup(void)
+{
+	size_t i;
+	for (i = 0; i < NUM_EVENTS; i++)
+		if (p_events[i])
+			events_remove_IO(p_events[i]->fd);
+}
+
+
+void events_cleanup(void)
+{
+	events_timer_cleanup();
+	events_IO_cleanup();
 }

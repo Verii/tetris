@@ -1,4 +1,3 @@
-
 /*
  * Copyright (C) 2014  James Smith <james@apertum.org>
  * 
@@ -17,10 +16,14 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef NETWORK_H_
-#define NETWORK_H_
+#ifndef SERIALIZE_H_
+#define SERIALIZE_H_
 
-void network_cleanup(void);
-int network_init(const char *host, const char *port);
+#include <json-c/json.h>
+#include "tetris.h"
 
-#endif /* NETWORK_H_ */
+int net_deserialize(tetris *pgame, const char *str);
+
+int net_serialize(tetris *pgame, char **str);
+
+#endif /* SERIALIZE_H_ */

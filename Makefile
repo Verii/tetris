@@ -1,5 +1,5 @@
 BIN = tetris
-VERSION = v0.60
+VERSION = v0.70
 
 SRC =	src/main.c \
 	src/conf.c \
@@ -7,11 +7,13 @@ SRC =	src/main.c \
 	src/helpers.c \
 	src/input.c \
 	src/logs.c \
+	src/screen_nc.c \
+	src/screen_nodraw.c \
+	src/db_sqlite.c \
+	src/tetris.c \
 	src/net/network.c \
 	src/net/pack.c \
-	src/net/serialize.c \
-	src/screen.c \
-	src/tetris.c
+	src/net/serialize.c
 
 DESTDIR = /usr/local/bin
 
@@ -20,7 +22,7 @@ CPPFLAGS = -D_GNU_SOURCE -DVERSION=\"${VERSION}\" -DNDEBUG -I./include
 DEBUG = -g -Og -DDEBUG
 CFLAGS = -std=c99 -Wall -Wextra -Werror -Os
 
-LDFLAGS = -lm -lncursesw -lrt -lsqlite3 #-L./lib/ -lsexp
+LDFLAGS = -lm -lncursesw -lrt -lsqlite3 -ljson-c
 
 .PREFIX:
 .PREFIX: .c .o

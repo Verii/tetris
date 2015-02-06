@@ -33,6 +33,17 @@
 #include <sys/queue.h>
 #include <time.h>
 
+/* Check if the given (Y, X) coordinate contains a block */
+#define tetris_at_yx(G, Y, X) ((G)->spaces[(Y)] & (1 << (X)))
+
+/* Set/Unset location (Y, X) on board */
+#define tetris_set_yx(G, Y, X) ((G)->spaces[(Y)] |= (1 << (X)))
+#define tetris_unset_yx(G, Y, X) ((G)->spaces[(Y)] &= ~(1 << (X)))
+
+#define HOLD_BLOCK(G)		((G)->blocks_head.lh_first)
+#define CURRENT_BLOCK(G)	(HOLD_BLOCK((G))->entries.le_next)
+#define FIRST_NEXT_BLOCK(G)	(CURRENT_BLOCK((G))->entries.le_next)
+
 /* Game dimensions */
 #define TETRIS_MAX_COLUMNS	10
 #define TETRIS_MAX_ROWS		22
@@ -51,8 +62,6 @@
 
 #define TETRIS_NUM_BLOCKS	7
 
-typedef struct tetris tetris;
-
 typedef struct block block;
 struct block {
 	uint8_t soft_drop, hard_drop;
@@ -65,6 +74,40 @@ struct block {
 	} p[4];
 
 	LIST_ENTRY(block) entries;
+};
+
+typedef struct tetris tetris;
+struct tetris {
+	uint16_t spaces[TETRIS_MAX_ROWS];
+	uint16_t level;
+	uint32_t lines_destroyed;
+	uint32_t score;
+
+	uint8_t *colors[TETRIS_MAX_ROWS];
+	uint32_t tick_nsec;
+
+	int (*check_win)(tetris *);
+
+	uint8_t bag[TETRIS_NUM_BLOCKS];
+
+	LIST_HEAD(blocks_head, block) blocks_head;
+	block *ghost_block;
+
+	/* Attributes */
+	bool wallkicks;
+	bool tspins;
+	bool ghosts;
+
+	/* State */
+	bool paused;
+	bool win;
+	bool lose;
+	bool quit;
+	bool difficult; // successive difficult moves
+
+	char db_file[256];
+	char id[16];
+	time_t date;
 };
 
 /* Create game state */
@@ -84,78 +127,44 @@ int tetris_cleanup(tetris *);
 #define TETRIS_QUIT_GAME	0x07
 #define TETRIS_PAUSE_GAME	0x08
 #define TETRIS_GAME_TICK	0x09
+#define TETRIS_SERIALIZE	0x0A
 
 /* Process key command in ch and modify game */
 int tetris_cmd(tetris *, int command);
 
 
+#define TETRIS_TRUE	1
+#define TETRIS_FALSE	0
+
 /* Set Attributes */
-#define TETRIS_SET_GHOSTS	0x10
-#define TETRIS_SET_WALLKICKS	0x11
-#define TETRIS_SET_TSPIN	0x12
-#define TETRIS_SET_NAME		0x13
-#define TETRIS_SET_DBFILE	0x14
-
-int tetris_set_attr(tetris *, int attrib, ...);
-
-/* Get Attributes */
-#define TETRIS_GET_PAUSED	0x20
-#define TETRIS_GET_WIN		0x21
-#define TETRIS_GET_LOSE		0x22
-#define TETRIS_GET_QUIT		0x23
-#define TETRIS_GET_NAME		0x24
-#define TETRIS_GET_LEVEL	0x25
-#define TETRIS_GET_LINES	0x26
-#define TETRIS_GET_SCORE	0x27
-#define TETRIS_GET_DELAY	0x28
-#define TETRIS_GET_GHOSTS	0x29
-#define TETRIS_GET_DBFILE	0x2A
-
-int tetris_get_attr(tetris *, int attrib, ...);
-
-
-/* HOLD, CURRENT, NEXT(0), NEXT(1), NEXT(2), NEXT(3), NEXT(4) */
-#define TETRIS_BLOCK_GHOST	0x30
-#define TETRIS_BLOCK_HOLD	0x31
-#define TETRIS_BLOCK_CURRENT	0x32
-#define TETRIS_BLOCK_NEXT0	0x33
-#define TETRIS_BLOCK_NEXT(n)	(TETRIS_BLOCK_NEXT0+(n))
-
-int tetris_get_block(tetris *, int attrib, block *);
-
-
-/* Database stuff */
-TAILQ_HEAD(tetris_score_head, tetris_score);
-typedef struct tetris_score tetris_score;
-struct tetris_score {
-	char id[16];
-	uint32_t score;
-	uint8_t level;
-	time_t date;
-	TAILQ_ENTRY(tetris_score) entries;
-};
-
-int tetris_save_score(tetris *);
-int tetris_save_state(tetris *);
-int tetris_resume_state(tetris *);
-
-int tetris_get_scores(tetris *, struct tetris_score_head **res, size_t n);
-void tetris_clean_scores(tetris *);
-
-
-/* Draw functions */
-int tetris_draw_board(tetris *, WINDOW *);
-int tetris_draw_pieces(tetris *, WINDOW *);
+#define tetris_set_ghosts(G, B)		((G)->ghosts = (B))
+#define tetris_set_wallkicks(G, B)	((G)->wallkicks = (B))
+#define tetris_set_tspins(G, B)		((G)->tspins = (B))
+int tetris_set_name(tetris *, const char *name);
+int tetris_set_dbfile(tetris *, const char *name);
 
 /* Game modes, we win when the game mode returns 1 */
-
 int tetris_set_win_condition(tetris *, int (*)(tetris *));
-
-/* Classic tetris, game goes on until we lose */
 int tetris_classic(tetris *);
+int tetris_40_lines(tetris *);
+int tetris_timed(tetris *);
 
-/* TODO */
-//int tetris_40_lines(tetris *);
-//int tetris_timed(tetris *);
+/* Get Attributes */
+enum TETRIS_GAME_STATE {
+	TETRIS_WIN,
+	TETRIS_LOSE,
+	TETRIS_QUIT,
+	TETRIS_PAUSED,
+};
+int tetris_get_state(tetris *);
+int tetris_get_name(tetris *, char *, size_t);
+int tetris_get_dbfile(tetris *, char *, size_t);
+#define tetris_get_level(G)		((G)->level)
+#define tetris_get_lines(G)		((G)->lines_destroyed)
+#define tetris_get_score(G)		((G)->score)
+#define tetris_get_delay(G)		((G)->tick_nsec)
+#define tetris_get_ghosts(G)		((G)->ghosts)
+#define tetris_get_wallkicks(G)		((G)->wallkicks)
+#define tetris_get_tspins(G)		((G)->tspins)
 
 #endif	/* TETRIS_H_ */

@@ -87,7 +87,7 @@ keyboard_in_handler(events *pev)
 			continue;
 
 		ret = tetris_cmd(pgame, actions[i].cmd);
-		screen_draw_game(pgame);
+		screen_update(pgame);
 		break;
 	}
 

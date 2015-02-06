@@ -19,6 +19,14 @@
 #ifndef PACK_H_
 #define PACK_H_
 
+#include <stdint.h>
+
+int unpacki16(const char *, uint16_t *);
+int unpacki32(const char *, uint32_t *);
+
+void packi16(unsigned char *, uint16_t);
+void packi32(unsigned char *, uint32_t);
+
 /**
  * Pack data into a char array, using format (fmt) string to determine the data
  * type.

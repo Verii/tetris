@@ -29,7 +29,7 @@
 static int tcp_sock_fd = -1;
 //static int udp_sock_fd = -1;
 
-static void network_cleanup(void)
+void network_cleanup(void)
 {
 	fprintf(stderr, "Network cleaned up without incident.\n");
 	debug("Network Cleanup complete.");
@@ -85,7 +85,5 @@ int network_init(const char *host, const char *port)
 	freeaddrinfo(res);
 
 	debug("Network Initialization complete.");
-	atexit(network_cleanup);
-
 	return tcp_sock_fd;
 }

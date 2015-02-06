@@ -60,8 +60,6 @@ int logs_init(const char *path)
 	if (!path)
 		return -1;
 
-	atexit(logs_cleanup);
-
 	fprintf(stderr, "Redirecting logs to %s\n", path);
 
 	if (freopen(path, "a+", stderr) != NULL) {

@@ -31,52 +31,7 @@
 #include "tetris.h"
 #include "logs.h"
 
-/* Check if the given (Y, X) contains a block on the game board (G). */
-#define tetris_at_yx(G, Y, X)		(G->spaces[(Y)] & (1 << (X)))
-
-/* Set/Unset the given coordinate as having a piece on game board G. */
-#define tetris_set_yx(G, Y, X)		(G->spaces[(Y)] |= (1 << (X)))
-#define tetris_unset_yx(G, Y, X)	(G->spaces[(Y)] &= ~(1 << (X)))
-
-/* First, Second, and Third elements in the linked list */
-#define HOLD_BLOCK(G) ((G)->blocks_head.lh_first)
-#define CURRENT_BLOCK(G) (HOLD_BLOCK((G))->entries.le_next)
-#define FIRST_NEXT_BLOCK(G) (CURRENT_BLOCK((G))->entries.le_next)
-
-struct tetris {
-	uint16_t spaces[TETRIS_MAX_ROWS];
-	uint16_t level;
-	uint32_t lines_destroyed;
-	uint32_t score;
-
-	uint8_t *colors[TETRIS_MAX_ROWS];
-	uint32_t tick_nsec;
-
-	int (*check_win)(tetris *);
-
-	uint8_t bag[TETRIS_NUM_BLOCKS];
-
-	LIST_HEAD(blocks_head, block) blocks_head;
-	block *ghost;
-
-	/* Attributes */
-	char id[16];
-	bool wallkicks;
-	bool tspins;
-	bool ghosts;
-
-	/* State */
-	bool paused;
-	bool win;
-	bool lose;
-	bool quit;
-	bool difficult; // successive difficult moves
-
-	sqlite3 *db_handle;
-	char db_file[256];
-
-	struct tetris_score_head score_head;
-};
+#include "net/pack.h"
 
 /****************************/
 /*  Begin Random Generator  */
@@ -276,7 +231,7 @@ static int block_translate(tetris *pgame, block *pblock, int cmd)
 }
 
 /* rotate pieces in blocks by either 90^ or -90^ around (0, 0) pivot */
-int block_rotate(tetris *pgame, block *pblock, int cmd)
+static int block_rotate(tetris *pgame, block *pblock, int cmd)
 {
 	/* Don't rotate O block */
 	if (pblock->type == TETRIS_O_BLOCK)
@@ -406,6 +361,8 @@ static void update_ghost_block(tetris *pgame, block *pblock)
 	pblock->type = CURRENT_BLOCK(pgame)->type;
 	memcpy(pblock->p, CURRENT_BLOCK(pgame)->p, sizeof pblock->p);
 
+	/* Copy the currently falling block but move it to the bottom of the
+	 * board */
 	while (block_fall(pgame, pblock))
 		;
 }
@@ -576,26 +533,9 @@ static void tetris_tick(tetris *pgame)
 	}
 }
 
-static int tetris_db_open(tetris *pgame)
-{
-	int status = sqlite3_open(pgame->db_file, &pgame->db_handle);
-	if (status != SQLITE_OK) {
-		log_warn("DB cannot be opened. (%d)", status);
-		return -1;
-	}
-
-	return 1;
-}
-
-static void tetris_db_close(tetris *pgame)
-{
-	if (!pgame->db_handle) {
-		log_warn("Trying to close un-initialized database.");
-		return;
-	}
-
-	sqlite3_close(pgame->db_handle);
-}
+/************************************/
+/*   End Private helper functions   */
+/************************************/
 
 
 /************************************/
@@ -621,19 +561,17 @@ int tetris_init(tetris **pmem)
 	tetris *pgame = *pmem;
 
 	bag_random_generator(pgame);
-	tetris_set_win_condition(pgame, tetris_classic);
 
 	pgame->level = 1;
 	update_tick_speed(pgame);
 
-	pgame->ghost = malloc(sizeof *pgame->ghost);
-	if (!pgame->ghost) {
+	pgame->ghost_block = malloc(sizeof *pgame->ghost_block);
+	if (!pgame->ghost_block) {
 		log_err("Out of memory");
 		return -1;
 	}
 
 	LIST_INIT(&pgame->blocks_head);
-	TAILQ_INIT(&pgame->score_head);
 
 	/* Create and add each block to the linked list */
 	for (size_t i = 0; i < TETRIS_NEXT_BLOCKS_LEN +2; i++) {
@@ -658,8 +596,6 @@ int tetris_init(tetris **pmem)
 		}
 	}
 
-	tetris_resume_state(pgame);
-
 	debug("Game Initialization complete");
 
 	return 1;
@@ -672,12 +608,6 @@ int tetris_cleanup(tetris *pgame)
 {
 	block *np;
 
-	if (pgame->lose || pgame->win) {
-		tetris_save_score(pgame);
-	} else {
-		tetris_save_state(pgame);
-	}
-
 	/* Remove each piece in the linked list */
 	while ((np = pgame->blocks_head.lh_first)) {
 		LIST_REMOVE(np, entries);
@@ -687,7 +617,7 @@ int tetris_cleanup(tetris *pgame)
 	for (int i = 0; i < TETRIS_MAX_ROWS; i++)
 		free(pgame->colors[i]);
 
-	free(pgame->ghost);
+	free(pgame->ghost_block);
 	free(pgame);
 
 	debug("Game Cleanup complete");
@@ -763,154 +693,27 @@ int tetris_cmd(tetris *pgame, int cmd)
 		return 0;
 	}
 
-	pgame->check_win(pgame);
-	update_ghost_block(pgame, pgame->ghost);
+	if (pgame->check_win)
+		pgame->check_win(pgame);
+	if (pgame->ghosts)
+		update_ghost_block(pgame, pgame->ghost_block);
 
 	return 1;
 }
 
-int tetris_set_attr(tetris *pgame, int attrib, ...)
+int tetris_set_name(tetris *pgame, const char *name)
 {
-	int val;
-	const char *name;
-	va_list ap;
-
-	va_start(ap, attrib);
-
-	switch (attrib) {
-	case TETRIS_SET_GHOSTS:
-		val = va_arg(ap, int);
-		pgame->ghosts = (bool) val;
-		break;
-	case TETRIS_SET_WALLKICKS:
-		val = va_arg(ap, int);
-		pgame->wallkicks = (bool) val;
-		break;
-	case TETRIS_SET_TSPIN:
-		val = va_arg(ap, int);
-		pgame->tspins = (bool) val;
-		break;
-	case TETRIS_SET_NAME:
-		name = va_arg(ap, const char *);
-		strncpy(pgame->id, name, sizeof pgame->id);
-		if (sizeof pgame->id > 0)
-			pgame->id[sizeof pgame->id -1] = '\0';
-		break;
-	case TETRIS_SET_DBFILE:
-		name = va_arg(ap, const char *);
-		strncpy(pgame->db_file, name, sizeof pgame->db_file);
-		if (sizeof pgame->db_file > 0)
-			pgame->db_file[sizeof pgame->db_file -1] = '\0';
-		break;
-	default:
-		goto err;
-	}
-
-	va_end(ap);
+	strncpy(pgame->id, name, sizeof pgame->id);
+	if (sizeof pgame->id > 0)
+		pgame->id[sizeof pgame->id -1] = '\0';
 	return 1;
-
-err:
-	va_end(ap);
-	return 0;
 }
 
-int tetris_get_attr(tetris *pgame, int attrib, ...)
+int tetris_set_dbfile(tetris *pgame, const char *dbfile)
 {
-	int *pval;
-	int val;
-	char *pname;
-
-	va_list ap;
-	va_start(ap, attrib);
-
-	switch (attrib) {
-	case TETRIS_GET_PAUSED:
-		pval = va_arg(ap, int*);
-		*pval = (bool) pgame->paused;
-		break;
-	case TETRIS_GET_WIN:
-		pval = va_arg(ap, int*);
-		*pval = (bool) pgame->win;
-		break;
-	case TETRIS_GET_LOSE:
-		pval = va_arg(ap, int*);
-		*pval = (bool) pgame->lose;
-		break;
-	case TETRIS_GET_QUIT:
-		pval = va_arg(ap, int*);
-		*pval = (bool) pgame->quit;
-		break;
-	case TETRIS_GET_LEVEL:
-		pval = va_arg(ap, int*);
-		*pval = pgame->level;
-		break;
-	case TETRIS_GET_LINES:
-		pval = va_arg(ap, int*);
-		*pval = pgame->lines_destroyed;
-		break;
-	case TETRIS_GET_SCORE:
-		pval = va_arg(ap, int*);
-		*pval = pgame->score;
-		break;
-	case TETRIS_GET_DELAY:
-		pval = va_arg(ap, int*);
-		*pval = pgame->tick_nsec;
-		break;
-	case TETRIS_GET_GHOSTS:
-		pval = va_arg(ap, int*);
-		*pval = (bool) pgame->ghosts;
-		break;
-	case TETRIS_GET_NAME:
-		pname = va_arg(ap, char *);
-		val = va_arg(ap, int);
-
-		if (pname == NULL)
-			return 0;
-
-		strncpy(pname, pgame->id, val);
-		if (val > 0)
-			pname[val-1] = '\0';
-		break;
-	case TETRIS_GET_DBFILE:
-		pname = va_arg(ap, char *);
-		val = va_arg(ap, int);
-
-		if (pname == NULL)
-			return 0;
-
-		strncpy(pname, pgame->db_file, val);
-		if (val > 0)
-			pname[val-1] = '\0';
-		break;
-	default:
-		goto err;
-	}
-
-	va_end(ap);
-	return 1;
-
-err:
-	va_end(ap);
-	return 0;
-
-}
-
-int tetris_get_block(tetris *pgame, int attrib, block *ret)
-{
-	int len = attrib - TETRIS_BLOCK_HOLD;
-	if (len < 0 || len >= TETRIS_NEXT_BLOCKS_LEN+2)
-		return 0;
-
-	block *nblock = HOLD_BLOCK(pgame);
-
-	for (; len > 0 && nblock; len--)
-		nblock = nblock->entries.le_next;
-
-	if (nblock == NULL)
-		return 0;
-
-	memcpy(ret, nblock, sizeof *nblock);
-
+	strncpy(pgame->db_file, dbfile, sizeof pgame->db_file);
+	if (sizeof pgame->db_file > 0)
+		pgame->db_file[sizeof pgame->db_file -1] = '\0';
 	return 1;
 }
 
@@ -927,390 +730,42 @@ int tetris_classic(tetris *pgame)
 	return 0;
 }
 
-
-/*******************/
-/* Database access */
-/*******************/
-
-/* Scores: name, level, score, date */
-const char create_scores[] =
-	"CREATE TABLE Scores(name TEXT,level INT,score INT,date INT);";
-
-const char insert_scores[] =
-	"INSERT INTO Scores VALUES(\"%s\",%d,%d,%lu);";
-
-const char select_scores[] =
-	"SELECT * FROM Scores ORDER BY score DESC;";
-
-/* State: name, score, lines, level, date, spaces */
-const char create_state[] =
-	"CREATE TABLE State(name TEXT,score INT,lines INT,level INT,"
-	"date INT,spaces BLOB);";
-
-const char insert_state[] =
-	"INSERT INTO State VALUES(\"%s\",%d,%d,%d,%lu,?);";
-
-const char select_state[] =
-	"SELECT * FROM State ORDER BY date DESC;";
-
-/* Find the entry we just pulled from the database.
- * There's probably a simpler way than using two SELECT calls, but I'm a total
- * SQL noob, so ... */
-const char select_state_rowid[] =
-	"SELECT ROWID,date FROM State ORDER BY date DESC;";
-
-/* Remove the entry pulled from the database. This lets us have multiple saves
- * in the database concurently.
- */
-const char delete_state_rowid[] =
-	"DELETE FROM State WHERE ROWID = ?;";
-
-int tetris_save_score(tetris *pgame)
+int tetris_40_lines(tetris *pgame)
 {
-	sqlite3_stmt *stmt;
-	char *insert = NULL;
-	int len = -1;
-
-	debug("Trying to insert scores to database");
-
-	if (tetris_db_open(pgame) != 1) {
-		log_err("Unable to save score.");
-		return -1;
-	}
-
-	/* Make sure the db has the proper tables */
-	sqlite3_prepare_v2(pgame->db_handle, create_scores,
-			   sizeof create_scores, &stmt, NULL);
-	sqlite3_step(stmt);
-	sqlite3_finalize(stmt);
-
-	len = asprintf(&insert, insert_scores,
-			pgame->id,
-			pgame->level,
-			pgame->score,
-			time(NULL));
-
-	if (len < 0) {
-		log_err("Out of memory");
-		return -1;
-	} else {
-		sqlite3_prepare_v2(pgame->db_handle, insert,
-				strlen(insert), &stmt, NULL);
-		free(insert);
-		sqlite3_step(stmt);
-		sqlite3_finalize(stmt);
-	}
-
-	tetris_db_close(pgame);
-
-	return 1;
+	if (pgame->lines_destroyed >= 40)
+		return 1;
+	return 0;
 }
 
-int tetris_save_state(tetris *pgame)
+int tetris_timed(tetris *pgame)
 {
-	sqlite3_stmt *stmt;
-	char *insert, *data = NULL;
-	int len, ret = 0, data_len = 0;
+	(void) pgame;
+	return 0;
+}
 
-	debug("Saving game state to database");
 
-	if (tetris_db_open(pgame) != 1) {
-		log_err("Unable to save game.");
-		return -1;
-	}
+int tetris_get_state(tetris *pgame)
+{
+	if (pgame->win) return TETRIS_WIN;
+	if (pgame->lose) return TETRIS_LOSE;
+	if (pgame->paused) return TETRIS_PAUSED;
+	if (pgame->quit) return TETRIS_QUIT;
+	return -1;
+}
 
-	/* Create table if it doesn't exist */
-	sqlite3_prepare_v2(pgame->db_handle, create_state,
-			   sizeof create_state, &stmt, NULL);
-	sqlite3_step(stmt);
-	sqlite3_finalize(stmt);
-
-	len = asprintf(&insert, insert_state,
-		   	pgame->id,
-			pgame->score,
-			pgame->lines_destroyed,
-			pgame->level,
-			time(NULL));
-
-	if (len < 0 || insert == NULL) {
-		ret = -1;
-		log_err("Out of memory");
-		goto error;
-	}
-
-	data_len = (TETRIS_MAX_ROWS - 2) * sizeof(*pgame->spaces);
-	data = malloc(data_len);
-
-	if (data == NULL) {
-		/* Non-fatal, we just don't save to database */
-		ret = 0;
-		log_err("Out of memory");
-		goto error;
-	}
-
-	memcpy(data, &pgame->spaces[2], data_len);
-	sqlite3_prepare_v2(pgame->db_handle, insert, strlen(insert),
-			   &stmt, NULL);
-
-	/* NOTE sqlite will free the @data block for us */
-	sqlite3_bind_blob(stmt, 1, data, data_len, free);
-	sqlite3_step(stmt);
-	sqlite3_finalize(stmt);
-
-	ret = 1;
-
- error:
+int tetris_get_name(tetris *pgame, char *ret, size_t len)
+{
+	strncpy(ret, pgame->id, len);
 	if (len > 0)
-		free(insert);
-
-	tetris_db_close(pgame);
-
-	return ret;
-}
-
-/* Queries database for newest game state information and copies it to pgame.
- */
-int tetris_resume_state(tetris *pgame)
-{
-	sqlite3_stmt *stmt, *delete;
-	const char *blob;
-	int ret, rowid;
-
-	debug("Trying to restore saved game");
-
-	if (tetris_db_open(pgame) != 1) {
-		log_err("Unable to resume game.");
-		return -1;
-	}
-
-	/* Look for newest entry in table */
-	sqlite3_prepare_v2(pgame->db_handle, select_state,
-			   sizeof select_state, &stmt, NULL);
-
-	if (sqlite3_step(stmt) == SQLITE_ROW) {
-		if (sqlite3_column_text(stmt, 0))
-			strncpy(pgame->id, (const char *)
-			sqlite3_column_text(stmt, 0), sizeof pgame->id);
-		if (sizeof pgame->id)
-			pgame->id[sizeof(pgame->id) -1] = '\0';
-
-		pgame->score		= sqlite3_column_int(stmt, 1);
-		pgame->lines_destroyed	= sqlite3_column_int(stmt, 2);
-		pgame->level		= sqlite3_column_int(stmt, 3);
-
-		blob			= sqlite3_column_blob(stmt, 5);
-		memcpy(&pgame->spaces[2], &blob[0],
-		       (TETRIS_MAX_ROWS - 2) * sizeof(*pgame->spaces));
-
-		ret = 1;
-	} else {
-		log_info("No game saves found");
-		ret = 0;
-	}
-
-	sqlite3_finalize(stmt);
-
-	sqlite3_prepare_v2(pgame->db_handle, select_state_rowid,
-			   sizeof select_state_rowid, &stmt, NULL);
-
-	if (sqlite3_step(stmt) == SQLITE_ROW) {
-		rowid = sqlite3_column_int(stmt, 0);
-
-		/* delete from table */
-		sqlite3_prepare_v2(pgame->db_handle, delete_state_rowid,
-				   sizeof delete_state_rowid, &delete, NULL);
-
-		sqlite3_bind_int(delete, 1, rowid);
-		sqlite3_step(delete);
-		sqlite3_finalize(delete);
-	}
-
-	sqlite3_finalize(stmt);
-	tetris_db_close(pgame);
-
-	return ret;
-}
-
-/* Returns a pointer to the first element of a tail queue, of @n length.
- * This list can be iterated over to extract the fields:
- * name, level, score, date.
- */
-int tetris_get_scores(tetris *pgame, struct tetris_score_head **res, size_t n)
-{
-	sqlite3_stmt *stmt;
-
-	debug("Getting highscores");
-
-	if (tetris_db_open(pgame) != 1) {
-		log_err("Unable to get highscores.");
-		return -1;
-	}
-
-	sqlite3_prepare_v2(pgame->db_handle, select_scores,
-		sizeof select_scores, &stmt, NULL);
-
-	while (n-- > 0 && sqlite3_step(stmt) == SQLITE_ROW) {
-		if (sqlite3_column_count(stmt) != 4)
-			/* improperly formatted row */
-			break;
-
-		tetris_score *np = malloc(sizeof *np);
-		if (!np) {
-			log_warn("Out of memory");
-			break;
-		}
-
-		memset(np->id, 0, sizeof np->id);
-		strncpy(np->id, (const char *)
-			sqlite3_column_text(stmt, 0), sizeof np->id);
-
-		if (sizeof np->id > 0)
-			np->id[sizeof np->id -1] = '\0';
-
-		np->level	= sqlite3_column_int(stmt, 1);
-		np->score	= sqlite3_column_int(stmt, 2);
-		np->date	= sqlite3_column_int(stmt, 3);
-
-		if (!np->score || !np->date) {
-			free(np);
-			continue;
-		}
-
-		TAILQ_INSERT_TAIL(&pgame->score_head, np, entries);
-	}
-
-	sqlite3_finalize(stmt);
-
-	*res = &pgame->score_head;
-
-	tetris_db_close(pgame);
-
+		ret[len -1] = '\0';
 	return 1;
 }
 
-void tetris_clean_scores(tetris *pgame)
+int tetris_get_dbfile(tetris *pgame, char *ret, size_t len)
 {
-	while (pgame->score_head.tqh_first) {
-		tetris_score *tmp = pgame->score_head.tqh_first;
-		TAILQ_REMOVE(&pgame->score_head, tmp, entries);
-		free(tmp);
-	}
-}
-
-/* Draw the Hold and Next blocks listing on the side of the game. */
-int tetris_draw_pieces(tetris *pgame, WINDOW *scr)
-{
-	const block *pblock;
-	size_t i, count = 0;
-
-	werase(scr);
-	wattrset(scr, COLOR_PAIR(1));
-	box(scr, 0, 0);
-
-	pblock = HOLD_BLOCK(pgame);
-
-	for (i = 0; i < LEN(pblock->p); i++) {
-		wattrset(scr, A_BOLD |
-			COLOR_PAIR((pblock->type % COLORS_LENGTH) +1));
-
-		mvwadd_wch(scr, pblock->p[i].y +2,
-				pblock->p[i].x +3, PIECES_CHAR);
-	}
-
-	pblock = FIRST_NEXT_BLOCK(pgame);
-
-	while (pblock) {
-		for (i = 0; i < LEN(pblock->p); i++) {
-			wattrset(scr, A_BOLD |
-				COLOR_PAIR((pblock->type % COLORS_LENGTH) +1));
-
-			mvwadd_wch(scr, pblock->p[i].y +2 +(count*3),
-					pblock->p[i].x +9, PIECES_CHAR);
-		}
-
-		count++;
-		pblock = pblock->entries.le_next;
-	}
-
-	wnoutrefresh(scr);
-
-	return 1;
-}
-
-int tetris_draw_board(tetris *pgame, WINDOW *scr)
-{
-	size_t i;
-	block *pblock;
-
-	werase(scr);
-
-	/* Draw board outline */
-	wattrset(scr, A_BOLD | COLOR_PAIR(5));
-
-	mvwvline(scr, 0, 0, '*', TETRIS_MAX_ROWS -1);
-	mvwvline(scr, 0, TETRIS_MAX_COLUMNS +1, '*', TETRIS_MAX_ROWS -1);
-
-	mvwhline(scr, TETRIS_MAX_ROWS -2, 0, '*', TETRIS_MAX_COLUMNS +2);
-
-	/* Draw the background of the board. Dot every other column */
-	wattrset(scr, COLOR_PAIR(1));
-	for (i = 2; i < TETRIS_MAX_ROWS; i++)
-		mvwprintw(scr, i -2, 1, " . . . . .");
-
-	/* Draw the ghost block */
-	pblock = pgame->ghost;
-	wattrset(scr, A_DIM |
-		COLOR_PAIR((pblock->type % COLORS_LENGTH) +1));
-
-	for (i = 0; i < LEN(pblock->p); i++) {
-		mvwadd_wch(scr,
-		    pblock->p[i].y +pblock->row_off -2,
-		    pblock->p[i].x +pblock->col_off +1,
-		    PIECES_CHAR);
-	}
-
-	/* Draw the game board, minus the two hidden rows above the game */
-	for (i = 2; i < TETRIS_MAX_ROWS; i++) {
-		if (pgame->spaces[i] == 0)
-			continue;
-
-		size_t j;
-		for (j = 0; j < TETRIS_MAX_COLUMNS; j++) {
-			if (!tetris_at_yx(pgame, i, j))
-				continue;
-
-			wattrset(scr, A_BOLD |
-				COLOR_PAIR(pgame->colors[i][j] +1));
-			mvwadd_wch(scr, i -2, j +1, PIECES_CHAR);
-		}
-	}
-
-	/* Draw the falling block to the board */
-	pblock = CURRENT_BLOCK(pgame);
-	for (i = 0; i < LEN(pblock->p); i++) {
-		wattrset(scr, A_DIM |
-			COLOR_PAIR((pblock->type % COLORS_LENGTH) +1));
-
-		mvwadd_wch(scr,
-		    pblock->p[i].y +pblock->row_off -2,
-		    pblock->p[i].x +pblock->col_off +1,
-		    PIECES_CHAR);
-	}
-
-	/* Draw "PAUSED" text */
-	if (pgame->paused) {
-		wattrset(scr, A_BOLD | COLOR_PAIR(1));
-		mvwprintw(scr, (TETRIS_MAX_ROWS -2) /2 -1,
-				 (TETRIS_MAX_COLUMNS -2) /2 -1,
-				 "PAUSED");
-	}
-
-	/* Draw username */
-	wattrset(scr, COLOR_PAIR(1));
-	mvwprintw(scr, BOARD_HEIGHT -1, (BOARD_WIDTH -strlen(pgame->id))/2,
-		"%s", pgame->id);
-
-	wnoutrefresh(scr);
+	strncpy(ret, pgame->db_file, len);
+	if (len > 0)
+		ret[len -1] = '\0';
 	return 1;
 }
 

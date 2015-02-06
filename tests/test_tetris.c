@@ -36,20 +36,30 @@ int main(void)
 	if (tetris_init(&pgame) != 1)
 		log_err("Failed to initialize Tetris");
 
-	tetris_set_attr(pgame, TETRIS_SET_NAME, "Theta");
-	tetris_set_attr(pgame, TETRIS_SET_DBFILE, "test-db");
+	tetris_set_wallkicks(pgame, TETRIS_FALSE);
+	tetris_set_tspins(pgame, TETRIS_FALSE);
+	tetris_set_ghosts(pgame, TETRIS_FALSE);
+	tetris_set_name(pgame, "Theta");
+	tetris_set_dbfile(pgame, "test-db");
+
+	tetris_cmd(pgame, TETRIS_MOVE_DROP);
+	tetris_cmd(pgame, TETRIS_GAME_TICK);
+
+	printf("Level: %d\n", tetris_get_level(pgame));
+	printf("Score: %d\n", tetris_get_score(pgame));
+	printf("Lines destroyed: %d\n", tetris_get_lines(pgame));
+	printf("Nanosecond tick delay: %d\n", tetris_get_delay(pgame));
+	printf("Ghost blocks enabled: %d\n", tetris_get_ghosts(pgame));
+	printf("Wallkicks enabled: %d\n", tetris_get_wallkicks(pgame));
+	printf("T-Spins enabled: %d\n", tetris_get_tspins(pgame));
 
 	char name[16];
 
-	tetris_get_attr(pgame, TETRIS_GET_NAME, name, sizeof name);
-	printf("Player name: %s\n", name);
+	tetris_get_name(pgame, name, sizeof name);
+	printf("Player name: \"%s\"\n", name);
 
-	tetris_get_attr(pgame, TETRIS_GET_DBFILE, name, sizeof name);
-	printf("Database file: %s\n", name);
-
-	int val;
-	tetris_get_attr(pgame, TETRIS_GET_SCORE, &val);
-	printf("Score: %d\n", val);
+	tetris_get_dbfile(pgame, name, sizeof name);
+	printf("Database file: \"%s\"\n", name);
 
 	tetris_cleanup(pgame);
 

@@ -19,41 +19,48 @@
 #ifndef SCREEN_H_
 #define SCREEN_H_
 
-#include <ncurses.h>
-
-#if defined(WIDE_NCURSES_HEADER)
-# include <ncursesw/ncurses.h>
-#endif
-
 #include "tetris.h"
 
-#define PIECES_CHAR WACS_BLOCK
+/*****************************************************************/
+/* Function pointers to call upon different drivers to draw game */
+/*****************************************************************/
 
-#define COLORS_LENGTH	7
-extern const char *colors;
-
-#define PIECES_Y_OFF	4
-#define PIECES_X_OFF	3
-#define PIECES_HEIGHT	16
-#define PIECES_WIDTH	13
-
-#define BOARD_Y_OFF	1
-#define BOARD_X_OFF	18
-#define BOARD_HEIGHT	TETRIS_MAX_ROWS
-#define BOARD_WIDTH	TETRIS_MAX_COLUMNS +2
-
-#define TEXT_Y_OFF	1
-#define TEXT_X_OFF	BOARD_X_OFF + BOARD_WIDTH
-#define TEXT_HEIGHT	BOARD_HEIGHT
-#define TEXT_WIDTH	(COLS - TEXT_X_OFF -1)
-
-int screen_init(void);
-void screen_cleanup(void);
-
+/* init/deinit */
+int (*screen_init)(void);
+void (*screen_cleanup)(void);
+/* Game menu */
+int (*screen_menu)(tetris *);
 /* Update screen */
-void screen_draw_game(tetris *);
-
+int (*screen_update)(tetris *);
 /* Game over! prints high scores if the player lost */
-void screen_draw_over(tetris *);
+int (*screen_gameover)(tetris *);
+
+/* Debugging, no drawing */
+int screen_nodraw_init(void);
+void screen_nodraw_cleanup(void);
+int screen_nodraw_menu(tetris *);
+int screen_nodraw_update(tetris *);
+int screen_nodraw_gameover(tetris *);
+
+/* Text */
+int screen_text_init(void);
+void screen_text_cleanup(void);
+int screen_text_menu(tetris *);
+int screen_text_update(tetris *);
+int screen_text_gameover(tetris *);
+
+/* Ncurses */
+int screen_nc_init(void);
+void screen_nc_cleanup(void);
+int screen_nc_menu(tetris *);
+int screen_nc_update(tetris *);
+int screen_nc_gameover(tetris *);
+
+/* GL */
+int screen_gl_init(void);
+void screen_gl_cleanup(void);
+int screen_gl_menu(tetris *);
+int screen_gl_update(tetris *);
+int screen_gl_gameover(tetris *);
 
 #endif	/* SCREEN_H_ */

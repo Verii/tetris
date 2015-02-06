@@ -24,6 +24,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "db.h"
 #include "conf.h"
 #include "logs.h"
 #include "tetris.h"
@@ -130,6 +131,7 @@ int main(int argc, char **argv)
 	if (conf_create(&config) != 1)
 		exit(EXIT_FAILURE);
 
+	/* Apply built-in configuration options */
 	if (conf_init(config, NULL) != 1)
 		exit(EXIT_FAILURE);
 
@@ -145,12 +147,38 @@ int main(int argc, char **argv)
 	if (tetris_init(&pgame) != 1 || pgame == NULL)
 		exit(EXIT_FAILURE);
 
-	tetris_set_attr(pgame, TETRIS_SET_NAME, config->username.val);
-	tetris_set_attr(pgame, TETRIS_SET_DBFILE, config->save_file.val);
+	tetris_set_ghosts(pgame, TETRIS_TRUE);
+	tetris_set_wallkicks(pgame, TETRIS_TRUE);
+	tetris_set_tspins(pgame, TETRIS_TRUE);
+	tetris_set_name(pgame, config->username.val);
+	tetris_set_dbfile(pgame, config->save_file.val);
+
+	db_resume_state(pgame);
+
+	/* Draw with Ncurses context by default */
+#if !defined(DEBUG)
+	screen_init = &screen_nc_init;
+	screen_cleanup = &screen_nc_cleanup;
+	screen_menu = &screen_nc_menu;
+	screen_update = &screen_nc_update;
+	screen_gameover = &screen_nc_gameover;
+#else
+	/* Because valgrind output draws to ncurses screen, it's a pain in the
+	 * ass to read. So redefine draw functions to dummy void functions when
+	 * we're trying to debug the program.
+	 */
+	screen_init = &screen_nodraw_init;
+	screen_cleanup = &screen_nodraw_cleanup;
+	screen_menu = &screen_nodraw_menu;
+	screen_update = &screen_nodraw_update;
+	screen_gameover = &screen_nodraw_gameover;
+#endif
 
 	/* Create ncurses context, draw screen, and watch for keyboard input */
 	screen_init();
-	screen_draw_game(pgame);
+	screen_menu(pgame);
+	screen_update(pgame);
+
 	events_add_input(fileno(stdin), keyboard_in_handler);
 
 	/* Add network FD to events watch list */
@@ -159,18 +187,9 @@ int main(int argc, char **argv)
 
 	events_add_input(server_fd, network_in_handler);
 
-	/* Request authentication token from server.
-	 * Setup client-server encryption.
-	 * Add user to matchmaking server-side.
-	 *
-	 * Server responses are handled in network_in_handler.
-	 */
-//	network_authenticate(server_fd, config->username.val,
-//			config->password.val);
-
 	struct timespec ts_tick;
 	ts_tick.tv_sec = 0;
-	tetris_get_attr(pgame, TETRIS_GET_DELAY, &ts_tick.tv_nsec);
+	ts_tick.tv_nsec = tetris_get_delay(pgame);
 
 	struct sigaction sa_tick;
 	sa_tick.sa_flags = 0;
@@ -179,12 +198,28 @@ int main(int argc, char **argv)
 
 	events_add_timer(ts_tick, sa_tick, SIGRTMIN+2);
 
+	/* Main loop of program */
 	events_main_loop(pgame);
 
-	screen_draw_over(pgame);
+	switch (tetris_get_state(pgame)) {
+	case TETRIS_LOSE:
+	case TETRIS_WIN:
+		db_save_score(pgame);
+		break;
+	case TETRIS_QUIT:
+		db_save_state(pgame);
+		break;
+	}
+
+	/* Cleanup */
+	conf_cleanup(config);
+	screen_gameover(pgame);
+	screen_cleanup();
 
 	tetris_cleanup(pgame);
-	conf_cleanup(config);
+	logs_cleanup();
+	network_cleanup();
+	events_cleanup();
 
 	return 0;
 }

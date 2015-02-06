@@ -56,4 +56,6 @@ int events_add_timer(struct timespec, struct sigaction, int sig);
  */
 void events_main_loop(tetris *);
 
+void events_cleanup(void);
+
 #endif /* EVENTS_H_ */
