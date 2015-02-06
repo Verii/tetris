@@ -141,11 +141,13 @@ int main(int argc, char **argv)
 	if (tetris_init(&pgame) != 1 || pgame == NULL)
 		exit(EXIT_FAILURE);
 
+	tetris_set_name(pgame, config->username.val);
+	tetris_set_dbfile(pgame, config->save_file.val);
+
 	tetris_set_ghosts(pgame, TETRIS_TRUE);
 	tetris_set_wallkicks(pgame, TETRIS_TRUE);
 	tetris_set_tspins(pgame, TETRIS_TRUE);
-	tetris_set_name(pgame, config->username.val);
-	tetris_set_dbfile(pgame, config->save_file.val);
+	tetris_set_lockdelay(pgame, TETRIS_TRUE);
 
 	tetris_set_win_condition(pgame, TETRIS_40_LINES);
 //	tetris_set_win_condition(pgame, TETRIS_CLASSIC);
