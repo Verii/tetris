@@ -1,5 +1,5 @@
 BIN = tetris
-VERSION = v0.70
+VERSION = v0.71
 
 SRC =	src/main.c \
 	src/conf.c \
