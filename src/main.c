@@ -153,6 +153,9 @@ int main(int argc, char **argv)
 	tetris_set_name(pgame, config->username.val);
 	tetris_set_dbfile(pgame, config->save_file.val);
 
+	tetris_set_win_condition(pgame, TETRIS_40_LINES);
+//	tetris_set_win_condition(pgame, TETRIS_CLASSIC);
+
 	db_resume_state(pgame);
 
 	/* Draw with Ncurses context by default */
