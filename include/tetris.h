@@ -65,8 +65,10 @@
 typedef struct block block;
 struct block {
 	uint8_t soft_drop, hard_drop;
-	bool hold, t_spin;
 	uint8_t type;
+	bool hold;	/* Has the block been in the hold box */
+	bool t_spin;	/* Did we do a t spin */
+	bool lock_delay;/* Have we waited an additional game tick */
 
 	uint8_t col_off, row_off;
 	struct pieces {
@@ -94,9 +96,10 @@ struct tetris {
 	block *ghost_block;
 
 	/* Attributes */
-	bool wallkicks;
-	bool tspins;
-	bool ghosts;
+	bool enable_wallkicks;
+	bool enable_tspins;
+	bool enable_ghosts;
+	bool enable_lock_delay;
 
 	/* State */
 	bool paused;
@@ -139,9 +142,10 @@ int tetris_cmd(tetris *, int command);
 #define TETRIS_FALSE	0
 
 /* Set Attributes */
-#define tetris_set_ghosts(G, B)		((G)->ghosts = (B))
-#define tetris_set_wallkicks(G, B)	((G)->wallkicks = (B))
-#define tetris_set_tspins(G, B)		((G)->tspins = (B))
+#define tetris_set_ghosts(G, B)		((G)->enable_ghosts = (B))
+#define tetris_set_wallkicks(G, B)	((G)->enable_wallkicks = (B))
+#define tetris_set_tspins(G, B)		((G)->enable_tspins = (B))
+#define tetris_set_lockdelay(G, B)	((G)->enable_lock_delay = (B))
 int tetris_set_name(tetris *, const char *name);
 int tetris_set_dbfile(tetris *, const char *name);
 
@@ -167,8 +171,9 @@ int tetris_get_dbfile(tetris *, char *, size_t);
 #define tetris_get_lines(G)		((G)->lines_destroyed)
 #define tetris_get_score(G)		((G)->score)
 #define tetris_get_delay(G)		((G)->tick_nsec)
-#define tetris_get_ghosts(G)		((G)->ghosts)
-#define tetris_get_wallkicks(G)		((G)->wallkicks)
-#define tetris_get_tspins(G)		((G)->tspins)
+#define tetris_get_ghosts(G)		((G)->enable_ghosts)
+#define tetris_get_wallkicks(G)		((G)->enable_wallkicks)
+#define tetris_get_tspins(G)		((G)->enable_tspins)
+#define tetris_get_lockdelay(G, B)	((G)->enable_lock_delay)
 
 #endif	/* TETRIS_H_ */
