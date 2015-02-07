@@ -174,6 +174,7 @@ int tetris_get_dbfile(tetris *, char *, size_t);
 #define tetris_get_ghosts(G)		((G)->enable_ghosts)
 #define tetris_get_wallkicks(G)		((G)->enable_wallkicks)
 #define tetris_get_tspins(G)		((G)->enable_tspins)
-#define tetris_get_lockdelay(G, B)	((G)->enable_lock_delay)
+#define tetris_get_lockdelay(G)		((G)->enable_lock_delay)
+#define tetris_get_difficult(G)		((G)->difficult)
 
 #endif	/* TETRIS_H_ */
