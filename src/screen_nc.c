@@ -22,8 +22,6 @@
 # include <ncursesw/ncurses.h>
 #endif
 
-#define PIECES_CHAR WACS_BLOCK
-
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,6 +33,7 @@
 #include "tetris.h"
 #include "helpers.h"
 
+#define PIECES_CHAR WACS_BLOCK
 
 #define PIECES_Y_OFF	4
 #define PIECES_X_OFF	3
@@ -44,18 +43,34 @@
 #define BOARD_Y_OFF	1
 #define BOARD_X_OFF	18
 #define BOARD_HEIGHT	TETRIS_MAX_ROWS
-#define BOARD_WIDTH	TETRIS_MAX_COLUMNS +2
+#define BOARD_WIDTH	(TETRIS_MAX_COLUMNS +2)
 
 #define TEXT_Y_OFF	1
-#define TEXT_X_OFF	BOARD_X_OFF + BOARD_WIDTH
+#define TEXT_X_OFF	(BOARD_X_OFF + BOARD_WIDTH)
 #define TEXT_HEIGHT	BOARD_HEIGHT
-#define TEXT_WIDTH	(COLS - TEXT_X_OFF -1)
+#define TEXT_WIDTH	((COLS - TEXT_X_OFF) -1)
 
 static WINDOW *board, *pieces, *text;
 const char colors[] = {
 	COLOR_WHITE, COLOR_RED, COLOR_GREEN, COLOR_YELLOW, COLOR_BLUE, COLOR_MAGENTA, COLOR_CYAN };
 
-extern struct config *config;
+#define SCREEN_COLOR_WHITE	1
+#define SCREEN_COLOR_RED	2
+#define SCREEN_COLOR_GREEN	3
+#define SCREEN_COLOR_YELLOW	4
+#define SCREEN_COLOR_BLUE	5
+#define SCREEN_COLOR_MAGENTA	6
+#define SCREEN_COLOR_CYAN	7
+
+const char *tips[] = {
+	"Soft dropping yields 1 point per space",
+	"Hard dropping yields 2 points per space",
+	"Difficult moves increase points by x1.5",
+	"Pausing resets your difficulty bonus",
+	"Tetris and T-Spins are difficult moves",
+	"You're allowed 1 move during lock timeouts",
+	"Move down after dropping to speed up the game",
+};
 
 int screen_nc_init(void)
 {
@@ -72,7 +87,7 @@ int screen_nc_init(void)
 	for (size_t i = 0; i < LEN(colors); i++)
 		init_pair(i + 1, colors[i], COLOR_BLACK);
 
-	attrset(COLOR_PAIR(1));
+	attrset(COLOR_PAIR(SCREEN_COLOR_WHITE));
 
 	/* Draw static text */
 	box(stdscr, 0, 0);
@@ -116,51 +131,56 @@ int screen_nc_update(tetris *pgame)
 	werase(pieces);
 	werase(text);
 
+	size_t i;
 	const block *pblock;
-	size_t i, count = 0;
 
+	/***************/
 	/* draw pieces */
-	wattrset(pieces, COLOR_PAIR(1));
+	/***************/
+
+	wattrset(pieces, COLOR_PAIR(SCREEN_COLOR_WHITE));
 	box(pieces, 0, 0);
 
 	pblock = HOLD_BLOCK(pgame);
 
-	for (i = 0; i < LEN(pblock->p); i++) {
-		wattrset(pieces, A_BOLD |
-			COLOR_PAIR((pblock->type % LEN(colors)) +1));
+	wattrset(pieces, A_BOLD | COLOR_PAIR((pblock->type % LEN(colors)) +1));
 
+	for (i = 0; i < LEN(pblock->p); i++)
 		mvwadd_wch(pieces, pblock->p[i].y +2,
-				pblock->p[i].x +3, PIECES_CHAR);
-	}
+			pblock->p[i].x +3, PIECES_CHAR);
 
 	pblock = FIRST_NEXT_BLOCK(pgame);
 
+	size_t count = 0;
 	while (pblock) {
-		for (i = 0; i < LEN(pblock->p); i++) {
-			wattrset(pieces, A_BOLD |
-				COLOR_PAIR((pblock->type % LEN(colors)) +1));
 
+		wattrset(pieces, A_BOLD | COLOR_PAIR((pblock->type % LEN(colors)) +1));
+		for (i = 0; i < LEN(pblock->p); i++)
 			mvwadd_wch(pieces, pblock->p[i].y +2 +(count*3),
-					pblock->p[i].x +9, PIECES_CHAR);
-		}
+				pblock->p[i].x +9, PIECES_CHAR);
 
 		count++;
 		pblock = pblock->entries.le_next;
 	}
 
+	/**************/
 	/* draw board */
+	/**************/
+
 	/* Draw board outline */
-	wattrset(board, A_BOLD | COLOR_PAIR(5));
+	wattrset(board, A_BOLD | COLOR_PAIR(SCREEN_COLOR_BLUE));
 
 	mvwvline(board, 0, 0, '*', TETRIS_MAX_ROWS -1);
 	mvwvline(board, 0, TETRIS_MAX_COLUMNS +1, '*', TETRIS_MAX_ROWS -1);
 
 	mvwhline(board, TETRIS_MAX_ROWS -2, 0, '*', TETRIS_MAX_COLUMNS +2);
 
+#if 0
 	/* Draw the background of the board. Dot every other column */
-	wattrset(board, COLOR_PAIR(1));
+	wattrset(board, COLOR_PAIR(SCREEN_COLOR_WHITE));
 	for (i = 2; i < TETRIS_MAX_ROWS; i++)
 		mvwprintw(board, i -2, 1, " . . . . .");
+#endif
 
 	/* Draw the ghost block */
 	pblock = pgame->ghost_block;
@@ -185,7 +205,7 @@ int screen_nc_update(tetris *pgame)
 				continue;
 
 			wattrset(board, A_BOLD |
-				COLOR_PAIR(pgame->colors[i][j] +1));
+			   COLOR_PAIR((pgame->colors[i][j] %LEN(colors)) +1));
 			mvwadd_wch(board, i -2, j +1, PIECES_CHAR);
 		}
 	}
@@ -193,8 +213,7 @@ int screen_nc_update(tetris *pgame)
 	/* Draw the falling block to the board */
 	pblock = CURRENT_BLOCK(pgame);
 	for (i = 0; i < LEN(pblock->p); i++) {
-		wattrset(board, A_DIM |
-			COLOR_PAIR((pblock->type % LEN(colors)) +1));
+		wattrset(board, A_BOLD | COLOR_PAIR((pblock->type % LEN(colors)) +1));
 
 		mvwadd_wch(board,
 		    pblock->p[i].y +pblock->row_off -2,
@@ -204,53 +223,71 @@ int screen_nc_update(tetris *pgame)
 
 	/* Draw "PAUSED" text */
 	if (pgame->paused) {
-		wattrset(board, A_BOLD | COLOR_PAIR(1));
-		mvwprintw(board, (TETRIS_MAX_ROWS -2) /2 -1,
-				 (TETRIS_MAX_COLUMNS -2) /2 -1,
-				 "PAUSED");
+		wattrset(board, A_BOLD | COLOR_PAIR(SCREEN_COLOR_WHITE));
+		mvwprintw(board, (BOARD_HEIGHT-1)/2,
+			(BOARD_WIDTH-6)/2, "PAUSED");
 	}
 
-	/* Draw username */
-	wattrset(board, COLOR_PAIR(1));
-	mvwprintw(board, BOARD_HEIGHT -1, (BOARD_WIDTH -strlen(pgame->id))/2,
-		"%s", pgame->id);
+	wattrset(board, COLOR_PAIR(SCREEN_COLOR_BLUE));
+	mvwprintw(board, BOARD_HEIGHT -1,
+		(BOARD_WIDTH - strlen(pgame->gamemode)) /2,
+		 "%s", pgame->gamemode);
 
-	/* Draw text */
-	wattrset(text, COLOR_PAIR(1));
+	/******************/
+	/* Draw game text */
+	/******************/
 
-	mvwprintw(text, 0, 1, "Gamemode: %s", pgame->gamemode);
-	mvwprintw(text, 2, 2, "Level %7d", tetris_get_level(pgame));
-	mvwprintw(text, 3, 2, "Score %7d", tetris_get_score(pgame));
-	mvwprintw(text, 4, 2, "Lines %7d", tetris_get_lines(pgame));
+	wattrset(text, COLOR_PAIR(SCREEN_COLOR_WHITE));
+	mvwprintw(text, 1, 2, "Level %7d", tetris_get_level(pgame));
+	mvwprintw(text, 2, 2, "Score %7d", tetris_get_score(pgame));
+	mvwprintw(text, 3, 2, "Lines %7d", tetris_get_lines(pgame));
+	mvwprintw(text, 4, 2, "Difficult %3d", tetris_get_difficult(pgame));
+	mvwprintw(text, 5, 2, "%s", pgame->id); // username
 
-	mvwprintw(text, 6, 2, "Controls");
-	mvwprintw(text, 7 , 3, "Pause: %c", config->pause_key.key);
-	mvwprintw(text, 8 , 3, "Save/Quit: %c", config->quit_key.key);
-	mvwprintw(text, 9 , 3, "Move: %c%c%c%c",
+	/* Controls */
+	{
+	extern struct config *config;
+
+	mvwprintw(text, 1, 22, "Pause: %c", config->pause_key.key);
+	mvwprintw(text, 2, 22, "Save/Quit: %c", config->quit_key.key);
+	mvwprintw(text, 3, 22, "Move: %c%c%c%c",
+			config->move_drop.key,
 			config->move_left.key,
 			config->move_down.key,
-			config->move_right.key,
-			config->move_drop.key);
-
-	mvwprintw(text, 10 , 3, "Rotate: %c%c",
+			config->move_right.key);
+	mvwprintw(text, 4, 22, "Rotate: %c%c",
 			config->rotate_left.key,
 			config->rotate_right.key);
+	mvwprintw(text, 5, 22, "Hold: %c", config->hold_key.key);
+	}
 
-	mvwprintw(text, 11, 3, "Hold: %c", config->hold_key.key);
-	mvwprintw(text, 13, 1, "--------");
+	/* Tips */
+	wattrset(text, A_UNDERLINE | COLOR_PAIR(SCREEN_COLOR_BLUE));
+	mvwprintw(text, 7, 2, "Gameplay Tips");
 
-	/* Print in-game logs/messages */
-	wattrset(text, COLOR_PAIR(3));
+	static int tip = 0, shows = 0;
+	if (shows++ >= 30) {
+		tip = rand() % LEN(tips);
+		shows = 0;
+	}
+	wattrset(text, COLOR_PAIR(SCREEN_COLOR_YELLOW));
+	mvwprintw(text, 8, 3, "%s", tips[tip]);
+
+	/* Logs and Messages */
+	wattrset(text, A_UNDERLINE | COLOR_PAIR(SCREEN_COLOR_MAGENTA));
+	mvwprintw(text, 10, 2, "Messages");
+	wattrset(text, COLOR_PAIR(SCREEN_COLOR_GREEN));
 
 	struct log_entry *lep, *tmp;
 	i = 0;
+	int vert_off = 11;
 
 	LIST_FOREACH(lep, &entry_head, entries) {
 		/* Display messages, then remove anything that can't fit on
 		 * screen
 		 */
-		if (i < TEXT_HEIGHT-15) {
-			mvwprintw(text, 14+i, 2, "%.*s", TEXT_WIDTH -3, lep->msg);
+		if ((i+vert_off) < TEXT_HEIGHT-1) {
+			mvwprintw(text, vert_off+i, 3, "%.*s", TEXT_WIDTH -3, lep->msg);
 		} else {
 			tmp = lep;
 
@@ -275,14 +312,22 @@ int screen_nc_gameover(tetris *pgame)
 	debug("Drawing game over screen");
 
 	clear();
-	attrset(COLOR_PAIR(1));
+	attrset(COLOR_PAIR(SCREEN_COLOR_WHITE));
 	box(stdscr, 0, 0);
 
+	if (LINES < 24) {
+		attrset(COLOR_PAIR(SCREEN_COLOR_RED) | A_BOLD);
+		mvprintw(1, 1, "Not enough screen to print highscores");
+		goto input_wait;
+	}
+
 	mvprintw(1, 1, "Local Leaderboard");
-	mvprintw(2, 3, "Rank\tName\t\tLevel\tScore\tDate");
+	mvprintw(2, 3, "Rank\tName\t\tLevel\t  Score\t\tDate");
 
 	/* Print score board when you lose a game */
-	tetris *res[10];
+	tetris *res[20];
+
+	/* Get LEN top scores from database */
 	if (db_get_scores(pgame, res, LEN(res)) != 1) {
 		return 0;
 	}
@@ -291,21 +336,38 @@ int screen_nc_gameover(tetris *pgame)
 	{
 		char *date_str = ctime(&((res[i])->date));
 
-		/* Bold the entry we've just added to the highscores */
-		if ((tetris_get_score(pgame) == (res[i])->score) &&
-		    (tetris_get_level(pgame) == (res[i])->level))
-			attrset(COLOR_PAIR(1) | A_BOLD);
-		else
-			attrset(COLOR_PAIR(1));
+		/* Pretty colors for 1st, 2nd, 3rd, and 4th */
+		switch (i) {
+		case 0: attron(COLOR_PAIR(SCREEN_COLOR_BLUE)); break;
+		case 1: attron(COLOR_PAIR(SCREEN_COLOR_CYAN)); break;
+		case 2: attron(COLOR_PAIR(SCREEN_COLOR_GREEN)); break;
+		case 3: attron(COLOR_PAIR(SCREEN_COLOR_YELLOW)); break;
+		case 4: attron(COLOR_PAIR(SCREEN_COLOR_RED)); break;
+		default: attrset(COLOR_PAIR(SCREEN_COLOR_WHITE)); break;
+		}
 
-		mvprintw(i +3, 4, "%2d.\t%-16s%-5d\t%-5d\t%.*s", i+1,
+		/* Bold the entry we've just added to the highscores */
+		bool us;
+		if ((tetris_get_score(pgame) == (res[i])->score) &&
+		    (tetris_get_level(pgame) == (res[i])->level)) {
+			attron(A_BOLD);
+			us = true;
+		} else {
+			attroff(A_BOLD);
+			us = false;
+		}
+
+		mvprintw(i +3, 2, "%s%2d.\t%-16s%5d\t%7d\t\t%.*s%s",
+			 us ? ">>" : "  ", i+1,
 			 (res[i])->id ? (res[i])->id : "unknown",
 			 (res[i])->level, (res[i])->score,
-			 strlen(date_str) -1, date_str);
+			 strlen(date_str) -1, date_str,
+			 us ? " <<" : "");
 	}
 
 	db_clean_scores(res, LEN(res));
 
+input_wait:
 	/* Give a 5 second countdown before the user can quit, so they have
 	 * time to see highscores. And so they don't accidentally quit while
 	 * furiously pressing buttons when the game suddenly ends.
