@@ -64,6 +64,7 @@ int screen_nc_init(void)
 
 	cbreak();
 	noecho();
+	nonl();
 	keypad(stdscr, TRUE);
 	curs_set(0);
 
@@ -279,7 +280,6 @@ int screen_nc_gameover(tetris *pgame)
 
 	mvprintw(1, 1, "Local Leaderboard");
 	mvprintw(2, 3, "Rank\tName\t\tLevel\tScore\tDate");
-	mvprintw(LINES -2, 1, "Press any RETURN to continue ..");
 
 	/* Print score board when you lose a game */
 	tetris *res[10];
@@ -306,9 +306,26 @@ int screen_nc_gameover(tetris *pgame)
 
 	db_clean_scores(res, LEN(res));
 
-	refresh();
-	sleep(1);
-	while (getch() != KEY_ENTER);
+	/* Give a 5 second countdown before the user can quit, so they have
+	 * time to see highscores. And so they don't accidentally quit while
+	 * furiously pressing buttons when the game suddenly ends.
+	 */
+
+	/* make getch() non-blocking */
+	nodelay(stdscr, true);
+
+	int i = 5;
+	while (i >= 0) {
+		mvprintw(LINES -2, 1,
+			"Press any key to continue in [%d] seconds..", i--);
+		refresh();
+		sleep(1);
+		while (getch() != ERR); // drop all user-input
+	}
+
+	/* We need to press a key *after* the timer has finished */
+	nodelay(stdscr, false);
+	getch();
 
 	return 1;
 }
