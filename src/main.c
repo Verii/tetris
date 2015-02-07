@@ -197,7 +197,8 @@ int main(int argc, char **argv)
 	sa_tick.sa_handler = timer_handler;
 	sigemptyset(&sa_tick.sa_mask);
 
-	events_add_timer(ts_tick, sa_tick, SIGRTMIN+2);
+	/* Add timer event to trigger game ticks */
+	events_add_timer(ts_tick, sa_tick, SIGRTMIN);
 
 	/* Main loop of program */
 	events_main_loop(pgame);
@@ -213,14 +214,14 @@ int main(int argc, char **argv)
 	}
 
 	/* Cleanup */
-	conf_cleanup(config);
 	screen_gameover(pgame);
 	screen_cleanup();
-
 	tetris_cleanup(pgame);
-	logs_cleanup();
-	network_cleanup();
 	events_cleanup();
+
+	conf_cleanup(config);
+	network_cleanup();
+	logs_cleanup();
 
 	return 0;
 }
