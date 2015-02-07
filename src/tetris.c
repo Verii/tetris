@@ -813,10 +813,15 @@ static int tetris_timed(tetris *pgame)
 }
 
 
-int tetris_set_win_condition(tetris *pgame, enum TETRIS_GAMES gm)
+int tetris_set_gamemode(tetris *pgame, enum TETRIS_GAMES gm)
 {
 	switch (gm) {
 	case TETRIS_40_LINES:
+		tetris_set_ghosts(pgame, TETRIS_TRUE);
+		tetris_set_wallkicks(pgame, TETRIS_TRUE);
+		tetris_set_tspins(pgame, TETRIS_TRUE);
+		tetris_set_lockdelay(pgame, TETRIS_TRUE);
+
 		strncpy(pgame->gamemode, "40 Lines", sizeof pgame->gamemode);
 		pgame->check_win = &tetris_40_lines;
 		break;
@@ -827,6 +832,11 @@ int tetris_set_win_condition(tetris *pgame, enum TETRIS_GAMES gm)
 		break;
 	case TETRIS_CLASSIC:
 	default:
+		tetris_set_ghosts(pgame, TETRIS_FALSE);
+		tetris_set_wallkicks(pgame, TETRIS_FALSE);
+		tetris_set_tspins(pgame, TETRIS_FALSE);
+		tetris_set_lockdelay(pgame, TETRIS_FALSE);
+
 		strncpy(pgame->gamemode, "Classic", sizeof pgame->gamemode);
 		pgame->check_win = &tetris_classic;
 		break;

@@ -144,13 +144,13 @@ int main(int argc, char **argv)
 	tetris_set_name(pgame, config->username.val);
 	tetris_set_dbfile(pgame, config->save_file.val);
 
-	tetris_set_ghosts(pgame, TETRIS_TRUE);
-	tetris_set_wallkicks(pgame, TETRIS_TRUE);
-	tetris_set_tspins(pgame, TETRIS_TRUE);
-	tetris_set_lockdelay(pgame, TETRIS_TRUE);
+	/* Newer-ish version of tetris with wallkicks, ghost blocks, lock
+	 * delays, tspins
+	 */
+	tetris_set_gamemode(pgame, TETRIS_40_LINES);
 
-	tetris_set_win_condition(pgame, TETRIS_40_LINES);
-//	tetris_set_win_condition(pgame, TETRIS_CLASSIC);
+	/* Classic tetris, nothing fancy. Play until you lose. */
+//	tetris_set_gamemode(pgame, TETRIS_CLASSIC);
 
 	if (db_resume_state(pgame) != 1)
 		logs_to_game("Unable to resume old game save.");

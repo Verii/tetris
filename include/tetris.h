@@ -155,7 +155,7 @@ enum TETRIS_GAMES {
 	TETRIS_40_LINES,
 	TETRIS_TIMED,
 };
-int tetris_set_win_condition(tetris *, enum TETRIS_GAMES);
+int tetris_set_gamemode(tetris *, enum TETRIS_GAMES);
 
 /* Get Attributes */
 enum TETRIS_GAME_STATE {
