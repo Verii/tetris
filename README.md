@@ -13,10 +13,8 @@ To install:
 
 -GNU C99/POSIX  
 -libsqlite3 (3.8+)  
--libncurses  
--libncursesw (ncurses +wide char support)  
--librt  
--libm  
+-libncurses
+-json-c
 
 ## Contributions
 
@@ -27,5 +25,3 @@ BSD/MIT/ISC I'm okay with it.
 
 Copyright (C) 2014 James Smith <james@apertum.org>.  
 Read the LICENSE file.
-
-![screenshot3](assets/screenshot3.png "falling blocks game3")
