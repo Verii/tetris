@@ -30,7 +30,10 @@
 #include "screen.h"
 #include "input.h"
 #include "events.h"
-#include "net/network.h"
+
+#if defined(NETWORKING)
+# include "net/network.h"
+#endif
 
 tetris *pgame;
 struct config *config;
@@ -155,25 +158,7 @@ int main(int argc, char **argv)
 	if (db_resume_state(pgame) != 1)
 		logs_to_game("Unable to resume old game save.");
 
-
-	/* Draw with Ncurses context by default */
-#if !defined(DEBUG)
-	screen_init = &screen_nc_init;
-	screen_cleanup = &screen_nc_cleanup;
-	screen_menu = &screen_nc_menu;
-	screen_update = &screen_nc_update;
-	screen_gameover = &screen_nc_gameover;
-#else
-	/* Because valgrind output draws to ncurses screen, it's a pain in the
-	 * ass to read. So redefine draw functions to dummy void functions when
-	 * we're trying to debug the program.
-	 */
-	screen_init = &screen_nodraw_init;
-	screen_cleanup = &screen_nodraw_cleanup;
-	screen_menu = &screen_nodraw_menu;
-	screen_update = &screen_nodraw_update;
-	screen_gameover = &screen_nodraw_gameover;
-#endif
+	screen_setup();
 
 	/* Create ncurses context, draw screen, and watch for keyboard input */
 	screen_init();
@@ -182,11 +167,13 @@ int main(int argc, char **argv)
 
 	events_add_input(fileno(stdin), keyboard_in_handler);
 
+#if defined (NETWORKING)
 	/* Add network FD to events watch list */
 	int server_fd = network_init(hflag? hostname: config->hostname.val,
 			pflag? port: config->port.val);
 
 	events_add_input(server_fd, network_in_handler);
+#endif
 
 	struct timespec ts_tick;
 	ts_tick.tv_sec = 0;
@@ -208,6 +195,7 @@ int main(int argc, char **argv)
 	case TETRIS_WIN:
 		db_save_score(pgame);
 		break;
+	default:
 	case TETRIS_QUIT:
 		db_save_state(pgame);
 		break;
@@ -220,8 +208,11 @@ int main(int argc, char **argv)
 	events_cleanup();
 
 	conf_cleanup(config);
-	network_cleanup();
 	logs_cleanup();
+
+#if defined(NETWORKING)
+	network_cleanup();
+#endif
 
 	return 0;
 }

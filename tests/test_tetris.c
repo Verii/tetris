@@ -24,7 +24,8 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "tetris.c"
+#include "tetris.h"
+#include "logs.h"
 
 int main(void)
 {

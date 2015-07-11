@@ -31,7 +31,9 @@
 #include "tetris.h"
 #include "logs.h"
 
-#include "net/pack.h"
+#if defined(NETWORKING)
+# include "net/pack.h"
+#endif
 
 /****************************/
 /*  Begin Random Generator  */
@@ -356,13 +358,14 @@ static void update_cur_block(tetris *pgame)
 
 static void update_ghost_block(tetris *pgame, block *pblock)
 {
+	/* Copy type for block color */
+	pblock->type = CURRENT_BLOCK(pgame)->type;
+	/* Offsets and piece positions */
 	pblock->row_off = CURRENT_BLOCK(pgame)->row_off;
 	pblock->col_off = CURRENT_BLOCK(pgame)->col_off;
-	pblock->type = CURRENT_BLOCK(pgame)->type;
 	memcpy(pblock->p, CURRENT_BLOCK(pgame)->p, sizeof pblock->p);
 
-	/* Copy the currently falling block but move it to the bottom of the
-	 * board */
+	/* Move it to the bottom of the game */
 	while (block_fall(pgame, pblock, 1))
 		;
 }
@@ -587,32 +590,24 @@ static void tetris_tick(tetris *pgame)
  * piece(total 7 game pieces).  We also allocate memory for the board colors,
  * and set some initial variables.
  */
-int tetris_init(tetris **pmem)
+int tetris_init(tetris **res)
 {
-	log_info("Initializing game data");
-
-	*pmem = calloc(1, sizeof **pmem);
-	if (*pmem == NULL) {
+	tetris *pgame;
+	if ((pgame = calloc(1, sizeof *pgame)) == NULL) {
 		log_err("Out of memory");
 		return -1;
 	}
 
-	tetris *pgame = *pmem;
-
+	/* So we can save it later ... ? */
 	pgame->rseed = time(NULL);
 	srandom(pgame->rseed);
 
-	bag_random_generator(pgame);
-
+	tetris_set_gamemode(pgame, TETRIS_CLASSIC);
 	pgame->level = 1;
 	update_tick_speed(pgame);
 
-	pgame->ghost_block = malloc(sizeof *pgame->ghost_block);
-	if (!pgame->ghost_block) {
-		log_err("Out of memory");
-		return -1;
-	}
-
+	/* Add pieces to bag */
+	bag_random_generator(pgame);
 	LIST_INIT(&pgame->blocks_head);
 
 	/* Create and add each block to the linked list */
@@ -620,12 +615,24 @@ int tetris_init(tetris **pmem)
 		block *np = malloc(sizeof *np);
 		if (!np) {
 			log_err("Out of memory");
-			return -1;
+			goto mem_err;
 		}
 
+		/* randomize() assigns each block a random block (T, Z, etc.)
+		 * And it resets the block to its original place(the top of the
+		 * game). As the game goes on, we just use this function to get
+		 * new blocks. We don't free/malloc new memory for each new
+		 * block.
+		 */
 		block_randomize(pgame, np);
 
 		LIST_INSERT_HEAD(&pgame->blocks_head, np, entries);
+	}
+
+	pgame->ghost_block = malloc(sizeof *pgame->ghost_block);
+	if (!pgame->ghost_block) {
+		log_err("Out of memory");
+		goto mem_err;
 	}
 
 	/* Allocate memory for colors */
@@ -634,13 +641,19 @@ int tetris_init(tetris **pmem)
 					  sizeof(*pgame->colors[i]));
 		if (!pgame->colors[i]) {
 			log_err("Out of memory");
-			return -1;
+			goto mem_err;
 		}
 	}
 
-	debug("Game Initialization complete");
+	*res = pgame;
+	debug("Game initializing complete");
 
 	return 1;
+
+mem_err:
+	*res = NULL;
+	free(pgame);
+	return -1;
 }
 
 /*

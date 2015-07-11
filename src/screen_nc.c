@@ -16,15 +16,11 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include <ncurses.h>
-
-#if defined(SEPARATE_WIDE_NCURSES_HEADER)
-# include <ncursesw/ncurses.h>
-#endif
-
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include <ncurses.h>
 
 #include "screen.h"
 #include "db.h"
@@ -174,13 +170,6 @@ int screen_nc_update(tetris *pgame)
 	mvwvline(board, 0, TETRIS_MAX_COLUMNS +1, '*', TETRIS_MAX_ROWS -1);
 
 	mvwhline(board, TETRIS_MAX_ROWS -2, 0, '*', TETRIS_MAX_COLUMNS +2);
-
-#if 0
-	/* Draw the background of the board. Dot every other column */
-	wattrset(board, COLOR_PAIR(SCREEN_COLOR_WHITE));
-	for (i = 2; i < TETRIS_MAX_ROWS; i++)
-		mvwprintw(board, i -2, 1, " . . . . .");
-#endif
 
 	/* Draw the ghost block */
 	pblock = pgame->ghost_block;

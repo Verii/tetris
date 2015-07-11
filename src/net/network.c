@@ -31,7 +31,6 @@ static int tcp_sock_fd = -1;
 
 void network_cleanup(void)
 {
-	fprintf(stderr, "Network cleaned up without incident.\n");
 	debug("Network Cleanup complete.");
 	return;
 }

@@ -21,6 +21,9 @@
 
 #include "tetris.h"
 
+/* Setup function pointers */
+void screen_setup(void);
+
 /*****************************************************************/
 /* Function pointers to call upon different drivers to draw game */
 /*****************************************************************/

@@ -5,8 +5,8 @@ gcc -o test_pack -std=c99 -D_GNU_SOURCE -D_POSIX_C_SOURCE=200809 \
 	-I../include/
 
 gcc -o test_tetris -std=c99 -D_GNU_SOURCE -D_POSIX_C_SOURCE=200809 \
-	test_tetris.c ../src/logs.c \
-	-I../src -I../include -lm
+	test_tetris.c ../src/tetris.c ../src/logs.c \
+	-I../include -lm
 
 gcc -o test_serialize -std=c99 -D_GNU_SOURCE -D_POSIX_C_SOURCE=200809 \
 	test_serialize.c ../src/tetris.c ../src/net/serialize.c ../src/logs.c \
