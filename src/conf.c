@@ -48,13 +48,9 @@ static const char config_defaults[] =
 	"bind toggle_wallkicks 'k'\n"
 
 	"bind cycle_gamemodes 'm'\n"
-	"bind talk_key 't'\n"
 #endif
 
 	"set username \"username\"\n"
-	"set password \"password\"\n"
-	"set hostname \"localhost\"\n"
-	"set port \"10024\"\n"
 
 	"set logs_file \"~/.local/share/tetris/logs\"\n"
 	"set save_file \"~/.local/share/tetris/saves\"\n"
@@ -167,9 +163,6 @@ int conf_command_set(struct config *conf, const char *cmd, size_t len)
 		struct values *val;
 	} tokens_val[] = {
 		{ "username", &conf->username },
-		{ "password", &conf->password },
-		{ "hostname", &conf->hostname },
-		{ "port", &conf->port },
 		{ "logs_file", &conf->logs_file },
 		{ "save_file", &conf->save_file },
 		{ "_conf_file", &conf->_conf_file },
@@ -311,9 +304,6 @@ int conf_command_bind(struct config *conf, const char *cmd, size_t len)
 void conf_cleanup(struct config *conf)
 {
 	free(conf->username.val);
-	free(conf->password.val);
-	free(conf->hostname.val);
-	free(conf->port.val);
 	free(conf->logs_file.val);
 	free(conf->save_file.val);
 	free(conf->_conf_file.val);

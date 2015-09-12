@@ -32,29 +32,6 @@ extern tetris *pgame;
 extern struct config *config;
 
 int
-network_in_handler(events *pev)
-{
-	char buf[256];
-
-	if (read(pev->fd, buf, sizeof buf -1) <= 0) {
-		logs_to_game("You won?");
-		logs_to_game("Server closed connection.");
-		events_remove_IO(pev->fd);
-	}
-
-	buf[sizeof buf -1] = '\0';
-
-	char *nl;
-	if ((nl = strchr(buf, '\n')) != NULL)
-		*nl = '\0';
-
-	if (strlen(buf))
-		logs_to_game(buf);
-
-	return 1;
-}
-
-int
 keyboard_in_handler(events *pev)
 {
 	int ret = -1;

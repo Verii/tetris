@@ -17,20 +17,22 @@
  */
 
 #include "screen.h"
+#include "screen/nc.h"
+#include "screen/no.h"
 
-void screen_setup(void)
+void screen_setup(enum SCREEN_MODE mode)
 {
-#if defined(NO_DRAW)
-	screen_init = screen_nodraw_init;;
-	screen_cleanup = screen_nodraw_cleanup;
-	screen_menu = screen_nodraw_menu;
-	screen_update = screen_nodraw_update;;
-	screen_gameover = screen_nodraw_gameover;
-#else
-	screen_init = screen_nc_init;
-	screen_cleanup = screen_nc_cleanup;
-	screen_menu = screen_nc_menu;
-	screen_update = screen_nc_update;
-	screen_gameover = screen_nc_gameover;
-#endif
+	if (mode == SCREEN_MODE_NO) {
+		screen_init = screen_nodraw_init;;
+		screen_cleanup = screen_nodraw_cleanup;
+		screen_menu = screen_nodraw_menu;
+		screen_update = screen_nodraw_update;;
+		screen_gameover = screen_nodraw_gameover;
+	} else if (mode == SCREEN_MODE_NC) {
+		screen_init = screen_nc_init;
+		screen_cleanup = screen_nc_cleanup;
+		screen_menu = screen_nc_menu;
+		screen_update = screen_nc_update;
+		screen_gameover = screen_nc_gameover;
+	}
 }

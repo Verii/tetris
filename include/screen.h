@@ -21,8 +21,13 @@
 
 #include "tetris.h"
 
+enum SCREEN_MODE {
+	SCREEN_MODE_NC, // ncurses screen updates
+	SCREEN_MODE_NO,	// don't draw to screen
+};
+
 /* Setup function pointers */
-void screen_setup(void);
+void screen_setup(enum SCREEN_MODE);
 
 /*****************************************************************/
 /* Function pointers to call upon different drivers to draw game */
@@ -31,39 +36,14 @@ void screen_setup(void);
 /* init/deinit */
 int (*screen_init)(void);
 void (*screen_cleanup)(void);
+
 /* Game menu */
 int (*screen_menu)(tetris *);
+
 /* Update screen */
 int (*screen_update)(tetris *);
-/* Game over! prints high scores if the player lost */
+
+/* Game over - prints high scores if the player lost */
 int (*screen_gameover)(tetris *);
-
-/* Debugging, no drawing */
-int screen_nodraw_init(void);
-void screen_nodraw_cleanup(void);
-int screen_nodraw_menu(tetris *);
-int screen_nodraw_update(tetris *);
-int screen_nodraw_gameover(tetris *);
-
-/* Text */
-int screen_text_init(void);
-void screen_text_cleanup(void);
-int screen_text_menu(tetris *);
-int screen_text_update(tetris *);
-int screen_text_gameover(tetris *);
-
-/* Ncurses */
-int screen_nc_init(void);
-void screen_nc_cleanup(void);
-int screen_nc_menu(tetris *);
-int screen_nc_update(tetris *);
-int screen_nc_gameover(tetris *);
-
-/* GL */
-int screen_gl_init(void);
-void screen_gl_cleanup(void);
-int screen_gl_menu(tetris *);
-int screen_gl_update(tetris *);
-int screen_gl_gameover(tetris *);
 
 #endif	/* SCREEN_H_ */

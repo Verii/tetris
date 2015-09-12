@@ -31,10 +31,6 @@
 #include "input.h"
 #include "events.h"
 
-#if defined(NETWORKING)
-# include "net/network.h"
-#endif
-
 tetris *pgame;
 struct config *config;
 volatile sig_atomic_t tetris_do_tick;
@@ -58,9 +54,7 @@ static void usage(void)
 	"[-u] usage\n\t"
 	"[-c file] path to use for configuration file\n\t"
 	"[-s file] location to save database\n\t"
-	"[-l file] location to write logs\n\t"
-	"[-h host] hostname to connect to\n\t"
-	"[-p port] port to connect to\n";
+	"[-l file] location to write logs\n\n" ;
 
 	fprintf(stderr, help, __progname, VERSION, __DATE__, __TIME__);
 }
@@ -73,7 +67,7 @@ void timer_handler(int sig)
 int main(int argc, char **argv)
 {
 	bool cflag, hflag, lflag, pflag, sflag;
-	char conffile[256], hostname[256], port[16];
+	char conffile[256];
 	char logfile[256], savefile[256];
 	int ch;
 
@@ -92,23 +86,11 @@ int main(int argc, char **argv)
 			strncpy(conffile, optarg, sizeof conffile);
 			conffile[sizeof conffile -1] = '\0';
 			break;
-		case 'h':
-			/* change default host name */
-			hflag = true;
-			strncpy(hostname, optarg, sizeof hostname);
-			hostname[sizeof hostname -1] = '\0';
-			break;
 		case 'l':
 			/* logfile location */
 			lflag = true;
 			strncpy(logfile, optarg, sizeof logfile);
 			logfile[sizeof logfile -1] = '\0';
-			break;
-		case 'p':
-			/* change default port number */
-			pflag = true;
-			strncpy(port, optarg, sizeof port);
-			port[sizeof port -1] = '\0';
 			break;
 		case 's':
 			/* db location */
@@ -158,7 +140,11 @@ int main(int argc, char **argv)
 	if (db_resume_state(pgame) != 1)
 		logs_to_game("Unable to resume old game save.");
 
-	screen_setup();
+#if defined(DEBUG)
+	screen_setup(SCREEN_MODE_NO);
+#else
+	screen_setup(SCREEN_MODE_NC);
+#endif
 
 	/* Create ncurses context, draw screen, and watch for keyboard input */
 	screen_init();
@@ -166,14 +152,6 @@ int main(int argc, char **argv)
 	screen_update(pgame);
 
 	events_add_input(fileno(stdin), keyboard_in_handler);
-
-#if defined (NETWORKING)
-	/* Add network FD to events watch list */
-	int server_fd = network_init(hflag? hostname: config->hostname.val,
-			pflag? port: config->port.val);
-
-	events_add_input(server_fd, network_in_handler);
-#endif
 
 	struct timespec ts_tick;
 	ts_tick.tv_sec = 0;
@@ -209,10 +187,6 @@ int main(int argc, char **argv)
 
 	conf_cleanup(config);
 	logs_cleanup();
-
-#if defined(NETWORKING)
-	network_cleanup();
-#endif
 
 	return 0;
 }
