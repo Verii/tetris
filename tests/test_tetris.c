@@ -34,8 +34,9 @@ int main(void)
 	setlocale(LC_ALL, "");
 	srand(time(NULL));
 
-	if (tetris_init(&pgame) != 1)
+	if (tetris_init(&pgame) != 1) {
 		log_err("Failed to initialize Tetris");
+	}
 
 	tetris_set_wallkicks(pgame, TETRIS_FALSE);
 	tetris_set_tspins(pgame, TETRIS_FALSE);

@@ -130,9 +130,9 @@ int main(int argc, char **argv)
 	tetris_set_dbfile(pgame, config->save_file.val);
 
 	/* Newer-ish version of tetris with wallkicks, ghost blocks, lock
-	 * delays, tspins
+	 * delays, tspins. Infinity edition!
 	 */
-	tetris_set_gamemode(pgame, TETRIS_40_LINES);
+	tetris_set_gamemode(pgame, TETRIS_INFINITY);
 
 	/* Classic tetris, nothing fancy. Play until you lose. */
 //	tetris_set_gamemode(pgame, TETRIS_CLASSIC);

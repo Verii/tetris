@@ -154,6 +154,7 @@ enum TETRIS_GAMES {
 	TETRIS_CLASSIC,
 	TETRIS_40_LINES,
 	TETRIS_TIMED,
+	TETRIS_INFINITY,
 };
 int tetris_set_gamemode(tetris *, enum TETRIS_GAMES);
 
