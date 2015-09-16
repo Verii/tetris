@@ -511,7 +511,9 @@ done :{
 		+ CURRENT_BLOCK(pgame)->soft_drop
 		+ (CURRENT_BLOCK(pgame)->hard_drop * 2);
 
+#if defined(DEBUG)
 	logs_to_game("+%d", score_inc);
+#endif
 	pgame->score += score_inc;
       }
 }
