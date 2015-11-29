@@ -829,10 +829,10 @@ int tetris_set_gamemode(tetris *pgame, enum TETRIS_GAMES gm)
 {
 	switch (gm) {
 	case TETRIS_40_LINES:
-		tetris_set_ghosts(pgame, TETRIS_TRUE);
-		tetris_set_wallkicks(pgame, TETRIS_TRUE);
-		tetris_set_tspins(pgame, TETRIS_TRUE);
-		tetris_set_lockdelay(pgame, TETRIS_TRUE);
+		tetris_set_ghosts(pgame, 1);
+		tetris_set_wallkicks(pgame, 1);
+		tetris_set_tspins(pgame, 1);
+		tetris_set_lockdelay(pgame, 1);
 
 		strncpy(pgame->gamemode, "40 Lines", sizeof pgame->gamemode);
 		pgame->check_win = tetris_40_lines;
@@ -843,20 +843,20 @@ int tetris_set_gamemode(tetris *pgame, enum TETRIS_GAMES gm)
 		pgame->check_win = tetris_timed;
 		break;
 	case TETRIS_INFINITY:
-		tetris_set_ghosts(pgame, TETRIS_TRUE);
-		tetris_set_wallkicks(pgame, TETRIS_TRUE);
-		tetris_set_tspins(pgame, TETRIS_TRUE);
-		tetris_set_lockdelay(pgame, TETRIS_TRUE);
+		tetris_set_ghosts(pgame, 1);
+		tetris_set_wallkicks(pgame, 1);
+		tetris_set_tspins(pgame, 1);
+		tetris_set_lockdelay(pgame, 1);
 
 		strncpy(pgame->gamemode, "Infinity", sizeof pgame->gamemode);
 		pgame->check_win = tetris_classic;
 		break;
 	case TETRIS_CLASSIC:
 	default:
-		tetris_set_ghosts(pgame, TETRIS_FALSE);
-		tetris_set_wallkicks(pgame, TETRIS_FALSE);
-		tetris_set_tspins(pgame, TETRIS_FALSE);
-		tetris_set_lockdelay(pgame, TETRIS_FALSE);
+		tetris_set_ghosts(pgame, 0);
+		tetris_set_wallkicks(pgame, 0);
+		tetris_set_tspins(pgame, 0);
+		tetris_set_lockdelay(pgame, 0);
 
 		strncpy(pgame->gamemode, "Classic", sizeof pgame->gamemode);
 		pgame->check_win = tetris_classic;
