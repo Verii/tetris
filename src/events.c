@@ -166,8 +166,6 @@ int events_remove_IO(int fd)
 
 
 /* Game is over when this function returns
- *
- * We wait for user input on stdin and the network socket(if available).
  * We also handle interrupts in the form of signals from POSIX timers.
  */
 void events_main_loop(tetris *pgame)
