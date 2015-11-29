@@ -30,7 +30,7 @@
 /* Internal function.
  * Wrapper, adds new message to head of linked list
  */
-static int logs_add_to_queue(const char *msg)
+static int _add_to_queue(const char *msg)
 {
 	int msg_len = -1;
 	struct log_entry *np = calloc(1, sizeof *np);
@@ -103,7 +103,7 @@ void logs_to_game(const char *fmt, ...)
 	va_end(ap);
 
 	if (debug_message)
-		logs_add_to_queue(debug_message);
+		_add_to_queue(debug_message);
 
 	free(debug_message);
 }
