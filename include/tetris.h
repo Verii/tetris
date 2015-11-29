@@ -23,10 +23,6 @@
 
 #include <ncurses.h>
 
-#if defined(WIDE_NCURSES_HEADER)
-# include <ncursesw/ncurses.h>
-#endif
-
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdarg.h>
@@ -86,11 +82,11 @@ struct tetris {
 	uint32_t score;
 
 	uint8_t *colors[TETRIS_MAX_ROWS];
-	uint32_t tick_nsec;
+	uint32_t tick_nsec;		// Nanoseconds between game ticks
 
-	int (*check_win)(tetris *);
+	int (*check_win)(tetris *);	// Game over when this return 0
 
-	uint8_t bag[TETRIS_NUM_BLOCKS];
+	uint8_t bag[TETRIS_NUM_BLOCKS];	// Get random blocks
 
 	LIST_HEAD(blocks_head, block) blocks_head;
 	block *ghost_block;
@@ -137,10 +133,6 @@ int tetris_cleanup(tetris *);
 /* Process key command in ch and modify game */
 int tetris_cmd(tetris *, int command);
 
-
-#define TETRIS_TRUE	1
-#define TETRIS_FALSE	0
-
 /* Set Attributes */
 #define tetris_set_ghosts(G, B)		((G)->enable_ghosts = (B))
 #define tetris_set_wallkicks(G, B)	((G)->enable_wallkicks = (B))
@@ -165,7 +157,8 @@ enum TETRIS_GAME_STATE {
 	TETRIS_QUIT,
 	TETRIS_PAUSED,
 };
-int tetris_get_state(tetris *);
+
+enum TETRIS_GAME_STATE tetris_get_state(tetris *);
 int tetris_get_name(tetris *, char *, size_t);
 int tetris_get_dbfile(tetris *, char *, size_t);
 #define tetris_get_level(G)		((G)->level)

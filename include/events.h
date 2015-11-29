@@ -49,7 +49,7 @@ int events_remove_IO(int fd);
 int events_add_timer(struct timespec, struct sigaction, int sig);
 
 /**
- * Main loop of the program, pselect() for interrupts and keyboard/network
+ * Main loop of the program, pselect() for interrupts and keyboard
  * input, handling game commands, etc.
  *
  * Returns when the user quits, the server tells us to, or the game is over.

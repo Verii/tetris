@@ -21,7 +21,6 @@
 
 #include "events.h"
 
-int network_in_handler(events *);
 int keyboard_in_handler(events *);
 
 #endif /* INPUT_H_ */
