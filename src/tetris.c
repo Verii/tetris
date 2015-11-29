@@ -31,10 +31,6 @@
 #include "tetris.h"
 #include "logs.h"
 
-#if defined(NETWORKING)
-# include "net/pack.h"
-#endif
-
 /****************************/
 /*  Begin Random Generator  */
 /****************************/
