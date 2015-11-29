@@ -74,11 +74,11 @@ int try_mkdir_r(const char *path, mode_t mode)
 
 	p = strtok_r(pcpy, "/", &saveptr);
 
-	strncat(subdir, p, sizeof subdir);
+	strncat(subdir, p, sizeof subdir -strlen(subdir) -1);
 
 	while ((p = strtok_r(NULL, "/", &saveptr)) != NULL) {
-		strncat(subdir, "/", sizeof subdir);
-		strncat(subdir, p, sizeof subdir);
+		strncat(subdir, "/", sizeof subdir -strlen(subdir) -1);
+		strncat(subdir, p, sizeof subdir -strlen(subdir) -1);
 
 		if (try_mkdir(subdir, mode) != 1)
 			goto err_mkdir_r;
