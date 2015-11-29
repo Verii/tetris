@@ -257,7 +257,6 @@ int conf_command_bind(struct config *conf, const char *cmd, size_t len)
 		{ "toggle_ghosts", &conf->toggle_ghosts },
 		{ "toggle_wallkicks", &conf->toggle_wallkicks },
 		{ "cycle_gamemodes", &conf->cycle_gamemodes },
-		{ "talk_key", &conf->talk_key },
 	};
 
 	struct key_bindings *mod = NULL;
