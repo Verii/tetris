@@ -573,6 +573,33 @@ static void tetris_tick(tetris *pgame)
 	}
 }
 
+/* Game Modes */
+
+/* Default game mode, we never win. Game continues until we lose. */
+static int tetris_classic(tetris *pgame)
+{
+	pgame->win = false;
+	return 0;
+}
+
+/* We win when we've destroyed 40 or more lines */
+static int tetris_40_lines(tetris *pgame)
+{
+	if (pgame->lines_destroyed >= 40) {
+		pgame->win = true;
+		return 1;
+	}
+	return 0;
+}
+
+/* TODO, play for X minutes */
+static int tetris_timed(tetris *pgame)
+{
+	pgame->win = false;
+	return 0;
+}
+
+
 /************************************/
 /*   End Private helper functions   */
 /************************************/
@@ -795,32 +822,6 @@ int tetris_set_dbfile(tetris *pgame, const char *dbfile)
 	if (sizeof pgame->db_file > 0)
 		pgame->db_file[sizeof pgame->db_file -1] = '\0';
 	return 1;
-}
-
-/* Game Modes */
-
-/* Default game mode, we never win. Game continues until we lose. */
-static int tetris_classic(tetris *pgame)
-{
-	pgame->win = false;
-	return 0;
-}
-
-/* We win when we've destroyed 40 or more lines */
-static int tetris_40_lines(tetris *pgame)
-{
-	if (pgame->lines_destroyed >= 40) {
-		pgame->win = true;
-		return 1;
-	}
-	return 0;
-}
-
-/* TODO, play for X minutes */
-static int tetris_timed(tetris *pgame)
-{
-	pgame->win = false;
-	return 0;
 }
 
 
