@@ -15,12 +15,12 @@ SRC =	src/main.c \
 
 DESTDIR = /usr/local/bin
 
-CPPFLAGS = -D_GNU_SOURCE -DVERSION=\"${VERSION}\" -DNDEBUG -I./include
+CPPFLAGS = -D_GNU_SOURCE -D_FORTIFY_SOURCE -DVERSION=\"${VERSION}\" -DNDEBUG -I./include
 
 DEBUG = -g -Og -DDEBUG
-CFLAGS = -std=c99 -Wall -Wextra -Werror -Os
+CFLAGS = -std=c99 -Wall -Wextra -Werror -O3
 
-LDFLAGS = -lm -lncursesw -lrt -lsqlite3
+LDFLAGS = -lm -lrt -lncursesw -lsqlite3
 
 .PREFIX:
 .PREFIX: .c .o
