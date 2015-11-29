@@ -57,8 +57,7 @@ struct config {
 
 		toggle_ghosts,
 		toggle_wallkicks,
-		cycle_gamemodes,
-		talk_key;
+		cycle_gamemodes;
 };
 
 int conf_create(struct config **);
