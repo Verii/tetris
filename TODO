@@ -11,9 +11,6 @@ all:
 	better error handling.
 	Test on different systems.
 
-main.c create network thread.
-network.c do it.
-
 conf.c safer.
 conf.c tidy up.
 
