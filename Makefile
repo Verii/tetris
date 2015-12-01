@@ -9,9 +9,7 @@ SRC =	src/main.c \
 	src/logs.c \
 	src/db.c \
 	src/tetris.c \
-	src/screen.c \
-	src/screen/nc.c \
-	src/screen/no.c
+	src/screen.c
 
 DESTDIR = /usr/local/bin
 

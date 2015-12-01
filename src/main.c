@@ -140,12 +140,6 @@ int main(int argc, char **argv)
 	if (db_resume_state(pgame) != 1)
 		logs_to_game("Unable to resume old game save.");
 
-#if defined(DEBUG)
-	screen_setup(SCREEN_MODE_NO);
-#else
-	screen_setup(SCREEN_MODE_NC);
-#endif
-
 	/* Create ncurses context, draw screen, and watch for keyboard input */
 	screen_init();
 	screen_menu(pgame);

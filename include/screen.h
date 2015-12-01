@@ -16,34 +16,12 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef SCREEN_H_
-#define SCREEN_H_
+#include <ncurses.h>
 
 #include "tetris.h"
 
-enum SCREEN_MODE {
-	SCREEN_MODE_NC, // ncurses screen updates
-	SCREEN_MODE_NO,	// don't draw to screen
-};
-
-/* Setup function pointers */
-void screen_setup(enum SCREEN_MODE);
-
-/*****************************************************************/
-/* Function pointers to call upon different drivers to draw game */
-/*****************************************************************/
-
-/* init/deinit */
-int (*screen_init)(void);
-void (*screen_cleanup)(void);
-
-/* Game menu */
-int (*screen_menu)(tetris *);
-
-/* Update screen */
-int (*screen_update)(tetris *);
-
-/* Game over - prints high scores if the player lost */
-int (*screen_gameover)(tetris *);
-
-#endif	/* SCREEN_H_ */
+int screen_init(void);
+void screen_cleanup(void);
+int screen_menu(tetris *);
+int screen_update(tetris *);
+int screen_gameover(tetris *);
