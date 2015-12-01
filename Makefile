@@ -7,7 +7,7 @@ SRC =	src/main.c \
 	src/helpers.c \
 	src/input.c \
 	src/logs.c \
-	src/db_sqlite.c \
+	src/db.c \
 	src/tetris.c \
 	src/screen.c \
 	src/screen/nc.c \
