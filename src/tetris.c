@@ -867,7 +867,8 @@ int tetris_set_gamemode(tetris *pgame, enum TETRIS_GAMES gm)
 }
 
 
-int tetris_get_state(tetris *pgame)
+enum TETRIS_GAME_STATE
+tetris_get_state(tetris *pgame)
 {
 	if (pgame->win) return TETRIS_WIN;
 	if (pgame->lose) return TETRIS_LOSE;
