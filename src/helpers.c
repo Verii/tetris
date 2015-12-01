@@ -134,8 +134,13 @@ int file_into_buf(const char *path, char **buf, size_t *len)
 		goto cleanup;
 	}
 
-	read(fd, *buf, n);
+	size_t read_ret;
+	read_ret = read(fd, *buf, n);
+
 	close(fd);
+
+	if (read_ret <= 0)
+		return -1;
 
 	return 1;
 

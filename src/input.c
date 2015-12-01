@@ -53,7 +53,11 @@ keyboard_in_handler(events *pev)
 	};
 
 	char kb_key;
-	read(pev->fd, &kb_key, 1);
+	size_t read_ret;
+	read_ret = read(pev->fd, &kb_key, 1);
+
+	if (read_ret <= 0)
+		return 0;
 
 	size_t i = 0;
 	for (; i < LEN(actions); i++) {
