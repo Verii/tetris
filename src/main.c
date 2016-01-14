@@ -127,7 +127,13 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 
 	tetris_set_name(pgame, config->username.val);
+
+#ifdef DEBUG
+	/* Use a memory db for debugging */
+	tetris_set_dbfile(pgame, ":memory:");
+#else
 	tetris_set_dbfile(pgame, config->save_file.val);
+#endif
 
 	/* Newer-ish version of tetris with wallkicks, ghost blocks, lock
 	 * delays, tspins. Infinity edition!

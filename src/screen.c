@@ -232,6 +232,9 @@ int screen_update(tetris *pgame)
 	mvwprintw(text, 3, 2, "Lines %7d", tetris_get_lines(pgame));
 	mvwprintw(text, 4, 2, "Difficult %3d", tetris_get_difficult(pgame));
 	mvwprintw(text, 5, 2, "%s", pgame->id); // username
+#ifdef DEBUG
+	mvwprintw(text, 6, 2, "DEBUG");
+#endif
 
 	/* Controls */
 	{
@@ -311,6 +314,9 @@ int screen_gameover(tetris *pgame)
 	}
 
 	mvprintw(1, 1, "Local Leaderboard");
+#ifdef DEBUG
+	printw(" DEBUG");
+#endif
 	mvprintw(2, 3, "Rank\tName\t\tLevel\t  Score\t\tDate");
 
 	/* Print score board when you lose a game */
