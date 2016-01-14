@@ -40,4 +40,4 @@ int db_get_scores(tetris *, tetris **, size_t);
 /* Remove entries in linked list */
 void db_clean_scores(tetris **, size_t);
 
-#endif	/* DB_H_ */
+#endif /* DB_H_ */

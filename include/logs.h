@@ -23,25 +23,27 @@
 #include <sys/queue.h>
 
 #ifdef DEBUG
-#define debug(M, ...)	 logs_to_file("[DEBUG] " M, ##__VA_ARGS__)
+#define debug(M, ...) logs_to_file("[DEBUG] " M, ##__VA_ARGS__)
 #else
 #define debug(M, ...)
 #endif
 
-#define log_err(M, ...) do { logs_to_file("[ERR] " M " (%s:%d)", \
-			##__VA_ARGS__, __FILE__, __LINE__); \
-		fflush(stderr); } while(0)
+#define log_err(M, ...)                                                        \
+  do {                                                                         \
+    logs_to_file("[ERR] " M " (%s:%d)", ##__VA_ARGS__, __FILE__, __LINE__);    \
+    fflush(stderr);                                                            \
+  } while (0)
 
-#define log_warn(M, ...) logs_to_file("[WARN] " M " (%s:%d)", ##__VA_ARGS__, \
-		__FILE__, __LINE__)
+#define log_warn(M, ...)                                                       \
+  logs_to_file("[WARN] " M " (%s:%d)", ##__VA_ARGS__, __FILE__, __LINE__)
 
-#define log_info(M, ...) logs_to_file("[INFO] " M " (%s:%d)", ##__VA_ARGS__, \
-		__FILE__, __LINE__)
+#define log_info(M, ...)                                                       \
+  logs_to_file("[INFO] " M " (%s:%d)", ##__VA_ARGS__, __FILE__, __LINE__)
 
 LIST_HEAD(log_entry_head, log_entry) entry_head;
 struct log_entry {
-	char *msg;
-	LIST_ENTRY(log_entry) entries;
+  char *msg;
+  LIST_ENTRY(log_entry) entries;
 };
 
 int logs_init(const char *path);

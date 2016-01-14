@@ -30,103 +30,98 @@
 /* Internal function.
  * Wrapper, adds new message to head of linked list
  */
-static int _add_to_queue(const char *msg)
-{
-	int msg_len = -1;
-	struct log_entry *np = calloc(1, sizeof *np);
-	if (!np)
-		return -1;
+static int _add_to_queue(const char *msg) {
+  int msg_len = -1;
+  struct log_entry *np = calloc(1, sizeof *np);
+  if (!np)
+    return -1;
 
-	msg_len = strlen(msg)+1;
+  msg_len = strlen(msg) + 1;
 
-	np->msg = malloc(msg_len);
-	if (!np->msg) {
-		free(np);
-		return -1;
-	}
+  np->msg = malloc(msg_len);
+  if (!np->msg) {
+    free(np);
+    return -1;
+  }
 
-	strncpy(np->msg, msg, msg_len);
+  strncpy(np->msg, msg, msg_len);
 
-	LIST_INSERT_HEAD(&entry_head, np, entries);
+  LIST_INSERT_HEAD(&entry_head, np, entries);
 
-	return msg_len;
+  return msg_len;
 }
 
 /* Try to open file provided by user for writing. */
-int logs_init(const char *path)
-{
-	LIST_INIT(&entry_head);
+int logs_init(const char *path) {
+  LIST_INIT(&entry_head);
 
-	if (!path)
-		return -1;
+  if (!path)
+    return -1;
 
-	fprintf(stderr, "Redirecting logs to %s\n", path);
+  fprintf(stderr, "Redirecting logs to %s\n", path);
 
-	if (freopen(path, "a+", stderr) != NULL) {
-		return 1;
-	} else {
-		log_warn("freopen: %s: %s", strerror(errno), path);
-		return -1;
-	}
+  if (freopen(path, "a+", stderr) != NULL) {
+    return 1;
+  } else {
+    log_warn("freopen: %s: %s", strerror(errno), path);
+    return -1;
+  }
 
-	return 1;
+  return 1;
 }
 
 /* Remove elements in linked list, close logfile. */
-void logs_cleanup(void)
-{
-	struct log_entry *np;
+void logs_cleanup(void) {
+  struct log_entry *np;
 
-	while (entry_head.lh_first) {
-		np = entry_head.lh_first;
-		LIST_REMOVE(np, entries);
-		free(np->msg);
-		free(np);
-	}
+  while (entry_head.lh_first) {
+    np = entry_head.lh_first;
+    LIST_REMOVE(np, entries);
+    free(np->msg);
+    free(np);
+  }
 
-	/* Visual Game separator */
-	fprintf(stderr, "--\n");
-	fclose(stderr);
+  /* Visual Game separator */
+  fprintf(stderr, "--\n");
+  fclose(stderr);
 }
 
 /* Adds log message to a message queue, to be printed in game */
-void logs_to_game(const char *fmt, ...)
-{
-	char *debug_message;
-	va_list ap;
+void logs_to_game(const char *fmt, ...) {
+  char *debug_message;
+  va_list ap;
 
-	va_start(ap, fmt);
+  va_start(ap, fmt);
 
-	if (vasprintf(&debug_message, fmt, ap) < 0)
-		debug_message = NULL;
+  if (vasprintf(&debug_message, fmt, ap) < 0)
+    debug_message = NULL;
 
-	va_end(ap);
+  va_end(ap);
 
-	if (debug_message)
-		_add_to_queue(debug_message);
+  if (debug_message)
+    _add_to_queue(debug_message);
 
-	free(debug_message);
+  free(debug_message);
 }
 
 /* Prints a log message of the form:
  * "[time] message"
  */
-void logs_to_file(const char *fmt, ...)
-{
-	va_list ap;
-	char *debug_message;
-	time_t s = time(NULL);
-	char date[32];
+void logs_to_file(const char *fmt, ...) {
+  va_list ap;
+  char *debug_message;
+  time_t s = time(NULL);
+  char date[32];
 
-	strftime(date, sizeof date, "[%F %H:%M]", localtime(&s));
+  strftime(date, sizeof date, "[%F %H:%M]", localtime(&s));
 
-	va_start(ap, fmt);
+  va_start(ap, fmt);
 
-	if (vasprintf(&debug_message, fmt, ap) < 0)
-		debug_message = NULL;
+  if (vasprintf(&debug_message, fmt, ap) < 0)
+    debug_message = NULL;
 
-	va_end(ap);
+  va_end(ap);
 
-	fprintf(stderr, "%s %s\n", date, debug_message ? debug_message : "");
-	free(debug_message);
+  fprintf(stderr, "%s %s\n", date, debug_message ? debug_message : "");
+  free(debug_message);
 }
