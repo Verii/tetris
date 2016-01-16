@@ -52,7 +52,6 @@ static void usage(void) {
       "Usage:\n\t"
       "[-u] usage\n\t"
       "[-c file] path to use for configuration file\n\t"
-      "[-s file] location to save database\n\t"
       "[-l file] location to write logs\n\n";
 
   fprintf(stderr, help, __progname, VERSION, __DATE__, __TIME__);
@@ -63,7 +62,7 @@ void timer_handler(int sig) { tetris_do_tick = sig; }
 int main(int argc, char **argv) {
   bool cflag, hflag, lflag, pflag, sflag;
   char conffile[256];
-  char logfile[256], savefile[256];
+  char logfile[256];
   int ch;
 
   setlocale(LC_ALL, "");
@@ -79,19 +78,13 @@ int main(int argc, char **argv) {
       /* update location for configuration file */
       cflag = true;
       strncpy(conffile, optarg, sizeof conffile);
-      conffile[sizeof conffile - 1] = '\0';
+      conffile[sizeof(conffile) - 1] = '\0';
       break;
     case 'l':
       /* logfile location */
       lflag = true;
       strncpy(logfile, optarg, sizeof logfile);
-      logfile[sizeof logfile - 1] = '\0';
-      break;
-    case 's':
-      /* db location */
-      sflag = true;
-      strncpy(savefile, optarg, sizeof savefile);
-      savefile[sizeof savefile - 1] = '\0';
+      logfile[sizeof(logfile) - 1] = '\0';
       break;
     case 'u':
     default:
