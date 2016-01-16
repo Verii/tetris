@@ -109,10 +109,12 @@ int events_add_input(int fd, events_callback cb) {
   while (i < NUM_EVENTS && p_events[i])
     i++;
 
-  if (i >= NUM_EVENTS)
+  if (i >= NUM_EVENTS) {
+    free(new_event);
     return -1;
-  else
+  } else {
     p_events[i] = new_event;
+  }
 
   FD_SET(fd, &master_read);
 

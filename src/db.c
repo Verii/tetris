@@ -264,8 +264,10 @@ int db_get_scores(tetris *pgame, tetris **res, size_t n) {
       break;
     }
 
-    if (sqlite3_column_text(stmt, 0) == NULL)
+    if (sqlite3_column_text(stmt, 0) == NULL) {
+      free(np);
       continue;
+    }
 
     strncpy(np->id, (const char *)sqlite3_column_text(stmt, 0), sizeof np->id);
     if (sizeof np->id > 0)
