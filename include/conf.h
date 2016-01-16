@@ -16,8 +16,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef CONF_H_
-#define CONF_H_
+#pragma once
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -70,5 +69,3 @@ int conf_command_unset(struct config *, const char *cmd, size_t len);
 int conf_command_bind(struct config *, const char *cmd, size_t len);
 
 void conf_cleanup(struct config *conf);
-
-#endif /* CONF_H_ */

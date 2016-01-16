@@ -18,8 +18,7 @@
 
 /* There will always be ghosts in machines - Asimov */
 
-#ifndef TETRIS_H_
-#define TETRIS_H_
+#pragma once
 
 #include <ncurses.h>
 
@@ -170,5 +169,3 @@ int tetris_get_dbfile(tetris *, char *, size_t);
 #define tetris_get_tspins(G) ((G)->enable_tspins)
 #define tetris_get_lockdelay(G) ((G)->enable_lock_delay)
 #define tetris_get_difficult(G) ((G)->difficult)
-
-#endif /* TETRIS_H_ */

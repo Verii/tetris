@@ -16,8 +16,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef LOGS_H_
-#define LOGS_H_
+#pragma once
 
 #include <stdio.h>
 #include <sys/queue.h>
@@ -51,5 +50,3 @@ void logs_cleanup(void);
 
 void logs_to_game(const char *, ...);
 void logs_to_file(const char *, ...);
-
-#endif /* LOGS_H_ */

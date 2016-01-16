@@ -16,8 +16,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef DB_H_
-#define DB_H_
+#pragma once
 
 #include <stdlib.h>
 #include <sqlite3.h>
@@ -39,5 +38,3 @@ int db_get_scores(tetris *, tetris **, size_t);
 
 /* Remove entries in linked list */
 void db_clean_scores(tetris **, size_t);
-
-#endif /* DB_H_ */

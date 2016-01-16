@@ -16,8 +16,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef EVENTS_H_
-#define EVENTS_H_
+#pragma once
 
 #include "tetris.h"
 #include <signal.h>
@@ -57,5 +56,3 @@ int events_add_timer(struct timespec, struct sigaction, int sig);
 void events_main_loop(tetris *);
 
 void events_cleanup(void);
-
-#endif /* EVENTS_H_ */

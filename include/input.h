@@ -16,11 +16,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef INPUT_H_
-#define INPUT_H_
+#pragma once
 
 #include "events.h"
 
 int keyboard_in_handler(events *);
-
-#endif /* INPUT_H_ */

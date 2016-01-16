@@ -16,7 +16,7 @@ DESTDIR = /usr/local/bin
 CPPFLAGS = -D_GNU_SOURCE -D_FORTIFY_SOURCE -DVERSION=\"${VERSION}\" -DNDEBUG -I./include
 
 DEBUG = -g -Og -DDEBUG
-CFLAGS = -std=c99 -Wall -Wextra -Werror -O3
+CFLAGS = -std=c11 -Wall -Wextra -Werror -O3
 
 LDFLAGS = -lm -lrt -lncursesw -lsqlite3
 

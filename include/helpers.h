@@ -16,8 +16,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef HELPERS_H_
-#define HELPERS_H_
+#pragma once
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -56,5 +55,3 @@ int getnextline(const char *buf, size_t len, char **pbuf);
 /* Replace '~' and "HOME" with the user's HOME environment variable.
  */
 int replace_home(char **, size_t *len);
-
-#endif /* HELPERS_H_ */
