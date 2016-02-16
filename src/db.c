@@ -20,6 +20,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sqlite3.h>
+#include <stdint.h>
+#include <time.h>
 
 #include "db.h"
 #include "tetris.h"
@@ -76,8 +78,8 @@ const char delete_state_rowid[] = "DELETE FROM State WHERE ROWID = ?;";
 int db_save_score(tetris *pgame) {
   sqlite3 *db_handle;
   sqlite3_stmt *stmt;
-  char *insert = NULL;
-  int len = -1;
+  char insert[4096];
+  int insert_len = -1;
 
   debug("Trying to insert scores to database");
 
@@ -87,23 +89,25 @@ int db_save_score(tetris *pgame) {
   }
 
   /* Make sure the db has the proper tables */
-  sqlite3_prepare_v2(db_handle, create_scores, sizeof create_scores, &stmt,
-                     NULL);
+  sqlite3_prepare_v2(db_handle, create_scores, sizeof create_scores, &stmt, NULL);
   sqlite3_step(stmt);
   sqlite3_finalize(stmt);
 
-  len = asprintf(&insert, insert_scores, pgame->id, pgame->level, pgame->score,
-                 time(NULL));
+  insert_len = snprintf(insert, sizeof(insert), insert_scores, pgame->id, pgame->level, pgame->score, time(NULL));
 
-  if (len < 0) {
-    log_err("Out of memory");
-    return -1;
-  } else {
-    sqlite3_prepare_v2(db_handle, insert, strlen(insert), &stmt, NULL);
-    free(insert);
-    sqlite3_step(stmt);
-    sqlite3_finalize(stmt);
+  if (insert_len >= (int) sizeof(insert)) {
+	  log_err("String truncated");
+	  return -1;
   }
+
+  if (insert_len < 0) {
+	  log_err("Error processing string");
+	  return -1;
+  }
+
+  sqlite3_prepare_v2(db_handle, insert, insert_len, &stmt, NULL);
+  sqlite3_step(stmt);
+  sqlite3_finalize(stmt);
 
   db_close(db_handle);
 
@@ -113,8 +117,6 @@ int db_save_score(tetris *pgame) {
 int db_save_state(tetris *pgame) {
   sqlite3 *db_handle;
   sqlite3_stmt *stmt;
-  char *insert, *data = NULL;
-  int len, ret = 0, data_len = 0;
 
   debug("Saving game state to database");
 
@@ -128,42 +130,35 @@ int db_save_state(tetris *pgame) {
   sqlite3_step(stmt);
   sqlite3_finalize(stmt);
 
-  len = asprintf(&insert, insert_state, pgame->id, pgame->score,
-                 pgame->lines_destroyed, pgame->level, time(NULL));
+  char insert[4096];
+  int insert_len = -1;
+  insert_len = snprintf(insert, sizeof(insert), insert_state, pgame->id, pgame->score,
+		  pgame->lines_destroyed, pgame->level, time(NULL));
 
-  if (len < 0 || insert == NULL) {
-    ret = -1;
-    log_err("Out of memory");
-    goto error;
+  if (insert_len >= (int) sizeof(insert)) {
+	  log_err("String truncated");
+	  return -1;
   }
 
-  data_len = (TETRIS_MAX_ROWS - 2) * sizeof(*pgame->spaces);
-  data = malloc(data_len);
-
-  if (data == NULL) {
-    /* Non-fatal, we just don't save to database */
-    ret = 0;
-    log_err("Out of memory");
-    goto error;
+  if (insert_len < 0) {
+    log_err("Error processing request");
+	return -1;
   }
 
-  memcpy(data, &pgame->spaces[2], data_len);
+  /* Length of game board (minus the two hidden rows above the play field */
+  int data_len = (TETRIS_MAX_ROWS - 2) * sizeof(*pgame->spaces);
+  uint8_t data[data_len];
+
+  memcpy(&data[0], &pgame->spaces[2], data_len);
   sqlite3_prepare_v2(db_handle, insert, strlen(insert), &stmt, NULL);
 
-  /* NOTE sqlite will free the @data block for us */
-  sqlite3_bind_blob(stmt, 1, data, data_len, free);
+  sqlite3_bind_blob(stmt, 1, data, data_len, NULL);
   sqlite3_step(stmt);
   sqlite3_finalize(stmt);
 
-  ret = 1;
-
-error:
-  if (len > 0)
-    free(insert);
-
   db_close(db_handle);
 
-  return ret;
+  return 1;
 }
 
 /* Queries database for newest game state information and copies it to pgame.
