@@ -19,15 +19,15 @@
 #include <stdlib.h>
 #include <sys/select.h>
 #include <time.h>
-#include <signal.h>
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
+#include <stdint.h>
+#include <unistd.h>
 
 #include "events.h"
 #include "screen.h"
 #include "tetris.h"
-#include "helpers.h"
 #include "logs.h"
 
 /* Set by signal handler */
