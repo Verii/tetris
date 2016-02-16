@@ -23,6 +23,10 @@
 #include <signal.h>
 #include <unistd.h>
 
+#include <getopt.h>
+#include <stdbool.h>
+#include <time.h>
+
 #include "db.h"
 #include "conf.h"
 #include "logs.h"
