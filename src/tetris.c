@@ -16,17 +16,11 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include <ctype.h>
 #include <math.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/queue.h>
-#include <sqlite3.h>
 
-#include "conf.h"
-#include "screen.h"
 #include "helpers.h"
 #include "tetris.h"
 #include "logs.h"
@@ -590,9 +584,7 @@ int tetris_init(tetris **res) {
     return -1;
   }
 
-  /* So we can save it later ... ? */
-  pgame->rseed = time(NULL);
-  srandom(pgame->rseed);
+  srandom(time(NULL));
 
   tetris_set_gamemode(pgame, TETRIS_CLASSIC);
   pgame->level = 1;
