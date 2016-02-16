@@ -47,7 +47,7 @@
 #define TEXT_WIDTH ((COLS - TEXT_X_OFF) - 1)
 
 static WINDOW *board, *pieces, *text;
-const char colors[] = {COLOR_WHITE, COLOR_RED,     COLOR_GREEN, COLOR_YELLOW,
+static const char colors[] = {COLOR_WHITE, COLOR_RED,     COLOR_GREEN, COLOR_YELLOW,
                        COLOR_BLUE,  COLOR_MAGENTA, COLOR_CYAN};
 
 #define SCREEN_COLOR_WHITE 1
@@ -58,7 +58,7 @@ const char colors[] = {COLOR_WHITE, COLOR_RED,     COLOR_GREEN, COLOR_YELLOW,
 #define SCREEN_COLOR_MAGENTA 6
 #define SCREEN_COLOR_CYAN 7
 
-const char *tips[] = {
+static const char *tips[] = {
     "Soft dropping yields 1 point per space",
     "Hard dropping yields 2 points per space",
     "Difficult moves increase points by x1.5",
