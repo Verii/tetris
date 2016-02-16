@@ -20,13 +20,14 @@
 
 #pragma once
 
-#include <ncurses.h>
-
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdarg.h>
 #include <sys/queue.h>
 #include <time.h>
+
+struct block;
+struct blocks_head;
+struct tetris;
 
 /* Check if the given (Y, X) coordinate contains a block */
 #define tetris_at_yx(G, Y, X) ((G)->spaces[(Y)] & (1 << (X)))
@@ -102,7 +103,6 @@ struct tetris {
   bool lose;
   bool quit;
   bool difficult; // successive difficult moves
-  uint8_t rseed;  // random seed
 
   char gamemode[16];
   char db_file[256];

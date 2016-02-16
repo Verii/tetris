@@ -18,12 +18,11 @@
 
 #pragma once
 
-#include "tetris.h"
 #include <signal.h>
-#include <stdlib.h>
+#include "tetris.h"
 
+struct events;
 typedef struct events events;
-
 typedef int (*events_callback)(events *);
 
 /**
@@ -40,7 +39,6 @@ struct events {
  */
 int events_add_input(int fd, events_callback cb);
 int events_remove_IO(int fd);
-
 /**
  * Create a POSIX timer to signal the program (sig) periodically (timespec).
  * The raised signal is caught by the function defined the (sigaction).
@@ -51,7 +49,7 @@ int events_add_timer(struct timespec, struct sigaction, int sig);
  * Main loop of the program, pselect() for interrupts and keyboard
  * input, handling game commands, etc.
  *
- * Returns when the user quits, the server tells us to, or the game is over.
+ * Returns when the user quits or the game is over.
  */
 void events_main_loop(tetris *);
 

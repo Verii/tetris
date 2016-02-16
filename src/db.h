@@ -19,8 +19,6 @@
 #pragma once
 
 #include <stdlib.h>
-#include <sqlite3.h>
-
 #include "tetris.h"
 
 int db_save_score(tetris *);
