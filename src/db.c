@@ -89,20 +89,22 @@ int db_save_score(tetris *pgame) {
   }
 
   /* Make sure the db has the proper tables */
-  sqlite3_prepare_v2(db_handle, create_scores, sizeof create_scores, &stmt, NULL);
+  sqlite3_prepare_v2(db_handle, create_scores, sizeof create_scores, &stmt,
+                     NULL);
   sqlite3_step(stmt);
   sqlite3_finalize(stmt);
 
-  insert_len = snprintf(insert, sizeof(insert), insert_scores, pgame->id, pgame->level, pgame->score, time(NULL));
+  insert_len = snprintf(insert, sizeof(insert), insert_scores, pgame->id,
+                        pgame->level, pgame->score, time(NULL));
 
-  if (insert_len >= (int) sizeof(insert)) {
-	  log_err("String truncated");
-	  return -1;
+  if (insert_len >= (int)sizeof(insert)) {
+    log_err("String truncated");
+    return -1;
   }
 
   if (insert_len < 0) {
-	  log_err("Error processing string");
-	  return -1;
+    log_err("Error processing string");
+    return -1;
   }
 
   sqlite3_prepare_v2(db_handle, insert, insert_len, &stmt, NULL);
@@ -132,17 +134,18 @@ int db_save_state(tetris *pgame) {
 
   char insert[4096];
   int insert_len = -1;
-  insert_len = snprintf(insert, sizeof(insert), insert_state, pgame->id, pgame->score,
-		  pgame->lines_destroyed, pgame->level, time(NULL));
+  insert_len =
+      snprintf(insert, sizeof(insert), insert_state, pgame->id, pgame->score,
+               pgame->lines_destroyed, pgame->level, time(NULL));
 
-  if (insert_len >= (int) sizeof(insert)) {
-	  log_err("String truncated");
-	  return -1;
+  if (insert_len >= (int)sizeof(insert)) {
+    log_err("String truncated");
+    return -1;
   }
 
   if (insert_len < 0) {
     log_err("Error processing request");
-	return -1;
+    return -1;
   }
 
   /* Length of game board (minus the two hidden rows above the play field */

@@ -29,7 +29,9 @@
 #include "tetris.h"
 #include "helpers.h"
 
-#define PIECES_CHAR WACS_BLOCK
+static WINDOW *board, *pieces, *text;
+
+#define BLOCK_CHAR WACS_BLOCK
 
 #define PIECES_Y_OFF 4
 #define PIECES_X_OFF 3
@@ -39,33 +41,26 @@
 #define BOARD_Y_OFF 1
 #define BOARD_X_OFF 18
 #define BOARD_HEIGHT TETRIS_MAX_ROWS
-#define BOARD_WIDTH (TETRIS_MAX_COLUMNS + 2)
+#define BOARD_WIDTH TETRIS_MAX_COLUMNS + 2
 
 #define TEXT_Y_OFF 1
 #define TEXT_X_OFF (BOARD_X_OFF + BOARD_WIDTH)
 #define TEXT_HEIGHT BOARD_HEIGHT
 #define TEXT_WIDTH ((COLS - TEXT_X_OFF) - 1)
 
-static WINDOW *board, *pieces, *text;
-static const char colors[] = {COLOR_WHITE, COLOR_RED,     COLOR_GREEN, COLOR_YELLOW,
-                       COLOR_BLUE,  COLOR_MAGENTA, COLOR_CYAN};
+static const short colors[] = {COLOR_WHITE,  COLOR_RED,  COLOR_GREEN,
+                               COLOR_YELLOW, COLOR_BLUE, COLOR_MAGENTA,
+                               COLOR_CYAN};
+#define SCREEN_NUM_COLORS 7
 
-#define SCREEN_COLOR_WHITE 1
-#define SCREEN_COLOR_RED 2
-#define SCREEN_COLOR_GREEN 3
-#define SCREEN_COLOR_YELLOW 4
-#define SCREEN_COLOR_BLUE 5
-#define SCREEN_COLOR_MAGENTA 6
-#define SCREEN_COLOR_CYAN 7
-
-static const char *tips[] = {
-    "Soft dropping yields 1 point per space",
-    "Hard dropping yields 2 points per space",
-    "Difficult moves increase points by x1.5",
-    "Pausing resets your difficulty bonus",
-    "Tetris and T-Spins are difficult moves",
-    "You're allowed 1 move during lock timeouts",
-    "Move down after dropping to speed up the game",
+enum {
+  SCREEN_COLOR_WHITE = 1,
+  SCREEN_COLOR_RED,
+  SCREEN_COLOR_GREEN,
+  SCREEN_COLOR_YELLOW,
+  SCREEN_COLOR_BLUE,
+  SCREEN_COLOR_MAGENTA,
+  SCREEN_COLOR_CYAN
 };
 
 int screen_init(void) {
@@ -79,6 +74,7 @@ int screen_init(void) {
   curs_set(0);
 
   start_color();
+
   for (size_t i = 0; i < LEN(colors); i++)
     init_pair(i + 1, colors[i], COLOR_BLACK);
 
@@ -91,9 +87,7 @@ int screen_init(void) {
   mvprintw(PIECES_Y_OFF - 1, PIECES_X_OFF + 1, "Hold   Next");
 
   pieces = newwin(PIECES_HEIGHT, PIECES_WIDTH, PIECES_Y_OFF, PIECES_X_OFF);
-
   board = newwin(BOARD_HEIGHT, BOARD_WIDTH, BOARD_Y_OFF, BOARD_X_OFF);
-
   text = newwin(TEXT_HEIGHT, TEXT_WIDTH, TEXT_Y_OFF, TEXT_X_OFF);
 
   refresh();
@@ -132,20 +126,21 @@ int screen_update(tetris *pgame) {
 
   pblock = HOLD_BLOCK(pgame);
 
-  wattrset(pieces, A_BOLD | COLOR_PAIR((pblock->type % LEN(colors)) + 1));
+  wattrset(pieces, A_BOLD | COLOR_PAIR((pblock->type % SCREEN_NUM_COLORS) + 1));
 
   for (i = 0; i < LEN(pblock->p); i++)
-    mvwadd_wch(pieces, pblock->p[i].y + 2, pblock->p[i].x + 3, PIECES_CHAR);
+    mvwadd_wch(pieces, pblock->p[i].y + 2, pblock->p[i].x + 3, BLOCK_CHAR);
 
   pblock = FIRST_NEXT_BLOCK(pgame);
 
   size_t count = 0;
   while (pblock) {
 
-    wattrset(pieces, A_BOLD | COLOR_PAIR((pblock->type % LEN(colors)) + 1));
+    wattrset(pieces,
+             A_BOLD | COLOR_PAIR((pblock->type % SCREEN_NUM_COLORS) + 1));
     for (i = 0; i < LEN(pblock->p); i++)
       mvwadd_wch(pieces, pblock->p[i].y + 2 + (count * 3), pblock->p[i].x + 9,
-                 PIECES_CHAR);
+                 BLOCK_CHAR);
 
     count++;
     pblock = pblock->entries.le_next;
@@ -165,11 +160,11 @@ int screen_update(tetris *pgame) {
 
   /* Draw the ghost block */
   pblock = pgame->ghost_block;
-  wattrset(board, A_DIM | COLOR_PAIR((pblock->type % LEN(colors)) + 1));
+  wattrset(board, A_DIM | COLOR_PAIR((pblock->type % SCREEN_NUM_COLORS) + 1));
 
   for (i = 0; i < LEN(pblock->p); i++) {
     mvwadd_wch(board, pblock->p[i].y + pblock->row_off - 2,
-               pblock->p[i].x + pblock->col_off + 1, PIECES_CHAR);
+               pblock->p[i].x + pblock->col_off + 1, BLOCK_CHAR);
   }
 
   /* Draw the game board, minus the two hidden rows above the game */
@@ -183,18 +178,20 @@ int screen_update(tetris *pgame) {
         continue;
 
       wattrset(board,
-               A_BOLD | COLOR_PAIR((pgame->colors[i][j] % LEN(colors)) + 1));
-      mvwadd_wch(board, i - 2, j + 1, PIECES_CHAR);
+               A_BOLD |
+                   COLOR_PAIR((pgame->colors[i][j] % SCREEN_NUM_COLORS) + 1));
+      mvwadd_wch(board, i - 2, j + 1, BLOCK_CHAR);
     }
   }
 
   /* Draw the falling block to the board */
   pblock = CURRENT_BLOCK(pgame);
   for (i = 0; i < LEN(pblock->p); i++) {
-    wattrset(board, A_BOLD | COLOR_PAIR((pblock->type % LEN(colors)) + 1));
+    wattrset(board,
+             A_BOLD | COLOR_PAIR((pblock->type % SCREEN_NUM_COLORS) + 1));
 
     mvwadd_wch(board, pblock->p[i].y + pblock->row_off - 2,
-               pblock->p[i].x + pblock->col_off + 1, PIECES_CHAR);
+               pblock->p[i].x + pblock->col_off + 1, BLOCK_CHAR);
   }
 
   /* Draw "PAUSED" text */
@@ -238,6 +235,16 @@ int screen_update(tetris *pgame) {
   /* Tips */
   wattrset(text, A_UNDERLINE | COLOR_PAIR(SCREEN_COLOR_BLUE));
   mvwprintw(text, 7, 2, "Gameplay Tips");
+
+  const char *tips[] = {
+      "Soft dropping yields 1 point per space",
+      "Hard dropping yields 2 points per space",
+      "Difficult moves increase points by x1.5",
+      "Pausing resets your difficulty bonus",
+      "Tetris and T-Spins are difficult moves",
+      "You're allowed 1 move during lock timeouts",
+      "Move down after dropping to speed up the game",
+  };
 
   static int tip = 0, shows = 0;
   if (shows++ >= 30) {
@@ -345,8 +352,8 @@ int screen_gameover(tetris *pgame) {
     }
 
     mvprintw(i + 3, 2, "%s%2d.\t%-16s%5d\t%7d\t\t%.*s%s", us ? ">>" : "  ",
-             i + 1, (res[i])->id ? (res[i])->id : "unknown", (res[i])->level,
-             (res[i])->score, strlen(date_str) - 1, date_str, us ? " <<" : "");
+             i + 1, (res[i])->id, (res[i])->level, (res[i])->score,
+             strlen(date_str) - 1, date_str, us ? " <<" : "");
   }
 
   db_clean_scores(res, LEN(res));

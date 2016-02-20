@@ -476,10 +476,6 @@ static void update_points(tetris *pgame, uint8_t destroyed) {
 done : {
   int score_inc = (point_mod * pgame->level) + CURRENT_BLOCK(pgame)->soft_drop +
                   (CURRENT_BLOCK(pgame)->hard_drop * 2);
-
-#if defined(DEBUG)
-  logs_to_game("+%d", score_inc);
-#endif
   pgame->score += score_inc;
 }
 }
