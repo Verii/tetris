@@ -1,0 +1,2 @@
+I removed the "Create" directory stuff from the old db_init.
+Put this back into the configuration init stuff.
