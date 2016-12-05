@@ -3,18 +3,12 @@
 ## Building
 To build:
 
-    make (or `make debug`)
-
-To install:
-
-    make install (or not)
+    make
 
 ## Dependencies, Libraries
 
--GNU C99/POSIX  
--libsqlite3 (3.8+)  
+-libsqlite3 (3.8+)
 -libncurses
--json-c
 
 ## Contributions
 
@@ -23,5 +17,5 @@ BSD/MIT/ISC I'm okay with it.
 
 ## License
 
-Copyright (C) 2014 James Smith <james@apertum.org>.  
+Copyright (C) 2014,2015,2016 James Smith <james@apertum.org>.  
 Read the LICENSE file.
