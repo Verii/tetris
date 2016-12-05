@@ -1,6 +1,3 @@
-BIN = tetris
-VERSION = v1.0
-
 SRC =	src/main.c \
 	src/conf.c \
 	src/events.c \
@@ -11,33 +8,27 @@ SRC =	src/main.c \
 	src/tetris.c \
 	src/screen.c
 
-DESTDIR = /usr/local/bin
+VERSION = v1.0
 
-CPPFLAGS = -D_GNU_SOURCE -D_FORTIFY_SOURCE -DVERSION=\"${VERSION}\" -DNDEBUG -I./include
+CPPFLAGS = -DVERSION=\"${VERSION}\" -DNDEBUG -UDEBUG
+CFLAGS   = -std=gnu11 -Wall -Wextra -Wpedantic -Wextra -Os
+CFLAGS  += -Wshadow -Wpointer-arith -Wcast-qual -Wstrict-prototypes -Wformat=2
+CFLAGS  += -Wmissing-prototypes -Wmissing-prototypes -Wredundant-decls
+LDFLAGS  =
+LDLIBS   = -lm -lrt -lncurses -lsqlite3
 
-DEBUG = -g -Og -DDEBUG
-CFLAGS = -std=c11 -Wall -Wextra -Werror -O3
+## Debugging flags
+#CPPFLAGS += -UNDEBUG -DDEBUG
+#CFLAGS += -Og -ggdb3
 
-LDFLAGS = -lm -lrt -lncursesw -lsqlite3
+## Enable LLVM/Clang
+#CC = clang
+#CFLAGS += -Weverything
 
-.PREFIX:
-.PREFIX: .c .o
-
-all:
-	${CC} -o ${BIN} ${CPPFLAGS} ${CFLAGS} ${SRC} ${LDFLAGS}
-
-install: all
-	install -sp -o root -g root --mode=755 -t ${DESTDIR} ${BIN}
-
-## Build with debugging flags when told to produce .o files.
-OBJS = ${SRC:.c=.o}
-.c.o:
-	${CC} -c $< -o $@ ${CPPFLAGS} ${CFLAGS} ${DEBUG}
-
-debug: ${OBJS}
-	${CC} ${OBJS} ${LDFLAGS} -o ${BIN}-$@
+tetris: $(SRC)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(LDLIBS) $^ -o $@
 
 clean:
-	-rm -f ${BIN} ${BIN}-debug ${OBJS}
+	rm -f tetris
 
-.PHONY: clean debug install all
+.PHONY: clean
