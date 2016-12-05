@@ -31,7 +31,11 @@
 
 static WINDOW *board, *pieces, *text;
 
-#define BLOCK_CHAR WACS_BLOCK
+#if defined(WIDE_NCURSES)
+# define BLOCK_CHAR WACS_BLOCK
+#else
+# define BLOCK_CHAR 'x'
+#endif
 
 #define PIECES_Y_OFF 4
 #define PIECES_X_OFF 3
@@ -128,8 +132,13 @@ int screen_update(tetris *pgame) {
 
   wattrset(pieces, A_BOLD | COLOR_PAIR((pblock->type % SCREEN_NUM_COLORS) + 1));
 
-  for (i = 0; i < LEN(pblock->p); i++)
+  for (i = 0; i < LEN(pblock->p); i++) {
+#if defined(WIDE_NCURSES)
     mvwadd_wch(pieces, pblock->p[i].y + 2, pblock->p[i].x + 3, BLOCK_CHAR);
+#else
+    mvwaddch(pieces, pblock->p[i].y + 2, pblock->p[i].x + 3, BLOCK_CHAR);
+#endif
+  }
 
   pblock = FIRST_NEXT_BLOCK(pgame);
 
@@ -138,9 +147,15 @@ int screen_update(tetris *pgame) {
 
     wattrset(pieces,
              A_BOLD | COLOR_PAIR((pblock->type % SCREEN_NUM_COLORS) + 1));
-    for (i = 0; i < LEN(pblock->p); i++)
+    for (i = 0; i < LEN(pblock->p); i++) {
+#if defined(WIDE_NCURSES)
       mvwadd_wch(pieces, pblock->p[i].y + 2 + (count * 3), pblock->p[i].x + 9,
+          BLOCK_CHAR);
+#else
+      mvwaddch(pieces, pblock->p[i].y + 2 + (count * 3), pblock->p[i].x + 9,
                  BLOCK_CHAR);
+#endif
+    }
 
     count++;
     pblock = pblock->entries.le_next;
@@ -163,8 +178,13 @@ int screen_update(tetris *pgame) {
   wattrset(board, A_DIM | COLOR_PAIR((pblock->type % SCREEN_NUM_COLORS) + 1));
 
   for (i = 0; i < LEN(pblock->p); i++) {
+#if defined(WIDE_NCURSES)
     mvwadd_wch(board, pblock->p[i].y + pblock->row_off - 2,
                pblock->p[i].x + pblock->col_off + 1, BLOCK_CHAR);
+#else
+    mvwaddch(board, pblock->p[i].y + pblock->row_off - 2,
+               pblock->p[i].x + pblock->col_off + 1, BLOCK_CHAR);
+#endif
   }
 
   /* Draw the game board, minus the two hidden rows above the game */
@@ -177,10 +197,13 @@ int screen_update(tetris *pgame) {
       if (!tetris_at_yx(pgame, i, j))
         continue;
 
-      wattrset(board,
-               A_BOLD |
+      wattrset(board, A_BOLD |
                    COLOR_PAIR((pgame->colors[i][j] % SCREEN_NUM_COLORS) + 1));
+#if defined(WIDE_NCURSES)
       mvwadd_wch(board, i - 2, j + 1, BLOCK_CHAR);
+#else
+      mvwaddch(board, i - 2, j + 1, BLOCK_CHAR);
+#endif
     }
   }
 
@@ -190,8 +213,13 @@ int screen_update(tetris *pgame) {
     wattrset(board,
              A_BOLD | COLOR_PAIR((pblock->type % SCREEN_NUM_COLORS) + 1));
 
+#if defined(WIDE_NCURSES)
     mvwadd_wch(board, pblock->p[i].y + pblock->row_off - 2,
                pblock->p[i].x + pblock->col_off + 1, BLOCK_CHAR);
+#else
+    mvwaddch(board, pblock->p[i].y + pblock->row_off - 2,
+               pblock->p[i].x + pblock->col_off + 1, BLOCK_CHAR);
+#endif
   }
 
   /* Draw "PAUSED" text */
