@@ -53,22 +53,17 @@ const char create_scores[] =
 
 const char insert_scores[] = "INSERT INTO Scores VALUES(\"%s\",%d,%d,%lu);";
 
-const char select_scores[] = "SELECT * FROM Scores ORDER BY score DESC;";
+const char select_scores[] = "SELECT name,level,score,date FROM Scores ORDER BY score DESC;";
 
 /* State: name, score, lines, level, date, spaces */
 const char create_state[] =
     "CREATE TABLE State(name TEXT,score INT,lines INT,level INT,"
     "date INT,spaces BLOB);";
 
-const char insert_state[] = "INSERT INTO State VALUES(\"%s\",%d,%d,%d,%lu,?);";
+const char insert_state[] = "INSERT INTO State VALUES(?,%d,%d,%d,%lu,?);";
 
-const char select_state[] = "SELECT * FROM State ORDER BY date DESC;";
-
-/* Find the entry we just pulled from the database.
- * There's probably a simpler way than using two SELECT calls, but I'm a total
- * SQL noob, so ... */
-const char select_state_rowid[] =
-    "SELECT ROWID,date FROM State ORDER BY date DESC;";
+// Grabs the oldest save in the database and restores it to the game
+const char select_state[] = "SELECT name,score,lines,level,date,spaces,rowid FROM State ORDER BY date DESC LIMIT 1;";
 
 /* Remove the entry pulled from the database. This lets us have multiple saves
  * in the database concurently.
@@ -135,7 +130,7 @@ int db_save_state(tetris *pgame) {
   char insert[4096];
   int insert_len = -1;
   insert_len =
-      snprintf(insert, sizeof(insert), insert_state, pgame->id, pgame->score,
+      snprintf(insert, sizeof(insert), insert_state, pgame->score,
                pgame->lines_destroyed, pgame->level, time(NULL));
 
   if (insert_len >= (int)sizeof(insert)) {
@@ -155,7 +150,9 @@ int db_save_state(tetris *pgame) {
   memcpy(&data[0], &pgame->spaces[2], data_len);
   sqlite3_prepare_v2(db_handle, insert, strlen(insert), &stmt, NULL);
 
-  sqlite3_bind_blob(stmt, 1, data, data_len, NULL);
+  sqlite3_bind_blob(stmt, 1, pgame->id, sizeof(pgame->id), NULL);
+  sqlite3_bind_blob(stmt, 2, data, data_len, NULL);
+
   sqlite3_step(stmt);
   sqlite3_finalize(stmt);
 
@@ -171,6 +168,8 @@ int db_resume_state(tetris *pgame) {
   sqlite3_stmt *stmt, *delete;
   const char *blob;
   int ret, rowid;
+
+  rowid = -1;
 
   debug("Trying to restore saved game");
 
@@ -197,6 +196,8 @@ int db_resume_state(tetris *pgame) {
     memcpy(&pgame->spaces[2], &blob[0],
            (TETRIS_MAX_ROWS - 2) * sizeof(*pgame->spaces));
 
+    rowid = sqlite3_column_int(stmt, 6);
+
     ret = 1;
   } else {
     log_info("No game saves found");
@@ -205,12 +206,7 @@ int db_resume_state(tetris *pgame) {
 
   sqlite3_finalize(stmt);
 
-  sqlite3_prepare_v2(db_handle, select_state_rowid, sizeof select_state_rowid,
-                     &stmt, NULL);
-
-  if (sqlite3_step(stmt) == SQLITE_ROW) {
-    rowid = sqlite3_column_int(stmt, 0);
-
+  if (rowid >= 0) {
     /* delete from table */
     sqlite3_prepare_v2(db_handle, delete_state_rowid, sizeof delete_state_rowid,
                        &delete, NULL);
@@ -220,7 +216,6 @@ int db_resume_state(tetris *pgame) {
     sqlite3_finalize(delete);
   }
 
-  sqlite3_finalize(stmt);
   db_close(db_handle);
 
   return ret;
