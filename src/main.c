@@ -17,53 +17,61 @@
  */
 
 #include <locale.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <signal.h>
 #include <unistd.h>
 
 #include <getopt.h>
 #include <stdbool.h>
 #include <time.h>
 
-#include "db.h"
 #include "conf.h"
-#include "logs.h"
-#include "tetris.h"
-#include "screen.h"
-#include "input.h"
+#include "db.h"
 #include "events.h"
+#include "input.h"
+#include "logs.h"
+#include "screen.h"
+#include "tetris.h"
 
-tetris *pgame;
-struct config *config;
+tetris* pgame;
+struct config* config;
 volatile sig_atomic_t tetris_do_tick;
 
-static void usage(void) {
-  extern const char *__progname;
-  const char *help =
-      "Copyright (C) 2014 James Smith <james@apertum.org>\n\n"
-      "This program is free software; you can redistribute it and/or modify\n"
-      "it under the terms of the GNU General Public License as published by\n"
-      "the Free Software Foundation; either version 2 of the License, or\n"
-      "(at your option) any later version.\n\n"
-      "This program is distributed in the hope that it will be useful,\n"
-      "but WITHOUT ANY WARRANTY; without even the implied warranty of\n"
-      "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n"
-      "GNU General Public License for more details.\n\n"
-      "%s version %s\n"
-      "Built on %s at %s\n\n"
-      "Usage:\n\t"
-      "[-u] usage\n\t"
-      "[-c file] path to use for configuration file\n\t"
-      "[-l file] location to write logs\n\n";
+static void
+usage(void)
+{
+  extern const char* __progname;
+  const char* help =
+    "Copyright (C) 2014 James Smith <james@apertum.org>\n\n"
+    "This program is free software; you can redistribute it and/or modify\n"
+    "it under the terms of the GNU General Public License as published by\n"
+    "the Free Software Foundation; either version 2 of the License, or\n"
+    "(at your option) any later version.\n\n"
+    "This program is distributed in the hope that it will be useful,\n"
+    "but WITHOUT ANY WARRANTY; without even the implied warranty of\n"
+    "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n"
+    "GNU General Public License for more details.\n\n"
+    "%s version %s\n"
+    "Built on %s at %s\n\n"
+    "Usage:\n\t"
+    "[-u] usage\n\t"
+    "[-c file] path to use for configuration file\n\t"
+    "[-l file] location to write logs\n\n";
 
   fprintf(stderr, help, __progname, VERSION, __DATE__, __TIME__);
 }
 
-void timer_handler(int sig) { tetris_do_tick = sig; }
+void
+timer_handler(int sig)
+{
+  tetris_do_tick = sig;
+}
 
-int main(int argc, char **argv) {
+int
+main(int argc, char** argv)
+{
   bool cflag, hflag, lflag, pflag, sflag;
   char conffile[256];
   char logfile[256];
@@ -78,23 +86,23 @@ int main(int argc, char **argv) {
   cflag = hflag = lflag = pflag = sflag = false;
   while ((ch = getopt(argc, argv, "c:h:l:p:s:u")) != -1) {
     switch (ch) {
-    case 'c':
-      /* update location for configuration file */
-      cflag = true;
-      strncpy(conffile, optarg, sizeof conffile);
-      conffile[sizeof(conffile) - 1] = '\0';
-      break;
-    case 'l':
-      /* logfile location */
-      lflag = true;
-      strncpy(logfile, optarg, sizeof logfile);
-      logfile[sizeof(logfile) - 1] = '\0';
-      break;
-    case 'u':
-    default:
-      usage();
-      exit(EXIT_FAILURE);
-      break;
+      case 'c':
+        /* update location for configuration file */
+        cflag = true;
+        strncpy(conffile, optarg, sizeof conffile);
+        conffile[sizeof(conffile) - 1] = '\0';
+        break;
+      case 'l':
+        /* logfile location */
+        lflag = true;
+        strncpy(logfile, optarg, sizeof logfile);
+        logfile[sizeof(logfile) - 1] = '\0';
+        break;
+      case 'u':
+      default:
+        usage();
+        exit(EXIT_FAILURE);
+        break;
     }
   }
 
@@ -161,14 +169,14 @@ int main(int argc, char **argv) {
   events_main_loop(pgame);
 
   switch (tetris_get_state(pgame)) {
-  case TETRIS_LOSE:
-  case TETRIS_WIN:
-    db_save_score(pgame);
-    break;
-  default:
-  case TETRIS_QUIT:
-    db_save_state(pgame);
-    break;
+    case TETRIS_LOSE:
+    case TETRIS_WIN:
+      db_save_score(pgame);
+      break;
+    default:
+    case TETRIS_QUIT:
+      db_save_state(pgame);
+      break;
   }
 
   /* Cleanup */
