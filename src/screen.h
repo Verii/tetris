@@ -24,6 +24,6 @@
 
 int screen_init(void);
 void screen_cleanup(void);
-int screen_menu(tetris *);
-int screen_update(tetris *);
-int screen_gameover(tetris *);
+int screen_menu(tetris*);
+int screen_update(tetris*);
+int screen_gameover(tetris*);

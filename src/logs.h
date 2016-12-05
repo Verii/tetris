@@ -40,13 +40,14 @@
   logs_to_file("[INFO] " M " (%s:%d)", ##__VA_ARGS__, __FILE__, __LINE__)
 
 LIST_HEAD(log_entry_head, log_entry) entry_head;
-struct log_entry {
-  char *msg;
+struct log_entry
+{
+  char* msg;
   LIST_ENTRY(log_entry) entries;
 };
 
-int logs_init(const char *path);
+int logs_init(const char* path);
 void logs_cleanup(void);
 
-void logs_to_game(const char *, ...);
-void logs_to_file(const char *, ...);
+void logs_to_game(const char*, ...);
+void logs_to_file(const char*, ...);

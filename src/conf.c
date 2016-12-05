@@ -16,31 +16,31 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
 #include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
-#include <string.h>
 #include <stdbool.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "conf.h"
-#include "logs.h"
 #include "helpers.h"
+#include "logs.h"
 
 static const char config_defaults[] =
-    /* Default movement keys */
-    "bind move_drop 'w'\n"
-    "bind move_left 'a'\n"
-    "bind move_down 's'\n"
-    "bind move_right 'd'\n"
-    "bind rotate_left 'q'\n"
-    "bind rotate_right 'e'\n"
-    "bind hold_key 'h'\n"
-    "bind pause_key 'p'\n"
-    "bind quit_key 'o'\n"
+  /* Default movement keys */
+  "bind move_drop 'w'\n"
+  "bind move_left 'a'\n"
+  "bind move_down 's'\n"
+  "bind move_right 'd'\n"
+  "bind rotate_left 'q'\n"
+  "bind rotate_right 'e'\n"
+  "bind hold_key 'h'\n"
+  "bind pause_key 'p'\n"
+  "bind quit_key 'o'\n"
 
 #if 0
 	/* Ingame toggle options */
@@ -50,15 +50,17 @@ static const char config_defaults[] =
 	"bind cycle_gamemodes 'm'\n"
 #endif
 
-    "set username \"username\"\n"
+  "set username \"username\"\n"
 
-    "set logs_file \"~/.local/share/tetris/logs\"\n"
-    "set save_file \"~/.local/share/tetris/saves\"\n"
+  "set logs_file \"~/.local/share/tetris/logs\"\n"
+  "set save_file \"~/.local/share/tetris/saves\"\n"
 
-    "set _conf_file \"~/.config/tetris/tetris.conf\"\n";
+  "set _conf_file \"~/.config/tetris/tetris.conf\"\n";
 
-int conf_create(struct config **retc) {
-  struct config *conf;
+int
+conf_create(struct config** retc)
+{
+  struct config* conf;
 
   conf = malloc(sizeof *conf);
   if (conf == NULL) {
@@ -74,7 +76,9 @@ int conf_create(struct config **retc) {
 /* Set default global variables, create necessary directories,
  * read in user specified configuration files.
  */
-int conf_init(struct config *conf, const char *path) {
+int
+conf_init(struct config* conf, const char* path)
+{
   if (conf == NULL)
     return -1;
 
@@ -86,7 +90,7 @@ int conf_init(struct config *conf, const char *path) {
     return 1;
   } else {
     size_t len;
-    char *config_file;
+    char* config_file;
 
     /* Read in the configuration file at path */
     file_into_buf(path, &config_file, &len);
@@ -106,24 +110,27 @@ int conf_init(struct config *conf, const char *path) {
   return 1;
 }
 
-int conf_parse(struct config *conf, const char *str, size_t len) {
+int
+conf_parse(struct config* conf, const char* str, size_t len)
+{
   size_t i;
 
   if (str == NULL || len == 0)
     return 0;
 
-  struct {
-    char *key;
-    int (*cb)(struct config *, const char *, size_t);
+  struct
+  {
+    char* key;
+    int (*cb)(struct config*, const char*, size_t);
   } tokens[] = {
-      {"set", conf_command_set},
-      {"unset", conf_command_unset},
-      {"bind", conf_command_bind},
+    { "set", conf_command_set },
+    { "unset", conf_command_unset },
+    { "bind", conf_command_bind },
   };
 
   getnextline(NULL, 0, NULL);
 
-  char *pbuf;
+  char* pbuf;
   while (getnextline(str, len, &pbuf) != EOF && (pbuf != NULL)) {
 
     for (i = 0; i < LEN(tokens); i++) {
@@ -145,29 +152,32 @@ int conf_parse(struct config *conf, const char *str, size_t len) {
   return 1;
 }
 
-int conf_command_set(struct config *conf, const char *cmd, size_t len) {
+int
+conf_command_set(struct config* conf, const char* cmd, size_t len)
+{
   size_t i;
   const char *pfirst, *plast;
 
   if (len < strlen("set") + 2 || strstr(cmd, "set") != cmd)
     return 0;
 
-  struct {
-    char *key;
-    struct values *val;
+  struct
+  {
+    char* key;
+    struct values* val;
   } tokens_val[] = {
-      {"username", &conf->username},
-      {"logs_file", &conf->logs_file},
-      {"save_file", &conf->save_file},
-      {"_conf_file", &conf->_conf_file},
+    { "username", &conf->username },
+    { "logs_file", &conf->logs_file },
+    { "save_file", &conf->save_file },
+    { "_conf_file", &conf->_conf_file },
   };
 
-  struct values *mod = NULL;
+  struct values* mod = NULL;
   pfirst = cmd;
 
   /* Find something like `set username ...` */
   for (i = 0; i < LEN(tokens_val); i++) {
-    char *tmp;
+    char* tmp;
     tmp = strstr(cmd, tokens_val[i].key);
     if (tmp == NULL)
       continue;
@@ -217,45 +227,50 @@ int conf_command_set(struct config *conf, const char *cmd, size_t len) {
 }
 
 /* TODO */
-int conf_command_unset(struct config *conf, const char *cmd, size_t len) {
+int
+conf_command_unset(struct config* conf, const char* cmd, size_t len)
+{
   if (!conf || !len || strstr(cmd, "unset") != cmd)
     return 0;
 
   return 0;
 }
 
-int conf_command_bind(struct config *conf, const char *cmd, size_t len) {
+int
+conf_command_bind(struct config* conf, const char* cmd, size_t len)
+{
   size_t i;
-  const char *pchar;
+  const char* pchar;
 
   if (len < strlen("bind") + 1 || strstr(cmd, "bind") != cmd)
     return 0;
 
-  struct {
-    char *key;
-    struct key_bindings *kb;
+  struct
+  {
+    char* key;
+    struct key_bindings* kb;
   } tokens[] = {
-      {"move_drop", &conf->move_drop},
-      {"move_left", &conf->move_left},
-      {"move_right", &conf->move_right},
-      {"move_down", &conf->move_down},
-      {"rotate_left", &conf->rotate_left},
-      {"rotate_right", &conf->rotate_right},
+    { "move_drop", &conf->move_drop },
+    { "move_left", &conf->move_left },
+    { "move_right", &conf->move_right },
+    { "move_down", &conf->move_down },
+    { "rotate_left", &conf->rotate_left },
+    { "rotate_right", &conf->rotate_right },
 
-      {"hold_key", &conf->hold_key},
-      {"pause_key", &conf->pause_key},
-      {"quit_key", &conf->quit_key},
+    { "hold_key", &conf->hold_key },
+    { "pause_key", &conf->pause_key },
+    { "quit_key", &conf->quit_key },
 
-      {"toggle_ghosts", &conf->toggle_ghosts},
-      {"toggle_wallkicks", &conf->toggle_wallkicks},
-      {"cycle_gamemodes", &conf->cycle_gamemodes},
+    { "toggle_ghosts", &conf->toggle_ghosts },
+    { "toggle_wallkicks", &conf->toggle_wallkicks },
+    { "cycle_gamemodes", &conf->cycle_gamemodes },
   };
 
-  struct key_bindings *mod = NULL;
+  struct key_bindings* mod = NULL;
   pchar = cmd;
 
   for (i = 0; i < LEN(tokens); i++) {
-    char *tmp;
+    char* tmp;
     tmp = strstr(cmd, tokens[i].key);
     if (tmp == NULL)
       continue;
@@ -292,7 +307,9 @@ int conf_command_bind(struct config *conf, const char *cmd, size_t len) {
   return 1;
 }
 
-void conf_cleanup(struct config *conf) {
+void
+conf_cleanup(struct config* conf)
+{
   free(conf->username.val);
   free(conf->logs_file.val);
   free(conf->save_file.val);

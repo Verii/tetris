@@ -16,23 +16,25 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <fcntl.h>
 
-#include <string.h>
+#include <ctype.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <errno.h>
-#include <ctype.h>
+#include <string.h>
 
-#include "logs.h"
 #include "helpers.h"
+#include "logs.h"
 
 const mode_t perm_mode = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
 
-int try_mkdir(const char *path, mode_t mode) {
+int
+try_mkdir(const char* path, mode_t mode)
+{
   struct stat sb;
 
   errno = 0;
@@ -62,7 +64,9 @@ int try_mkdir(const char *path, mode_t mode) {
 /* Treated like the POSIX `mkdir -p` switch, create all subdirectories in a
  * path.
  */
-int try_mkdir_r(const char *path, mode_t mode) {
+int
+try_mkdir_r(const char* path, mode_t mode)
+{
   char pcpy[256];    /* Local copy, strtok modifies first argument */
   char subdir[256];  /* subdirectory we're building */
   char *p, *saveptr; /* next token, save state */
@@ -89,7 +93,9 @@ err_mkdir_r:
   return -1;
 }
 
-int file_into_buf(const char *path, char **buf, size_t *len) {
+int
+file_into_buf(const char* path, char** buf, size_t* len)
+{
   off_t n = -1;
   int fd = -1;
 
@@ -151,7 +157,9 @@ cleanup:
 }
 
 /* Give pack a pointer to a location in the buffer of the next line. */
-int getnextline(const char *buf, size_t len, char **pbuf) {
+int
+getnextline(const char* buf, size_t len, char** pbuf)
+{
   size_t line_len = 0;
   static size_t offset = 0;
 
@@ -192,10 +200,12 @@ int getnextline(const char *buf, size_t len, char **pbuf) {
 }
 
 /* Replaces '~' in a pathname with the user's HOME variable.  */
-int replace_home(char **path, size_t *buf_len) {
+int
+replace_home(char** path, size_t* buf_len)
+{
   size_t len;
-  char *home_dir;
-  char *buf;
+  char* home_dir;
+  char* buf;
 
   if (*path == NULL || *buf_len == 0)
     return -1;

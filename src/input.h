@@ -20,4 +20,4 @@
 
 #include "events.h"
 
-int keyboard_in_handler(events *);
+int keyboard_in_handler(events*);

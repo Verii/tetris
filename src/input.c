@@ -16,38 +16,41 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "conf.h"
-#include "tetris.h"
-#include "events.h"
 #include "input.h"
+#include "conf.h"
+#include "events.h"
 #include "helpers.h"
 #include "logs.h"
 #include "screen.h"
+#include "tetris.h"
 
-#include <string.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-extern tetris *pgame;
-extern struct config *config;
+extern tetris* pgame;
+extern struct config* config;
 
-int keyboard_in_handler(events *pev) {
+int
+keyboard_in_handler(events* pev)
+{
   int ret = -1;
 
-  struct {
-    struct key_bindings *key;
+  struct
+  {
+    struct key_bindings* key;
     int cmd;
   } actions[] = {
-      {&config->move_drop, TETRIS_MOVE_DROP},
-      {&config->move_down, TETRIS_MOVE_DOWN},
-      {&config->move_left, TETRIS_MOVE_LEFT},
-      {&config->move_right, TETRIS_MOVE_RIGHT},
-      {&config->rotate_left, TETRIS_ROT_LEFT},
-      {&config->rotate_right, TETRIS_ROT_RIGHT},
+    { &config->move_drop, TETRIS_MOVE_DROP },
+    { &config->move_down, TETRIS_MOVE_DOWN },
+    { &config->move_left, TETRIS_MOVE_LEFT },
+    { &config->move_right, TETRIS_MOVE_RIGHT },
+    { &config->rotate_left, TETRIS_ROT_LEFT },
+    { &config->rotate_right, TETRIS_ROT_RIGHT },
 
-      {&config->hold_key, TETRIS_HOLD_BLOCK},
-      {&config->quit_key, TETRIS_QUIT_GAME},
-      {&config->pause_key, TETRIS_PAUSE_GAME},
+    { &config->hold_key, TETRIS_HOLD_BLOCK },
+    { &config->quit_key, TETRIS_QUIT_GAME },
+    { &config->pause_key, TETRIS_PAUSE_GAME },
   };
 
   char kb_key;

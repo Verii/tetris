@@ -17,22 +17,24 @@
  */
 
 #include <errno.h>
-#include <stdio.h>
 #include <stdarg.h>
-#include <time.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/queue.h>
+#include <time.h>
 
-#include "logs.h"
 #include "helpers.h"
+#include "logs.h"
 
 /* Internal function.
  * Wrapper, adds new message to head of linked list
  */
-static int _add_to_queue(const char *msg) {
+static int
+_add_to_queue(const char* msg)
+{
   int msg_len = -1;
-  struct log_entry *np = calloc(1, sizeof *np);
+  struct log_entry* np = calloc(1, sizeof *np);
   if (!np)
     return -1;
 
@@ -52,7 +54,9 @@ static int _add_to_queue(const char *msg) {
 }
 
 /* Try to open file provided by user for writing. */
-int logs_init(const char *path) {
+int
+logs_init(const char* path)
+{
   LIST_INIT(&entry_head);
 
   if (!path)
@@ -71,8 +75,10 @@ int logs_init(const char *path) {
 }
 
 /* Remove elements in linked list, close logfile. */
-void logs_cleanup(void) {
-  struct log_entry *np;
+void
+logs_cleanup(void)
+{
+  struct log_entry* np;
 
   while (entry_head.lh_first) {
     np = entry_head.lh_first;
@@ -87,8 +93,10 @@ void logs_cleanup(void) {
 }
 
 /* Adds log message to a message queue, to be printed in game */
-void logs_to_game(const char *fmt, ...) {
-  char *debug_message;
+void
+logs_to_game(const char* fmt, ...)
+{
+  char* debug_message;
   va_list ap;
 
   va_start(ap, fmt);
@@ -107,9 +115,11 @@ void logs_to_game(const char *fmt, ...) {
 /* Prints a log message of the form:
  * "[time] message"
  */
-void logs_to_file(const char *fmt, ...) {
+void
+logs_to_file(const char* fmt, ...)
+{
   va_list ap;
-  char *debug_message;
+  char* debug_message;
   time_t s = time(NULL);
   char date[32];
 

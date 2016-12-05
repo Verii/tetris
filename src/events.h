@@ -18,18 +18,19 @@
 
 #pragma once
 
-#include <signal.h>
 #include "tetris.h"
+#include <signal.h>
 
 struct events;
 typedef struct events events;
-typedef int (*events_callback)(events *);
+typedef int (*events_callback)(events*);
 
 /**
  * events structure contains the file descriptor to listen on,
  * and the callback function to call when input is detected on the fd.
  */
-struct events {
+struct events
+{
   int fd;
   events_callback cb;
 };
@@ -51,6 +52,6 @@ int events_add_timer(struct timespec, struct sigaction, int sig);
  *
  * Returns when the user quits or the game is over.
  */
-void events_main_loop(tetris *);
+void events_main_loop(tetris*);
 
 void events_cleanup(void);

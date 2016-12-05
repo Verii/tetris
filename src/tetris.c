@@ -22,8 +22,8 @@
 #include <sys/queue.h>
 
 #include "helpers.h"
-#include "tetris.h"
 #include "logs.h"
+#include "tetris.h"
 
 /****************************/
 /*  Begin Random Generator  */
@@ -37,14 +37,16 @@
  *
  * This helps to reduce the length of sequential pieces.
  */
-static void bag_random_generator(tetris *pgame) {
+static void
+bag_random_generator(tetris* pgame)
+{
   uint8_t index;
 
   /* The order here DOES matter, edit with caution */
   uint8_t avail_blocks[TETRIS_NUM_BLOCKS] = {
-      TETRIS_I_BLOCK, TETRIS_T_BLOCK, TETRIS_L_BLOCK, TETRIS_J_BLOCK,
-      /* Three pieces not initially selected */
-      TETRIS_S_BLOCK, TETRIS_Z_BLOCK, TETRIS_O_BLOCK,
+    TETRIS_I_BLOCK, TETRIS_T_BLOCK, TETRIS_L_BLOCK, TETRIS_J_BLOCK,
+    /* Three pieces not initially selected */
+    TETRIS_S_BLOCK, TETRIS_Z_BLOCK, TETRIS_O_BLOCK,
   };
 
   memset(pgame->bag, DIRTY_BIT, LEN(pgame->bag));
@@ -83,7 +85,9 @@ static void bag_random_generator(tetris *pgame) {
   }
 }
 
-static int bag_next_piece(tetris *pgame) {
+static int
+bag_next_piece(tetris* pgame)
+{
   static size_t index = 0;
 
   int ret = pgame->bag[index];
@@ -97,7 +101,9 @@ static int bag_next_piece(tetris *pgame) {
   return ret;
 }
 
-static int bag_is_empty(tetris *pgame) {
+static int
+bag_is_empty(tetris* pgame)
+{
   for (size_t i = 0; i < LEN(pgame->bag); i++)
     if (pgame->bag[i] < DIRTY_BIT)
       return 0;
@@ -115,7 +121,9 @@ static int bag_is_empty(tetris *pgame) {
 /**********************************/
 
 /* Resets the block to its default positional state */
-static void block_reset(block *pblock) {
+static void
+block_reset(block* pblock)
+{
   int index = 0; /* used in macro def. PIECE_XY() */
 
   pblock->col_off = TETRIS_MAX_COLUMNS / 2;
@@ -135,49 +143,51 @@ static void block_reset(block *pblock) {
   PIECE_XY(0, 0);
 
   switch (pblock->type) {
-  case TETRIS_O_BLOCK:
-    PIECE_XY(-1, -1);
-    PIECE_XY(0, -1);
-    PIECE_XY(-1, 0);
-    break;
-  case TETRIS_I_BLOCK:
-    pblock->col_off--; /* center */
+    case TETRIS_O_BLOCK:
+      PIECE_XY(-1, -1);
+      PIECE_XY(0, -1);
+      PIECE_XY(-1, 0);
+      break;
+    case TETRIS_I_BLOCK:
+      pblock->col_off--; /* center */
 
-    PIECE_XY(-1, 0);
-    PIECE_XY(1, 0);
-    PIECE_XY(2, 0);
-    break;
-  case TETRIS_T_BLOCK:
-    PIECE_XY(0, -1);
-    PIECE_XY(-1, 0);
-    PIECE_XY(1, 0);
-    break;
-  case TETRIS_L_BLOCK:
-    PIECE_XY(1, -1);
-    PIECE_XY(-1, 0);
-    PIECE_XY(1, 0);
-    break;
-  case TETRIS_J_BLOCK:
-    PIECE_XY(-1, -1);
-    PIECE_XY(-1, 0);
-    PIECE_XY(1, 0);
-    break;
-  case TETRIS_Z_BLOCK:
-    PIECE_XY(-1, -1);
-    PIECE_XY(0, -1);
-    PIECE_XY(1, 0);
-    break;
-  case TETRIS_S_BLOCK:
-    PIECE_XY(0, -1);
-    PIECE_XY(1, -1);
-    PIECE_XY(-1, 0);
-    break;
+      PIECE_XY(-1, 0);
+      PIECE_XY(1, 0);
+      PIECE_XY(2, 0);
+      break;
+    case TETRIS_T_BLOCK:
+      PIECE_XY(0, -1);
+      PIECE_XY(-1, 0);
+      PIECE_XY(1, 0);
+      break;
+    case TETRIS_L_BLOCK:
+      PIECE_XY(1, -1);
+      PIECE_XY(-1, 0);
+      PIECE_XY(1, 0);
+      break;
+    case TETRIS_J_BLOCK:
+      PIECE_XY(-1, -1);
+      PIECE_XY(-1, 0);
+      PIECE_XY(1, 0);
+      break;
+    case TETRIS_Z_BLOCK:
+      PIECE_XY(-1, -1);
+      PIECE_XY(0, -1);
+      PIECE_XY(1, 0);
+      break;
+    case TETRIS_S_BLOCK:
+      PIECE_XY(0, -1);
+      PIECE_XY(1, -1);
+      PIECE_XY(-1, 0);
+      break;
   }
 #undef PIECE_XY
 }
 
 /* Randomizes block and sets the initial positions of the pieces */
-static void block_randomize(tetris *pgame, block *pblock) {
+static void
+block_randomize(tetris* pgame, block* pblock)
+{
   /* Create a new bag if necessary, then pull the next piece from it */
   if (bag_is_empty(pgame))
     bag_random_generator(pgame);
@@ -188,7 +198,9 @@ static void block_randomize(tetris *pgame, block *pblock) {
 }
 
 /* translate pieces in block horizontally. */
-static int block_translate(tetris *pgame, block *pblock, int cmd) {
+static int
+block_translate(tetris* pgame, block* pblock, int cmd)
+{
   /* 1 is right, -1 is left */
   int dir = (cmd == TETRIS_MOVE_LEFT) ? -1 : 1;
 
@@ -210,7 +222,9 @@ static int block_translate(tetris *pgame, block *pblock, int cmd) {
 }
 
 /* rotate pieces in blocks by either 90^ or -90^ around (0, 0) pivot */
-static int block_rotate(tetris *pgame, block *pblock, int cmd) {
+static int
+block_rotate(tetris* pgame, block* pblock, int cmd)
+{
   /* Don't rotate O block */
   if (pblock->type == TETRIS_O_BLOCK)
     return 1;
@@ -252,7 +266,9 @@ static int block_rotate(tetris *pgame, block *pblock, int cmd) {
  * If translation or rotation fails again, try to translate right, then try to
  * 	rotate again.
  */
-static int block_wall_kick(tetris *pgame, block *pblock, int cmd) {
+static int
+block_wall_kick(tetris* pgame, block* pblock, int cmd)
+{
   /* Try to rotate block the normal way. */
   if (block_rotate(pgame, pblock, cmd) == 1)
     return 1;
@@ -283,7 +299,9 @@ static int block_wall_kick(tetris *pgame, block *pblock, int cmd) {
  * This function is used during normal gravitational events, and during
  * user-input 'soft drop' events.
  */
-static int block_fall(tetris *pgame, block *pblock, int dir) {
+static int
+block_fall(tetris* pgame, block* pblock, int dir)
+{
   for (size_t i = 0; i < LEN(pblock->p); i++) {
     int bounds_x, bounds_y;
     bounds_y = pblock->p[i].y + pblock->row_off + dir;
@@ -304,7 +322,9 @@ static int block_fall(tetris *pgame, block *pblock, int dir) {
  * Algorithm will most likely change. It currently follows the arctan curve.
  * Not quite sure that I like it, though.
  */
-static void update_tick_speed(tetris *pgame) {
+static void
+update_tick_speed(tetris* pgame)
+{
   double speed = 1.0f;
 
   speed += atan(pgame->level / 5.0) * 2 / PI * 3;
@@ -315,7 +335,9 @@ static void update_tick_speed(tetris *pgame) {
  *
  * Remove the "Current" block and reinstall it at the end of the list
  */
-static void update_cur_block(tetris *pgame) {
+static void
+update_cur_block(tetris* pgame)
+{
   block *last, *np = CURRENT_BLOCK(pgame);
 
   LIST_REMOVE(np, entries);
@@ -330,7 +352,9 @@ static void update_cur_block(tetris *pgame) {
   LIST_INSERT_AFTER(last, np, entries);
 }
 
-static void update_ghost_block(tetris *pgame, block *pblock) {
+static void
+update_ghost_block(tetris* pgame, block* pblock)
+{
   /* Copy type for block color */
   pblock->type = CURRENT_BLOCK(pgame)->type;
   /* Offsets and piece positions */
@@ -344,7 +368,9 @@ static void update_ghost_block(tetris *pgame, block *pblock) {
 }
 
 /* Write the current block to the game board.  */
-static void write_block(tetris *pgame, block *pblock) {
+static void
+write_block(tetris* pgame, block* pblock)
+{
   int new_x[4], new_y[4];
 
   for (size_t i = 0; i < LEN(pblock->p); i++) {
@@ -367,7 +393,9 @@ static void write_block(tetris *pgame, block *pblock) {
  * We first check each row for a full line, and shift all rows above this down.
  * We currently implement naive gravity.
  */
-static int destroy_lines(tetris *pgame) {
+static int
+destroy_lines(tetris* pgame)
+{
   uint8_t i, j;
 
   /* Lines destroyed this turn. <= 4. */
@@ -412,7 +440,9 @@ static int destroy_lines(tetris *pgame) {
   return destroyed;
 }
 
-static void update_level(tetris *pgame) {
+static void
+update_level(tetris* pgame)
+{
   int lines = pgame->lines_destroyed; // to make things fit
 
   /* level^2 + level*3 + 2 */
@@ -429,7 +459,9 @@ static void update_level(tetris *pgame) {
  * considered difficult(as per the Tetris Guidlines) will yield more points by
  * a factor of 3/2 during consecutive moves.
  */
-static void update_points(tetris *pgame, uint8_t destroyed) {
+static void
+update_points(tetris* pgame, uint8_t destroyed)
+{
   size_t point_mod = 0;
 
   if (destroyed == 0 || destroyed > 4)
@@ -439,18 +471,18 @@ static void update_points(tetris *pgame, uint8_t destroyed) {
    * Point values from the Tetris Guidlines
    */
   switch (destroyed) {
-  case 1:
-    point_mod = 100;
-    break;
-  case 2:
-    point_mod = 300;
-    break;
-  case 3:
-    point_mod = 500;
-    break;
-  case 4:
-    point_mod = 800;
-    break;
+    case 1:
+      point_mod = 100;
+      break;
+    case 2:
+      point_mod = 300;
+      break;
+    case 3:
+      point_mod = 500;
+      break;
+    case 4:
+      point_mod = 800;
+      break;
   }
 
   /* Add difficulty bonus for consecutive difficult moves */
@@ -485,7 +517,9 @@ done : {
  * reaches the bottom. Indirectly creates new blocks, and updates points,
  * level, etc.
  */
-static void tetris_tick(tetris *pgame) {
+static void
+tetris_tick(tetris* pgame)
+{
   /* If the player dropped the block give them an extra game tick */
   if (pgame->enable_lock_delay && CURRENT_BLOCK(pgame)->hard_drop &&
       CURRENT_BLOCK(pgame)->lock_delay == false) {
@@ -539,13 +573,17 @@ static void tetris_tick(tetris *pgame) {
 /* Game Modes */
 
 /* Default game mode, we never win. Game continues until we lose. */
-static int tetris_classic(tetris *pgame) {
+static int
+tetris_classic(tetris* pgame)
+{
   pgame->win = false;
   return 0;
 }
 
 /* We win when we've destroyed 40 or more lines */
-static int tetris_40_lines(tetris *pgame) {
+static int
+tetris_40_lines(tetris* pgame)
+{
   if (pgame->lines_destroyed >= 40) {
     pgame->win = true;
     return 1;
@@ -554,7 +592,9 @@ static int tetris_40_lines(tetris *pgame) {
 }
 
 /* TODO, play for X minutes */
-static int tetris_timed(tetris *pgame) {
+static int
+tetris_timed(tetris* pgame)
+{
   pgame->win = false;
   return 0;
 }
@@ -573,8 +613,10 @@ static int tetris_timed(tetris *pgame) {
  * piece(total 7 game pieces).  We also allocate memory for the board colors,
  * and set some initial variables.
  */
-int tetris_init(tetris **res) {
-  tetris *pgame;
+int
+tetris_init(tetris** res)
+{
+  tetris* pgame;
   if ((pgame = calloc(1, sizeof *pgame)) == NULL) {
     log_err("Out of memory");
     return -1;
@@ -592,7 +634,7 @@ int tetris_init(tetris **res) {
 
   /* Create and add each block to the linked list */
   for (size_t i = 0; i < TETRIS_NEXT_BLOCKS_LEN + 2; i++) {
-    block *np = malloc(sizeof *np);
+    block* np = malloc(sizeof *np);
     if (!np) {
       log_err("Out of memory");
       goto mem_err;
@@ -638,8 +680,10 @@ mem_err:
 /*
  * The inverse of the init() function. Free all allocated memory.
  */
-int tetris_cleanup(tetris *pgame) {
-  block *np;
+int
+tetris_cleanup(tetris* pgame)
+{
+  block* np;
 
   /* Remove each piece in the linked list */
   while ((np = pgame->blocks_head.lh_first)) {
@@ -661,7 +705,9 @@ int tetris_cleanup(tetris *pgame) {
 /*
  * Blocks command processor.
  */
-int tetris_cmd(tetris *pgame, int cmd) {
+int
+tetris_cmd(tetris* pgame, int cmd)
+{
   /* "fail" if these are true so we can escape events_main_loop() */
   if (pgame->quit || pgame->lose || pgame->win)
     return -1;
@@ -670,7 +716,7 @@ int tetris_cmd(tetris *pgame, int cmd) {
   if (pgame->paused && !(cmd == TETRIS_PAUSE_GAME || cmd == TETRIS_QUIT_GAME))
     return 0;
 
-  block *cur = CURRENT_BLOCK(pgame);
+  block* cur = CURRENT_BLOCK(pgame);
 
   /* Block lock delays are enabled after a block is hard dropped to the
    * bottom of the board. The game will wait one additional game tick,
@@ -681,29 +727,29 @@ int tetris_cmd(tetris *pgame, int cmd) {
   bool additional_tick = cur->lock_delay || cur->hard_drop;
 
   switch (cmd) {
-  case TETRIS_MOVE_LEFT:
-  case TETRIS_MOVE_RIGHT:
-    block_translate(pgame, cur, cmd);
-    break;
+    case TETRIS_MOVE_LEFT:
+    case TETRIS_MOVE_RIGHT:
+      block_translate(pgame, cur, cmd);
+      break;
 
-  case TETRIS_ROT_LEFT:
-  case TETRIS_ROT_RIGHT:
-    if (pgame->enable_wallkicks)
-      block_wall_kick(pgame, cur, cmd);
-    else
-      block_rotate(pgame, cur, cmd);
-    break;
+    case TETRIS_ROT_LEFT:
+    case TETRIS_ROT_RIGHT:
+      if (pgame->enable_wallkicks)
+        block_wall_kick(pgame, cur, cmd);
+      else
+        block_rotate(pgame, cur, cmd);
+      break;
 
-  case TETRIS_MOVE_DOWN:
-    if (block_fall(pgame, cur, 1))
-      cur->soft_drop++;
-    break;
+    case TETRIS_MOVE_DOWN:
+      if (block_fall(pgame, cur, 1))
+        cur->soft_drop++;
+      break;
 
-  case TETRIS_MOVE_DROP:
-    /* drop the block to the bottom of the game */
-    while (block_fall(pgame, cur, 1))
-      cur->hard_drop++;
-    break;
+    case TETRIS_MOVE_DROP:
+      /* drop the block to the bottom of the game */
+      while (block_fall(pgame, cur, 1))
+        cur->hard_drop++;
+      break;
   }
 
   if (additional_tick && (cmd == TETRIS_MOVE_LEFT || cmd == TETRIS_MOVE_RIGHT ||
@@ -718,35 +764,35 @@ int tetris_cmd(tetris *pgame, int cmd) {
   }
 
   switch (cmd) {
-  case TETRIS_HOLD_BLOCK:
-    /* We can hold each block exactly once */
-    if (cur->hold == true) {
-      logs_to_game("Block has already been held.");
+    case TETRIS_HOLD_BLOCK:
+      /* We can hold each block exactly once */
+      if (cur->hold == true) {
+        logs_to_game("Block has already been held.");
+        break;
+      }
+
+      block_reset(cur);
+      cur->hold = true;
+
+      /* Remove the current block and reinstall it at the beginning
+       * of the list. This swaps the hold and current block.
+       */
+      LIST_REMOVE(cur, entries);
+      LIST_INSERT_HEAD(&pgame->blocks_head, cur, entries);
       break;
-    }
 
-    block_reset(cur);
-    cur->hold = true;
+    case TETRIS_QUIT_GAME:
+      pgame->quit = true;
+      break;
 
-    /* Remove the current block and reinstall it at the beginning
-     * of the list. This swaps the hold and current block.
-     */
-    LIST_REMOVE(cur, entries);
-    LIST_INSERT_HEAD(&pgame->blocks_head, cur, entries);
-    break;
+    case TETRIS_PAUSE_GAME:
+      pgame->paused = !pgame->paused;
+      pgame->difficult = false; // Lose difficulty bonus when we pause
+      break;
 
-  case TETRIS_QUIT_GAME:
-    pgame->quit = true;
-    break;
-
-  case TETRIS_PAUSE_GAME:
-    pgame->paused = !pgame->paused;
-    pgame->difficult = false; // Lose difficulty bonus when we pause
-    break;
-
-  case TETRIS_GAME_TICK:
-    tetris_tick(pgame);
-    break;
+    case TETRIS_GAME_TICK:
+      tetris_tick(pgame);
+      break;
   }
 
   if (pgame->check_win)
@@ -758,61 +804,69 @@ int tetris_cmd(tetris *pgame, int cmd) {
   return 1;
 }
 
-int tetris_set_name(tetris *pgame, const char *name) {
+int
+tetris_set_name(tetris* pgame, const char* name)
+{
   strncpy(pgame->id, name, sizeof pgame->id);
   if (sizeof pgame->id > 0)
     pgame->id[sizeof pgame->id - 1] = '\0';
   return 1;
 }
 
-int tetris_set_dbfile(tetris *pgame, const char *dbfile) {
+int
+tetris_set_dbfile(tetris* pgame, const char* dbfile)
+{
   strncpy(pgame->db_file, dbfile, sizeof pgame->db_file);
   if (sizeof pgame->db_file > 0)
     pgame->db_file[sizeof pgame->db_file - 1] = '\0';
   return 1;
 }
 
-int tetris_set_gamemode(tetris *pgame, enum TETRIS_GAMES gm) {
+int
+tetris_set_gamemode(tetris* pgame, enum TETRIS_GAMES gm)
+{
   switch (gm) {
-  case TETRIS_40_LINES:
-    tetris_set_ghosts(pgame, 1);
-    tetris_set_wallkicks(pgame, 1);
-    tetris_set_tspins(pgame, 1);
-    tetris_set_lockdelay(pgame, 1);
+    case TETRIS_40_LINES:
+      tetris_set_ghosts(pgame, 1);
+      tetris_set_wallkicks(pgame, 1);
+      tetris_set_tspins(pgame, 1);
+      tetris_set_lockdelay(pgame, 1);
 
-    strncpy(pgame->gamemode, "40 Lines", sizeof pgame->gamemode);
-    pgame->check_win = tetris_40_lines;
-    break;
-  case TETRIS_TIMED:
-    /* XXX, change my name when we define tetris_timed() */
-    strncpy(pgame->gamemode, "Classic", sizeof pgame->gamemode);
-    pgame->check_win = tetris_timed;
-    break;
-  case TETRIS_INFINITY:
-    tetris_set_ghosts(pgame, 1);
-    tetris_set_wallkicks(pgame, 1);
-    tetris_set_tspins(pgame, 1);
-    tetris_set_lockdelay(pgame, 1);
+      strncpy(pgame->gamemode, "40 Lines", sizeof pgame->gamemode);
+      pgame->check_win = tetris_40_lines;
+      break;
+    case TETRIS_TIMED:
+      /* XXX, change my name when we define tetris_timed() */
+      strncpy(pgame->gamemode, "Classic", sizeof pgame->gamemode);
+      pgame->check_win = tetris_timed;
+      break;
+    case TETRIS_INFINITY:
+      tetris_set_ghosts(pgame, 1);
+      tetris_set_wallkicks(pgame, 1);
+      tetris_set_tspins(pgame, 1);
+      tetris_set_lockdelay(pgame, 1);
 
-    strncpy(pgame->gamemode, "Infinity", sizeof pgame->gamemode);
-    pgame->check_win = tetris_classic;
-    break;
-  case TETRIS_CLASSIC:
-  default:
-    tetris_set_ghosts(pgame, 0);
-    tetris_set_wallkicks(pgame, 0);
-    tetris_set_tspins(pgame, 0);
-    tetris_set_lockdelay(pgame, 0);
+      strncpy(pgame->gamemode, "Infinity", sizeof pgame->gamemode);
+      pgame->check_win = tetris_classic;
+      break;
+    case TETRIS_CLASSIC:
+    default:
+      tetris_set_ghosts(pgame, 0);
+      tetris_set_wallkicks(pgame, 0);
+      tetris_set_tspins(pgame, 0);
+      tetris_set_lockdelay(pgame, 0);
 
-    strncpy(pgame->gamemode, "Classic", sizeof pgame->gamemode);
-    pgame->check_win = tetris_classic;
-    break;
+      strncpy(pgame->gamemode, "Classic", sizeof pgame->gamemode);
+      pgame->check_win = tetris_classic;
+      break;
   }
 
   return 1;
 }
 
-enum TETRIS_GAME_STATE tetris_get_state(tetris *pgame) {
+enum TETRIS_GAME_STATE
+tetris_get_state(tetris* pgame)
+{
   if (pgame->win)
     return TETRIS_WIN;
   if (pgame->lose)
@@ -824,14 +878,18 @@ enum TETRIS_GAME_STATE tetris_get_state(tetris *pgame) {
   return -1;
 }
 
-int tetris_get_name(tetris *pgame, char *ret, size_t len) {
+int
+tetris_get_name(tetris* pgame, char* ret, size_t len)
+{
   strncpy(ret, pgame->id, len);
   if (len > 0)
     ret[len - 1] = '\0';
   return 1;
 }
 
-int tetris_get_dbfile(tetris *pgame, char *ret, size_t len) {
+int
+tetris_get_dbfile(tetris* pgame, char* ret, size_t len)
+{
   strncpy(ret, pgame->db_file, len);
   if (len > 0)
     ret[len - 1] = '\0';

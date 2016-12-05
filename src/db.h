@@ -18,12 +18,12 @@
 
 #pragma once
 
-#include <stdlib.h>
 #include "tetris.h"
+#include <stdlib.h>
 
-int db_save_score(tetris *);
-int db_save_state(tetris *);
-int db_resume_state(tetris *);
+int db_save_score(tetris*);
+int db_save_state(tetris*);
+int db_resume_state(tetris*);
 
 /* Get an array of tetris struct pointers containing the data fields of the
  * game save states.
@@ -32,7 +32,7 @@ int db_resume_state(tetris *);
  * - date
  * - id
  */
-int db_get_scores(tetris *, tetris **, size_t);
+int db_get_scores(tetris*, tetris**, size_t);
 
 /* Remove entries in linked list */
-void db_clean_scores(tetris **, size_t);
+void db_clean_scores(tetris**, size_t);

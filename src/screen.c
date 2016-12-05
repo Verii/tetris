@@ -16,25 +16,25 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <ncurses.h>
 
-#include "screen.h"
-#include "db.h"
 #include "conf.h"
-#include "logs.h"
-#include "tetris.h"
+#include "db.h"
 #include "helpers.h"
+#include "logs.h"
+#include "screen.h"
+#include "tetris.h"
 
 static WINDOW *board, *pieces, *text;
 
 #if defined(WIDE_NCURSES)
-# define BLOCK_CHAR WACS_BLOCK
+#define BLOCK_CHAR WACS_BLOCK
 #else
-# define BLOCK_CHAR 'x'
+#define BLOCK_CHAR 'x'
 #endif
 
 #define PIECES_Y_OFF 4
@@ -52,12 +52,13 @@ static WINDOW *board, *pieces, *text;
 #define TEXT_HEIGHT BOARD_HEIGHT
 #define TEXT_WIDTH ((COLS - TEXT_X_OFF) - 1)
 
-static const short colors[] = {COLOR_WHITE,  COLOR_RED,  COLOR_GREEN,
-                               COLOR_YELLOW, COLOR_BLUE, COLOR_MAGENTA,
-                               COLOR_CYAN};
+static const short colors[] = { COLOR_WHITE,  COLOR_RED,  COLOR_GREEN,
+                                COLOR_YELLOW, COLOR_BLUE, COLOR_MAGENTA,
+                                COLOR_CYAN };
 #define SCREEN_NUM_COLORS 7
 
-enum {
+enum
+{
   SCREEN_COLOR_WHITE = 1,
   SCREEN_COLOR_RED,
   SCREEN_COLOR_GREEN,
@@ -67,7 +68,9 @@ enum {
   SCREEN_COLOR_CYAN
 };
 
-int screen_init(void) {
+int
+screen_init(void)
+{
   debug("Initializing ncurses context");
   initscr();
 
@@ -99,7 +102,9 @@ int screen_init(void) {
   return 1;
 }
 
-void screen_cleanup(void) {
+void
+screen_cleanup(void)
+{
   delwin(board);
   delwin(pieces);
   delwin(text);
@@ -108,18 +113,22 @@ void screen_cleanup(void) {
   endwin();
 }
 
-int screen_menu(tetris *pgame) {
+int
+screen_menu(tetris* pgame)
+{
   (void)pgame;
   return 1;
 }
 
-int screen_update(tetris *pgame) {
+int
+screen_update(tetris* pgame)
+{
   werase(board);
   werase(pieces);
   werase(text);
 
   size_t i;
-  const block *pblock;
+  const block* pblock;
 
   /***************/
   /* draw pieces */
@@ -150,10 +159,10 @@ int screen_update(tetris *pgame) {
     for (i = 0; i < LEN(pblock->p); i++) {
 #if defined(WIDE_NCURSES)
       mvwadd_wch(pieces, pblock->p[i].y + 2 + (count * 3), pblock->p[i].x + 9,
-          BLOCK_CHAR);
+                 BLOCK_CHAR);
 #else
       mvwaddch(pieces, pblock->p[i].y + 2 + (count * 3), pblock->p[i].x + 9,
-                 BLOCK_CHAR);
+               BLOCK_CHAR);
 #endif
     }
 
@@ -183,7 +192,7 @@ int screen_update(tetris *pgame) {
                pblock->p[i].x + pblock->col_off + 1, BLOCK_CHAR);
 #else
     mvwaddch(board, pblock->p[i].y + pblock->row_off - 2,
-               pblock->p[i].x + pblock->col_off + 1, BLOCK_CHAR);
+             pblock->p[i].x + pblock->col_off + 1, BLOCK_CHAR);
 #endif
   }
 
@@ -197,8 +206,9 @@ int screen_update(tetris *pgame) {
       if (!tetris_at_yx(pgame, i, j))
         continue;
 
-      wattrset(board, A_BOLD |
-                   COLOR_PAIR((pgame->colors[i][j] % SCREEN_NUM_COLORS) + 1));
+      wattrset(board,
+               A_BOLD |
+                 COLOR_PAIR((pgame->colors[i][j] % SCREEN_NUM_COLORS) + 1));
 #if defined(WIDE_NCURSES)
       mvwadd_wch(board, i - 2, j + 1, BLOCK_CHAR);
 #else
@@ -218,7 +228,7 @@ int screen_update(tetris *pgame) {
                pblock->p[i].x + pblock->col_off + 1, BLOCK_CHAR);
 #else
     mvwaddch(board, pblock->p[i].y + pblock->row_off - 2,
-               pblock->p[i].x + pblock->col_off + 1, BLOCK_CHAR);
+             pblock->p[i].x + pblock->col_off + 1, BLOCK_CHAR);
 #endif
   }
 
@@ -248,7 +258,7 @@ int screen_update(tetris *pgame) {
 
   /* Controls */
   {
-    extern struct config *config;
+    extern struct config* config;
 
     mvwprintw(text, 1, 22, "Pause: %c", config->pause_key.key);
     mvwprintw(text, 2, 22, "Save/Quit: %c", config->quit_key.key);
@@ -264,14 +274,14 @@ int screen_update(tetris *pgame) {
   wattrset(text, A_UNDERLINE | COLOR_PAIR(SCREEN_COLOR_BLUE));
   mvwprintw(text, 7, 2, "Gameplay Tips");
 
-  const char *tips[] = {
-      "Soft dropping yields 1 point per space",
-      "Hard dropping yields 2 points per space",
-      "Difficult moves increase points by x1.5",
-      "Pausing resets your difficulty bonus",
-      "Tetris and T-Spins are difficult moves",
-      "You're allowed 1 move during lock timeouts",
-      "Move down after dropping to speed up the game",
+  const char* tips[] = {
+    "Soft dropping yields 1 point per space",
+    "Hard dropping yields 2 points per space",
+    "Difficult moves increase points by x1.5",
+    "Pausing resets your difficulty bonus",
+    "Tetris and T-Spins are difficult moves",
+    "You're allowed 1 move during lock timeouts",
+    "Move down after dropping to speed up the game",
   };
 
   static int tip = 0, shows = 0;
@@ -291,7 +301,8 @@ int screen_update(tetris *pgame) {
   i = 0;
   int vert_off = 11;
 
-  LIST_FOREACH(lep, &entry_head, entries) {
+  LIST_FOREACH(lep, &entry_head, entries)
+  {
     /* Display messages, then remove anything that can't fit on
      * screen
      */
@@ -316,7 +327,9 @@ int screen_update(tetris *pgame) {
 }
 
 /* Game over screen */
-int screen_gameover(tetris *pgame) {
+int
+screen_gameover(tetris* pgame)
+{
   debug("Drawing game over screen");
 
   clear();
@@ -336,7 +349,7 @@ int screen_gameover(tetris *pgame) {
   mvprintw(2, 3, "Rank\tName\t\tLevel\t  Score\t\tDate");
 
   /* Print score board when you lose a game */
-  tetris *res[20];
+  tetris* res[20];
 
   /* Get LEN top scores from database */
   if (db_get_scores(pgame, res, LEN(res)) != 1) {
@@ -344,28 +357,28 @@ int screen_gameover(tetris *pgame) {
   }
 
   for (size_t i = 0; i < LEN(res) && res[i]; i++) {
-    char *date_str = ctime(&((res[i])->date));
+    char* date_str = ctime(&((res[i])->date));
 
     /* Pretty colors for 1st, 2nd, 3rd, and 4th */
     switch (i) {
-    case 0:
-      attron(COLOR_PAIR(SCREEN_COLOR_BLUE));
-      break;
-    case 1:
-      attron(COLOR_PAIR(SCREEN_COLOR_CYAN));
-      break;
-    case 2:
-      attron(COLOR_PAIR(SCREEN_COLOR_GREEN));
-      break;
-    case 3:
-      attron(COLOR_PAIR(SCREEN_COLOR_YELLOW));
-      break;
-    case 4:
-      attron(COLOR_PAIR(SCREEN_COLOR_RED));
-      break;
-    default:
-      attrset(COLOR_PAIR(SCREEN_COLOR_WHITE));
-      break;
+      case 0:
+        attron(COLOR_PAIR(SCREEN_COLOR_BLUE));
+        break;
+      case 1:
+        attron(COLOR_PAIR(SCREEN_COLOR_CYAN));
+        break;
+      case 2:
+        attron(COLOR_PAIR(SCREEN_COLOR_GREEN));
+        break;
+      case 3:
+        attron(COLOR_PAIR(SCREEN_COLOR_YELLOW));
+        break;
+      case 4:
+        attron(COLOR_PAIR(SCREEN_COLOR_RED));
+        break;
+      default:
+        attrset(COLOR_PAIR(SCREEN_COLOR_WHITE));
+        break;
     }
 
     /* Bold the entry we've just added to the highscores */

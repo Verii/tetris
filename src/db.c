@@ -16,18 +16,20 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include <sqlite3.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 #include "db.h"
-#include "tetris.h"
 #include "logs.h"
+#include "tetris.h"
 
-static int db_open(tetris *pgame, sqlite3 **db_handle) {
+static int
+db_open(tetris* pgame, sqlite3** db_handle)
+{
   int status = sqlite3_open(pgame->db_file, db_handle);
   if (status != SQLITE_OK) {
     log_warn("DB cannot be opened. (%d)", status);
@@ -37,7 +39,9 @@ static int db_open(tetris *pgame, sqlite3 **db_handle) {
   return 1;
 }
 
-static void db_close(sqlite3 *db_handle) {
+static void
+db_close(sqlite3* db_handle)
+{
   if (!db_handle) {
     log_warn("Trying to close un-initialized database.");
     return;
@@ -49,7 +53,7 @@ static void db_close(sqlite3 *db_handle) {
 
 /* Scores: name, level, score, date */
 const char create_scores[] =
-    "CREATE TABLE Scores(name TEXT,level INT,score INT,date INT);";
+  "CREATE TABLE Scores(name TEXT,level INT,score INT,date INT);";
 
 const char insert_scores[] = "INSERT INTO Scores VALUES(\"%s\",%d,%d,%lu);";
 
@@ -57,8 +61,8 @@ const char select_scores[] = "SELECT * FROM Scores ORDER BY score DESC;";
 
 /* State: name, score, lines, level, date, spaces */
 const char create_state[] =
-    "CREATE TABLE State(name TEXT,score INT,lines INT,level INT,"
-    "date INT,spaces BLOB);";
+  "CREATE TABLE State(name TEXT,score INT,lines INT,level INT,"
+  "date INT,spaces BLOB);";
 
 const char insert_state[] = "INSERT INTO State VALUES(\"%s\",%d,%d,%d,%lu,?);";
 
@@ -68,16 +72,18 @@ const char select_state[] = "SELECT * FROM State ORDER BY date DESC;";
  * There's probably a simpler way than using two SELECT calls, but I'm a total
  * SQL noob, so ... */
 const char select_state_rowid[] =
-    "SELECT ROWID,date FROM State ORDER BY date DESC;";
+  "SELECT ROWID,date FROM State ORDER BY date DESC;";
 
 /* Remove the entry pulled from the database. This lets us have multiple saves
  * in the database concurently.
  */
 const char delete_state_rowid[] = "DELETE FROM State WHERE ROWID = ?;";
 
-int db_save_score(tetris *pgame) {
-  sqlite3 *db_handle;
-  sqlite3_stmt *stmt;
+int
+db_save_score(tetris* pgame)
+{
+  sqlite3* db_handle;
+  sqlite3_stmt* stmt;
   char insert[4096];
   int insert_len = -1;
 
@@ -116,9 +122,11 @@ int db_save_score(tetris *pgame) {
   return 1;
 }
 
-int db_save_state(tetris *pgame) {
-  sqlite3 *db_handle;
-  sqlite3_stmt *stmt;
+int
+db_save_state(tetris* pgame)
+{
+  sqlite3* db_handle;
+  sqlite3_stmt* stmt;
 
   debug("Saving game state to database");
 
@@ -135,8 +143,8 @@ int db_save_state(tetris *pgame) {
   char insert[4096];
   int insert_len = -1;
   insert_len =
-      snprintf(insert, sizeof(insert), insert_state, pgame->id, pgame->score,
-               pgame->lines_destroyed, pgame->level, time(NULL));
+    snprintf(insert, sizeof(insert), insert_state, pgame->id, pgame->score,
+             pgame->lines_destroyed, pgame->level, time(NULL));
 
   if (insert_len >= (int)sizeof(insert)) {
     log_err("String truncated");
@@ -166,10 +174,12 @@ int db_save_state(tetris *pgame) {
 
 /* Queries database for newest game state information and copies it to pgame.
  */
-int db_resume_state(tetris *pgame) {
-  sqlite3 *db_handle;
+int
+db_resume_state(tetris* pgame)
+{
+  sqlite3* db_handle;
   sqlite3_stmt *stmt, *delete;
-  const char *blob;
+  const char* blob;
   int ret, rowid;
 
   debug("Trying to restore saved game");
@@ -184,7 +194,7 @@ int db_resume_state(tetris *pgame) {
 
   if (sqlite3_step(stmt) == SQLITE_ROW) {
     if (sqlite3_column_text(stmt, 0))
-      strncpy(pgame->id, (const char *)sqlite3_column_text(stmt, 0),
+      strncpy(pgame->id, (const char*)sqlite3_column_text(stmt, 0),
               sizeof pgame->id);
     if (sizeof pgame->id)
       pgame->id[sizeof(pgame->id) - 1] = '\0';
@@ -230,9 +240,11 @@ int db_resume_state(tetris *pgame) {
  * This list can be iterated over to extract the fields:
  * name, level, score, date.
  */
-int db_get_scores(tetris *pgame, tetris **res, size_t n) {
-  sqlite3 *db_handle;
-  sqlite3_stmt *stmt;
+int
+db_get_scores(tetris* pgame, tetris** res, size_t n)
+{
+  sqlite3* db_handle;
+  sqlite3_stmt* stmt;
 
   debug("Getting highscores");
 
@@ -256,7 +268,7 @@ int db_get_scores(tetris *pgame, tetris **res, size_t n) {
       /* improperly formatted row */
       break;
 
-    tetris *np = NULL;
+    tetris* np = NULL;
     if ((np = malloc(sizeof *np)) == NULL) {
       log_warn("Out of memory");
       break;
@@ -267,7 +279,7 @@ int db_get_scores(tetris *pgame, tetris **res, size_t n) {
       continue;
     }
 
-    strncpy(np->id, (const char *)sqlite3_column_text(stmt, 0), sizeof np->id);
+    strncpy(np->id, (const char*)sqlite3_column_text(stmt, 0), sizeof np->id);
     if (sizeof np->id > 0)
       np->id[sizeof np->id - 1] = '\0';
 
@@ -289,7 +301,9 @@ int db_get_scores(tetris *pgame, tetris **res, size_t n) {
   return 1;
 }
 
-void db_clean_scores(tetris **plist, size_t n) {
+void
+db_clean_scores(tetris** plist, size_t n)
+{
   for (size_t i = 0; i < n; i++)
     free(plist[i]);
 }

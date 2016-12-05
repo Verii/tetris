@@ -59,7 +59,8 @@ struct tetris;
 #define TETRIS_NUM_BLOCKS 7
 
 typedef struct block block;
-struct block {
+struct block
+{
   uint8_t soft_drop, hard_drop;
   uint8_t type;
   bool hold;       /* Has the block been in the hold box */
@@ -67,7 +68,8 @@ struct block {
   bool lock_delay; /* Have we waited an additional game tick */
 
   uint8_t col_off, row_off;
-  struct pieces {
+  struct pieces
+  {
     int8_t x, y;
   } p[4];
 
@@ -75,21 +77,22 @@ struct block {
 };
 
 typedef struct tetris tetris;
-struct tetris {
+struct tetris
+{
   uint16_t spaces[TETRIS_MAX_ROWS];
   uint16_t level;
   uint32_t lines_destroyed;
   uint32_t score;
 
-  uint8_t *colors[TETRIS_MAX_ROWS];
+  uint8_t* colors[TETRIS_MAX_ROWS];
   uint32_t tick_nsec; // Nanoseconds between game ticks
 
-  int (*check_win)(tetris *); // Game over when this return 0
+  int (*check_win)(tetris*); // Game over when this return 0
 
   uint8_t bag[TETRIS_NUM_BLOCKS]; // Get random blocks
 
   LIST_HEAD(blocks_head, block) blocks_head;
-  block *ghost_block;
+  block* ghost_block;
 
   /* Attributes */
   bool enable_wallkicks;
@@ -111,10 +114,10 @@ struct tetris {
 };
 
 /* Create game state */
-int tetris_init(tetris **);
+int tetris_init(tetris**);
 
 /* Free memory */
-int tetris_cleanup(tetris *);
+int tetris_cleanup(tetris*);
 
 /* Commands */
 #define TETRIS_MOVE_LEFT 0x00
@@ -130,36 +133,38 @@ int tetris_cleanup(tetris *);
 #define TETRIS_SERIALIZE 0x0A
 
 /* Process key command in ch and modify game */
-int tetris_cmd(tetris *, int command);
+int tetris_cmd(tetris*, int command);
 
 /* Set Attributes */
 #define tetris_set_ghosts(G, B) ((G)->enable_ghosts = (B))
 #define tetris_set_wallkicks(G, B) ((G)->enable_wallkicks = (B))
 #define tetris_set_tspins(G, B) ((G)->enable_tspins = (B))
 #define tetris_set_lockdelay(G, B) ((G)->enable_lock_delay = (B))
-int tetris_set_name(tetris *, const char *name);
-int tetris_set_dbfile(tetris *, const char *name);
+int tetris_set_name(tetris*, const char* name);
+int tetris_set_dbfile(tetris*, const char* name);
 
 /* Game modes, we win when the game mode returns 1 */
-enum TETRIS_GAMES {
+enum TETRIS_GAMES
+{
   TETRIS_CLASSIC,
   TETRIS_40_LINES,
   TETRIS_TIMED,
   TETRIS_INFINITY,
 };
-int tetris_set_gamemode(tetris *, enum TETRIS_GAMES);
+int tetris_set_gamemode(tetris*, enum TETRIS_GAMES);
 
 /* Get Attributes */
-enum TETRIS_GAME_STATE {
+enum TETRIS_GAME_STATE
+{
   TETRIS_WIN,
   TETRIS_LOSE,
   TETRIS_QUIT,
   TETRIS_PAUSED,
 };
 
-enum TETRIS_GAME_STATE tetris_get_state(tetris *);
-int tetris_get_name(tetris *, char *, size_t);
-int tetris_get_dbfile(tetris *, char *, size_t);
+enum TETRIS_GAME_STATE tetris_get_state(tetris*);
+int tetris_get_name(tetris*, char*, size_t);
+int tetris_get_dbfile(tetris*, char*, size_t);
 #define tetris_get_level(G) ((G)->level)
 #define tetris_get_lines(G) ((G)->lines_destroyed)
 #define tetris_get_score(G) ((G)->score)

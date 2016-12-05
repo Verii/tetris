@@ -18,54 +18,57 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <stdbool.h>
 
-struct values {
-  char *val;
+struct values
+{
+  char* val;
   size_t len;
 };
 
-struct key_bindings {
+struct key_bindings
+{
   bool enabled; /* Choose to ignore keypress or not */
   int key;      /* Registered key */
 };
 
-struct config {
+struct config
+{
   struct values username, /* username for matchmaking logins WIP */
-      password,           /* password for matchmaking logins WIP */
-      hostname,           /* localhost */
-      port,               /* 10024 */
-      logs_file,          /* ~/.local/share/tetris/logs */
-      save_file,          /* ~/.local/share/tetris/saves */
-      _conf_file;         /* ~/.config/tetris/tetris.conf */
+    password,             /* password for matchmaking logins WIP */
+    hostname,             /* localhost */
+    port,                 /* 10024 */
+    logs_file,            /* ~/.local/share/tetris/logs */
+    save_file,            /* ~/.local/share/tetris/saves */
+    _conf_file;           /* ~/.config/tetris/tetris.conf */
 
   struct key_bindings
-      /* Movement keys */
-      move_drop,
-      move_left, move_right, move_down, rotate_left, rotate_right, hold_key,
-      pause_key, quit_key,
+    /* Movement keys */
+    move_drop,
+    move_left, move_right, move_down, rotate_left, rotate_right, hold_key,
+    pause_key, quit_key,
 
-      toggle_ghosts, toggle_wallkicks, cycle_gamemodes;
+    toggle_ghosts, toggle_wallkicks, cycle_gamemodes;
 };
 
-int conf_create(struct config **);
+int conf_create(struct config**);
 
 /* Read in the specified path. If path is NULL, read in the compiled in default
  * path.
  */
-int conf_init(struct config *, const char *path);
+int conf_init(struct config*, const char* path);
 
 /* Parse an entire configuration set line by line. */
-int conf_parse(struct config *, const char *str, size_t len);
+int conf_parse(struct config*, const char* str, size_t len);
 
 /* Internal functions, these are called when either a "set" "bind" or "say"
  * commands in encountered in the configuration file.
  */
-int conf_command_set(struct config *, const char *cmd, size_t len);
-int conf_command_unset(struct config *, const char *cmd, size_t len);
+int conf_command_set(struct config*, const char* cmd, size_t len);
+int conf_command_unset(struct config*, const char* cmd, size_t len);
 
-int conf_command_bind(struct config *, const char *cmd, size_t len);
+int conf_command_bind(struct config*, const char* cmd, size_t len);
 
-void conf_cleanup(struct config *conf);
+void conf_cleanup(struct config* conf);

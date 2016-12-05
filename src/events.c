@@ -16,19 +16,19 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include <stdlib.h>
-#include <sys/select.h>
-#include <time.h>
-#include <string.h>
-#include <stdio.h>
 #include <errno.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/select.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "events.h"
+#include "logs.h"
 #include "screen.h"
 #include "tetris.h"
-#include "logs.h"
 
 /* Set by signal handler */
 extern volatile sig_atomic_t tetris_do_tick;
@@ -45,9 +45,11 @@ static fd_set master_write;
 static uint8_t fd_max;
 
 #define NUM_EVENTS 2
-static events *p_events[NUM_EVENTS];
+static events* p_events[NUM_EVENTS];
 
-static int events_reset_timer(timer_t td, struct timespec ts) {
+static int
+events_reset_timer(timer_t td, struct timespec ts)
+{
   struct itimerspec timer_ts;
   timer_ts.it_interval.tv_sec = ts.tv_sec;
   timer_ts.it_interval.tv_nsec = ts.tv_nsec;
@@ -62,7 +64,9 @@ static int events_reset_timer(timer_t td, struct timespec ts) {
   return 1;
 }
 
-int events_add_timer(struct timespec ts, struct sigaction sa, int sig) {
+int
+events_add_timer(struct timespec ts, struct sigaction sa, int sig)
+{
   sigaddset(&ignore_mask, sig);
   sigprocmask(SIG_BLOCK, &ignore_mask, NULL);
 
@@ -92,11 +96,13 @@ int events_add_timer(struct timespec ts, struct sigaction sa, int sig) {
   return 1;
 }
 
-int events_add_input(int fd, events_callback cb) {
+int
+events_add_input(int fd, events_callback cb)
+{
   if (fd < 0)
     return 0;
 
-  events *new_event = malloc(sizeof *new_event);
+  events* new_event = malloc(sizeof *new_event);
   if (!new_event) {
     log_err("Out of memory");
     return -1;
@@ -127,7 +133,9 @@ int events_add_input(int fd, events_callback cb) {
   return 1;
 }
 
-int events_remove_IO(int fd) {
+int
+events_remove_IO(int fd)
+{
   if (fd < 0)
     return 0;
 
@@ -165,7 +173,9 @@ int events_remove_IO(int fd) {
 /* Game is over when this function returns
  * We also handle interrupts in the form of signals from POSIX timers.
  */
-void events_main_loop(tetris *pgame) {
+void
+events_main_loop(tetris* pgame)
+{
   while (1) {
 
     fd_set read_fds = master_read;
@@ -175,7 +185,7 @@ void events_main_loop(tetris *pgame) {
     sigemptyset(&empty_mask);
 
     struct timespec ps_timeout = {
-        .tv_nsec = 0, .tv_sec = 2,
+      .tv_nsec = 0, .tv_sec = 2,
     };
 
     errno = 0;
@@ -222,20 +232,26 @@ void events_main_loop(tetris *pgame) {
   } /* while */
 }
 
-static void events_timer_cleanup(void) {
+static void
+events_timer_cleanup(void)
+{
   if (timerid != 0)
     timer_delete(timerid);
   timerid = 0;
 }
 
-static void events_IO_cleanup(void) {
+static void
+events_IO_cleanup(void)
+{
   size_t i;
   for (i = 0; i < NUM_EVENTS; i++)
     if (p_events[i])
       events_remove_IO(p_events[i]->fd);
 }
 
-void events_cleanup(void) {
+void
+events_cleanup(void)
+{
   events_timer_cleanup();
   events_IO_cleanup();
 }

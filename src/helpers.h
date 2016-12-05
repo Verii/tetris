@@ -18,9 +18,9 @@
 
 #pragma once
 
+#include <stdio.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <stdio.h>
 #include <unistd.h>
 
 #define PI 3.141592653589L
@@ -30,17 +30,17 @@
 extern const mode_t perm_mode;
 
 /* POSIX `mkdir` command */
-int try_mkdir(const char *path, mode_t);
+int try_mkdir(const char* path, mode_t);
 
 /* Recursively create all subdirectories in a path
  * POSIX `mkdir -p` command */
-int try_mkdir_r(const char *path, mode_t);
+int try_mkdir_r(const char* path, mode_t);
 
 /* Read the contents of *path into buffer
  * returns buffer in **buf
  * returns length in *len
  */
-int file_into_buf(const char *path, char **buf, size_t *len);
+int file_into_buf(const char* path, char** buf, size_t* len);
 
 /* Find the next line in a buffer of length len, maintain the buffer offset
  * between calls in the offset variable.
@@ -50,8 +50,8 @@ int file_into_buf(const char *path, char **buf, size_t *len);
  *
  * Find beginning of a line that isn't whitespace(newline, space, tab, etc.)
  */
-int getnextline(const char *buf, size_t len, char **pbuf);
+int getnextline(const char* buf, size_t len, char** pbuf);
 
 /* Replace '~' and "HOME" with the user's HOME environment variable.
  */
-int replace_home(char **, size_t *len);
+int replace_home(char**, size_t* len);
